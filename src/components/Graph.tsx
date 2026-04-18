@@ -1135,7 +1135,7 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
                 transform: `translateX(${(1 - progProjects) * -50}px)`,
                 display: progProjects === 0 ? 'none' : 'flex'
               }}
-              onClick={() => window.location.href = '/blog'}
+              onClick={() => window.location.href = '/projects'}
             >
               <div className="w-12 h-12 border border-[#81D4FA] flex items-center justify-center bg-[#0a140f]/90 group-hover:bg-[#01579B]/30 transition-colors relative z-10 shadow-[0_0_15px_rgba(129,212,250,0.2)]">
                 <div className="absolute inset-0 noise"></div>
@@ -1228,12 +1228,13 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
             })()}
 
             <div 
-              className="pointer-events-auto flex items-center gap-4 group"
+              className="pointer-events-auto flex items-center gap-4 cursor-pointer group"
               style={{ 
                 opacity: progSettings,
                 transform: `translateX(${(1 - progSettings) * -50}px)`,
                 display: progSettings === 0 ? 'none' : 'flex'
               }}
+              onClick={() => window.location.href = '/admin'}
             >
               <div className="w-12 h-12 border border-[#B39DDB] flex items-center justify-center bg-[#0a140f]/90 relative z-10 shadow-[0_0_15px_rgba(179,157,219,0.2)]">
                 <div className="absolute inset-0 noise"></div>
