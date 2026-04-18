@@ -598,8 +598,8 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
       touchStartY = touchY;
       
       setUnfoldProgress(prev => {
-        // Slow down the mobile scroll to ensure users have time to see the modules
-        let delta = deltaY * 0.0015;
+        // Significantly slow down the mobile scroll (2x slower) to ensure users have time to see the modules
+        let delta = deltaY * 0.00075;
         let newProgress = prev + delta;
         return Math.max(0, Math.min(3, newProgress));
       });
@@ -1333,25 +1333,25 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
           
           {/* Mobile Flashing Texts */}
           <div className="relative w-full h-8 flex justify-center mt-2">
-            <div className="absolute transition-opacity duration-150" style={{ opacity: Math.max(0, 1 - Math.abs(unfoldProgress - 1.25) * 8) }}>
+            <div className="absolute transition-opacity duration-150" style={{ opacity: Math.max(0, 1 - Math.abs(unfoldProgress - 1.25) * 4) }}>
               <div className="text-center">
                 <h3 className="text-[#4ADE80] tracking-[0.3em] text-sm">碎碎念</h3>
                 <p className="text-[#4a6b57] text-[10px] tracking-widest">/logs</p>
               </div>
             </div>
-            <div className="absolute transition-opacity duration-150" style={{ opacity: Math.max(0, 1 - Math.abs(unfoldProgress - 1.65) * 8) }}>
+            <div className="absolute transition-opacity duration-150" style={{ opacity: Math.max(0, 1 - Math.abs(unfoldProgress - 1.65) * 4) }}>
               <div className="text-center">
                 <h3 className="text-[#81D4FA] tracking-[0.3em] text-sm">個人項目</h3>
                 <p className="text-[#0277BD] text-[10px] tracking-widest">/projects</p>
               </div>
             </div>
-            <div className="absolute transition-opacity duration-150" style={{ opacity: Math.max(0, 1 - Math.abs(unfoldProgress - 2.05) * 8) }}>
+            <div className="absolute transition-opacity duration-150" style={{ opacity: Math.max(0, 1 - Math.abs(unfoldProgress - 2.05) * 4) }}>
               <div className="text-center">
                 <h3 className="text-[#B39DDB] tracking-[0.3em] text-sm">系統設定</h3>
                 <p className="text-[#7E57C2] text-[10px] tracking-widest">/sys_config</p>
               </div>
             </div>
-            <div className="absolute transition-opacity duration-150" style={{ opacity: Math.max(0, 1 - Math.abs(unfoldProgress - 2.45) * 8) }}>
+            <div className="absolute transition-opacity duration-150" style={{ opacity: Math.max(0, 1 - Math.abs(unfoldProgress - 2.45) * 4) }}>
               <div className="text-center">
                 <h3 className="text-[#FFCC80] tracking-[0.3em] text-sm">外部鏈接</h3>
                 <p className="text-[#EF6C00] text-[10px] tracking-widest">/external_uplinks</p>
