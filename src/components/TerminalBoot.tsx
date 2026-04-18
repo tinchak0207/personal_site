@@ -79,11 +79,11 @@ export const TerminalBoot: React.FC<TerminalBootProps> = ({ onComplete }) => {
   // The switch happens when we reach line index 6 ("換深綠色吧。") 
   // AND the current text includes the character "綠" (which means "深綠" has just been typed)
   // OR we are past line 6.
-  const shouldBeGreen = (lines: typeof lines) => {
-    if (lines.length > 7) return true; // Past the line
-    if (lines.length === 7) {
+  const shouldBeGreen = (currentLines: typeof lines) => {
+    if (currentLines.length > 7) return true; // Past the line
+    if (currentLines.length === 7) {
       // The line is "換深綠色吧。" (index 6 in 0-based array, but lines.length is 7)
-      const currentText = lines[6].currentText;
+      const currentText = currentLines[6].currentText;
       return currentText.includes('綠');
     }
     return false;
