@@ -114,99 +114,96 @@ export interface GraphProps {
 }
 
 const Starfield = React.memo(({ 
-  mousePos, 
   unfoldProgress 
 }: { 
-  mousePos: { x: number, y: number }, 
   unfoldProgress: number 
 }) => {
+  // Pre-calculate all star data to prevent heavy math on every render tick
+  const starData = React.useMemo(() => {
+    const w = typeof window !== 'undefined' ? window.innerWidth : 1920;
+    const h = typeof window !== 'undefined' ? window.innerHeight : 1080;
+    
+    const baseStars = Array.from({ length: 400 }).map((_, i) => {
+      const x = ((Math.sin(i * 12.345) + 1) / 2) * (w + 800) - 400;
+      const y = ((Math.cos(i * 54.321) + 1) / 2) * (h + 800) - 400;
+      const size = ((Math.sin(i * 98.765) + 1) / 2) * 1 + 0.5;
+      const fill = i % 3 === 0 ? "#8FBC8F" : "#A5D6B7";
+      const isPulse = i % 10 === 0;
+      const opacityMult = (Math.sin(i) + 1) / 2 * 0.4 + 0.1;
+      return { id: `base-${i}`, x, y, size, fill, isPulse, opacityMult };
+    });
+
+    const mwStars = Array.from({ length: 800 }).map((_, i) => {
+      const t = ((Math.sin(i * 3.14159) + 1) / 2); 
+      const baseX = t * (w + 800) - 400;
+      const baseY = h - (t * (h + 800) - 400) + Math.sin(t * Math.PI * 3) * 150; 
+      const spread = (Math.pow(Math.sin(i * 7.777), 3)) * 250;
+      const x = baseX + Math.cos(i * 11.11) * spread;
+      const y = baseY + Math.sin(i * 11.11) * spread;
+      const distFromCenter = Math.abs(spread) / 250;
+      const size = distFromCenter < 0.2 ? 0.8 : (distFromCenter < 0.6 ? 1.2 : 1.5);
+      const baseOpacity = 1 - Math.pow(distFromCenter, 0.5);
+      const fill = distFromCenter < 0.15 ? "#E8F5E9" : (i % 4 === 0 ? "#7da38a" : "#366B4E");
+      const isPulse = i % 15 === 0;
+      return { id: `mw-${i}`, x, y, size, fill, isPulse, baseOpacity };
+    });
+
+    const crossStars = Array.from({ length: 15 }).map((_, i) => {
+      const x = ((Math.sin(i * 33.33) + 1) / 2) * w;
+      const y = ((Math.cos(i * 44.44) + 1) / 2) * h;
+      const isYellowish = i % 3 === 0;
+      const fill = isYellowish ? "#F5DEB3" : "#E8F5E9";
+      const animDuration = `${2 + i % 3}s`;
+      return { id: `cross-${i}`, x, y, fill, animDuration };
+    });
+
+    return { baseStars, mwStars, crossStars };
+  }, []); // Only recalculates on mount (or if we added dimensions dependency)
+
   return (
     <g style={{
-      transform: typeof window !== 'undefined' 
-        ? `translate(${(mousePos.x - window.innerWidth / 2) * -0.015}px, ${(mousePos.y - window.innerHeight / 2) * -0.015}px)` 
-        : 'translate(0, 0)',
-      transition: 'transform 0.5s ease-out'
+      transform: 'translate(calc(var(--mouse-x, 0px) * -0.015), calc(var(--mouse-y, 0px) * -0.015))',
+      transition: 'transform 0.1s ease-out'
     }}>
       {/* Base scattered tiny stars */}
-      {Array.from({ length: 400 }).map((_, i) => {
-        const x = ((Math.sin(i * 12.345) + 1) / 2) * (typeof window !== 'undefined' ? window.innerWidth + 800 : 2000) - 400;
-        const y = ((Math.cos(i * 54.321) + 1) / 2) * (typeof window !== 'undefined' ? window.innerHeight + 800 : 1500) - 400;
-        const size = ((Math.sin(i * 98.765) + 1) / 2) * 1 + 0.5; // Very small
-        
-        // Only start showing stars after 50% unfold progress, and ramp up quickly
-        const starOpacity = unfoldProgress < 0.5 ? 0 : Math.max(0, Math.min(1, Math.pow((unfoldProgress - 0.5) * 2, 3) * ((Math.sin(i) + 1) / 2 * 0.4 + 0.1)));
-        
+      {starData.baseStars.map((star) => {
+        const starOpacity = unfoldProgress < 0.5 ? 0 : Math.max(0, Math.min(1, Math.pow((unfoldProgress - 0.5) * 2, 3) * star.opacityMult));
         return (
           <rect 
-            key={`star-base-${i}`} x={x} y={y} width={size} height={size} 
-            fill={i % 3 === 0 ? "#8FBC8F" : "#A5D6B7"} 
+            key={star.id} x={star.x} y={star.y} width={star.size} height={star.size} 
+            fill={star.fill} 
             opacity={starOpacity}
-            className={i % 10 === 0 ? "animate-pulse" : ""}
+            className={star.isPulse ? "animate-pulse" : ""}
           />
         );
       })}
 
-      {/* Milky Way Band (Dense cluster along a diagonal curve) */}
-      {Array.from({ length: 800 }).map((_, i) => {
-        const w = typeof window !== 'undefined' ? window.innerWidth : 1920;
-        const h = typeof window !== 'undefined' ? window.innerHeight : 1080;
-        
-        // Progress along the diagonal (from bottom-left to top-right roughly)
-        const t = ((Math.sin(i * 3.14159) + 1) / 2); 
-        
-        // Base curve for the milky way
-        const baseX = t * (w + 800) - 400;
-        const baseY = h - (t * (h + 800) - 400) + Math.sin(t * Math.PI * 3) * 150; 
-        
-        // Gaussian-like spread from the center of the band
-        const spread = (Math.pow(Math.sin(i * 7.777), 3)) * 250;
-        const offsetX = Math.cos(i * 11.11) * spread;
-        const offsetY = Math.sin(i * 11.11) * spread;
-        
-        const x = baseX + offsetX;
-        const y = baseY + offsetY;
-        
-        // Size is smaller closer to the band center to create density
-        const distFromCenter = Math.abs(spread) / 250;
-        const size = distFromCenter < 0.2 ? 0.8 : (distFromCenter < 0.6 ? 1.2 : 1.5);
-        
-        // Opacity is higher in the center of the band
-        const baseOpacity = 1 - Math.pow(distFromCenter, 0.5);
-        // Only start showing stars after 50% unfold progress
-        const starOpacity = unfoldProgress < 0.5 ? 0 : Math.max(0, Math.min(1, Math.pow((unfoldProgress - 0.5) * 2, 4) * baseOpacity * 0.7));
-        
-        // Color variation: mostly blue/purple tint in the dense parts, some bright white
-        const color = distFromCenter < 0.15 ? "#E8F5E9" : (i % 4 === 0 ? "#7da38a" : "#366B4E");
-
+      {/* Milky Way Band */}
+      {starData.mwStars.map((star) => {
+        const starOpacity = unfoldProgress < 0.5 ? 0 : Math.max(0, Math.min(1, Math.pow((unfoldProgress - 0.5) * 2, 4) * star.baseOpacity * 0.7));
         return (
           <rect 
-            key={`star-mw-${i}`} x={x} y={y} width={size} height={size} 
-            fill={color} 
+            key={star.id} x={star.x} y={star.y} width={star.size} height={star.size} 
+            fill={star.fill} 
             opacity={starOpacity}
-            className={i % 15 === 0 ? "animate-pulse" : ""}
+            className={star.isPulse ? "animate-pulse" : ""}
           />
         );
       })}
 
-      {/* Large cross-shaped twinkling stars (Pixel art style) */}
-      {Array.from({ length: 15 }).map((_, i) => {
-        const x = ((Math.sin(i * 33.33) + 1) / 2) * (typeof window !== 'undefined' ? window.innerWidth : 1920);
-        const y = ((Math.cos(i * 44.44) + 1) / 2) * (typeof window !== 'undefined' ? window.innerHeight : 1080);
-        
+      {/* Large cross-shaped twinkling stars */}
+      {starData.crossStars.map((star) => {
         const starOpacity = unfoldProgress < 0.6 ? 0 : Math.max(0, Math.min(1, Math.pow((unfoldProgress - 0.6) * 2.5, 3) * 0.8));
-        const isYellowish = i % 3 === 0;
-        const color = isYellowish ? "#F5DEB3" : "#E8F5E9"; // Wheat / Bright Mint
-
         return (
           <g 
-            key={`star-cross-${i}`} 
-            transform={`translate(${x}, ${y})`} 
+            key={star.id} 
+            transform={`translate(${star.x}, ${star.y})`} 
             opacity={starOpacity}
             className="animate-pulse"
-            style={{ animationDuration: `${2 + i % 3}s` }}
+            style={{ animationDuration: star.animDuration }}
           >
-            <rect x="-1" y="-4" width="2" height="8" fill={color} />
-            <rect x="-4" y="-1" width="8" height="2" fill={color} />
+            <rect x="-1" y="-4" width="2" height="8" fill={star.fill} />
+            <rect x="-4" y="-1" width="8" height="2" fill={star.fill} />
             <rect x="-1" y="-1" width="2" height="2" fill="#FFF" />
           </g>
         );
@@ -221,7 +218,6 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
   const [links, setLinks] = useState<LinkData[]>([]);
   const [hoveredNode, setHoveredNode] = useState<string | null>(null);
   const [zoomTarget, setZoomTarget] = useState<{x: number, y: number} | null>(null);
-  const [mousePos, setMousePos] = useState({ x: typeof window !== 'undefined' ? window.innerWidth / 2 : 0, y: typeof window !== 'undefined' ? window.innerHeight / 2 : 0 });
   const simulationRef = useRef<d3.Simulation<NodeData, LinkData> | null>(null);
   const draggingNodeIdRef = useRef<string | null>(null);
   const [unfoldProgress, setUnfoldProgress] = useState(0);
@@ -674,7 +670,16 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
       ref={containerRef} 
       className="absolute inset-0 w-full h-full z-10"
       onMouseMove={(e) => {
-        setMousePos({ x: e.clientX, y: e.clientY });
+        const mx = e.clientX - window.innerWidth / 2;
+        const my = e.clientY - window.innerHeight / 2;
+        if (containerRef.current) {
+          containerRef.current.style.setProperty('--mouse-x', `${mx}px`);
+          containerRef.current.style.setProperty('--mouse-y', `${my}px`);
+          // Also set raw mouse coords for the tooltip
+          containerRef.current.style.setProperty('--raw-mouse-x', `${e.clientX}px`);
+          containerRef.current.style.setProperty('--raw-mouse-y', `${e.clientY}px`);
+        }
+
         if (draggingNodeIdRef.current) {
           const draggedNode = nodes.find(n => n.id === draggingNodeIdRef.current);
           if (draggedNode) {
@@ -767,14 +772,12 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
 
       <svg width="100%" height="100%" className="overflow-visible pointer-events-none absolute inset-0 z-0">
         {/* Starfield Background Layer (Dense Pixel Art Milky Way) */}
-        <Starfield mousePos={mousePos} unfoldProgress={unfoldProgress} />
+        <Starfield unfoldProgress={unfoldProgress} />
 
         {/* Foreground Graph Layer */}
         <g style={{
           transformOrigin: zoomTarget ? `${zoomTarget.x}px ${zoomTarget.y}px` : '50% 50%',
-          transform: typeof window !== 'undefined' 
-            ? `translate(${(mousePos.x - window.innerWidth / 2) * -0.05}px, ${(mousePos.y - window.innerHeight / 2) * -0.05}px) scale(${hoveredNode && hoveredNode !== 'ME' && unfoldProgress >= 1 ? 2.5 : 1})` 
-            : 'translate(0, 0) scale(1)',
+          transform: `translate(calc(var(--mouse-x, 0px) * -0.05), calc(var(--mouse-y, 0px) * -0.05)) scale(${hoveredNode && hoveredNode !== 'ME' && unfoldProgress >= 1 ? 2.5 : 1})`,
           opacity: 1, // Graph stays visible, never fades out
           pointerEvents: 'auto', // Graph always interactive
           transition: 'transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), transform-origin 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease'
@@ -1349,14 +1352,17 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
       
       {/* Hover Tooltip - Obsidian Style (Pixel variation) */}
       <AnimatePresence>
-        {hoveredNode && unfoldProgress >= 1 && unfoldProgress <= 1.1 && (
+        {hoveredNode && hoveredNode !== 'ME' && unfoldProgress >= 1 && unfoldProgress <= 1.1 && (
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 5 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95 }}
             transition={{ duration: 0.1 }}
             className="fixed z-50 pointer-events-none border-2 border-[#30363d] bg-[#161b22] p-3 shadow-lg min-w-[150px] max-w-[250px]"
-            style={{ left: mousePos.x + 15, top: mousePos.y + 15 }}
+            style={{ 
+              left: 'calc(var(--raw-mouse-x, 0px) + 15px)', 
+              top: 'calc(var(--raw-mouse-y, 0px) + 15px)' 
+            }}
           >
             <h3 className="font-pixel text-[#c9d1d9] text-sm mb-1 tracking-wide">
               {nodes.find(n => n.id === hoveredNode)?.label}
