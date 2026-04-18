@@ -165,16 +165,16 @@ export const Graph: React.FC = () => {
       let minY = height / 2;
       let maxY = height / 2;
       
-      // Increased margin for mobile to account for the bottom HUD
+      // Increased margin for mobile to account for the top HUD
       const margin = Math.min(width, height) * 0.15 + (isMobile ? 100 : 50); 
 
       currentNodes.forEach(node => {
         if (node.x !== undefined && node.y !== undefined) {
           minX = Math.min(minX, node.x - margin);
           maxX = Math.max(maxX, node.x + margin);
-          minY = Math.min(minY, node.y - margin);
-          // For mobile, subtract extra space from the bottom (maxY)
-          maxY = Math.max(maxY, node.y + margin + (isMobile ? 150 : 0));
+          // For mobile, subtract extra space from the top (minY)
+          minY = Math.min(minY, node.y - margin - (isMobile ? 150 : 0));
+          maxY = Math.max(maxY, node.y + margin);
         }
       });
 
@@ -438,7 +438,7 @@ export const Graph: React.FC = () => {
     >
       {/* Scroll Hint */}
       <div 
-        className={`absolute left-1/2 -translate-x-1/2 font-pixel text-sm opacity-80 tracking-[0.3em] pointer-events-none transition-all duration-700 flex flex-col items-center gap-2 md:gap-3 ${dimensions.width < 768 ? 'bottom-28' : 'bottom-16'}`}
+        className="absolute bottom-16 left-1/2 -translate-x-1/2 font-pixel text-sm opacity-80 tracking-[0.3em] pointer-events-none transition-all duration-700 flex flex-col items-center gap-2 md:gap-3"
         style={{ 
           opacity: unfoldProgress < 0.8 ? 0.8 : 1, // Keep it visible after 0.8
           transform: `translate(-50%, ${unfoldProgress > 0.8 && unfoldProgress <= 1.0 ? '20px' : '0'})`,
@@ -725,16 +725,16 @@ export const Graph: React.FC = () => {
         </g>
       </svg>
 
-      {/* HUD Modules Layer - Vertical Left Sidebar (Desktop) / Horizontal Bottom (Mobile) */}
+      {/* HUD Modules Layer - Vertical Left Sidebar (Desktop) / Horizontal Top (Mobile) */}
       {unfoldProgress > 1.0 && (
-        <div className="absolute left-0 md:left-12 bottom-12 md:bottom-0 top-auto md:top-0 w-full md:w-auto px-4 md:px-0 py-4 md:py-32 pointer-events-none z-20 flex flex-row md:flex-col justify-around md:justify-between font-pixel">
+        <div className="absolute left-0 md:left-12 top-4 md:top-0 bottom-auto md:bottom-0 w-full md:w-auto px-4 md:px-0 py-4 md:py-32 pointer-events-none z-20 flex flex-row md:flex-col justify-around md:justify-between font-pixel">
           
           {/* ARCHIVE / BLOG */}
           <div 
             className="pointer-events-auto flex flex-col md:flex-row items-center gap-2 md:gap-4 cursor-pointer group relative"
             style={{ 
               opacity: progArchive,
-              transform: `translate${dimensions.width < 768 ? 'Y' : 'X'}(${(1 - progArchive) * (dimensions.width < 768 ? 50 : -100)}px)`,
+              transform: `translate${dimensions.width < 768 ? 'Y' : 'X'}(${(1 - progArchive) * (dimensions.width < 768 ? -50 : -100)}px)`,
               display: progArchive === 0 ? 'none' : 'flex'
             }}
             onClick={() => window.location.href = '/blog'}
@@ -748,7 +748,7 @@ export const Graph: React.FC = () => {
               </svg>
             </div>
             <div 
-              className="overflow-hidden md:relative absolute -top-12 md:top-auto left-1/2 md:left-auto -translate-x-1/2 md:translate-x-0"
+              className="overflow-hidden md:relative absolute top-12 md:top-auto left-1/2 md:left-auto -translate-x-1/2 md:translate-x-0"
               style={{
                 maxWidth: dimensions.width < 768 ? 'none' : `${progArchive * 200}px`,
                 maxHeight: dimensions.width < 768 ? `${progArchive * 100}px` : 'none',
@@ -767,7 +767,7 @@ export const Graph: React.FC = () => {
             className="pointer-events-auto flex flex-col md:flex-row items-center gap-2 md:gap-4 cursor-pointer group relative"
             style={{ 
               opacity: progProjects,
-              transform: `translate${dimensions.width < 768 ? 'Y' : 'X'}(${(1 - progProjects) * (dimensions.width < 768 ? 50 : -100)}px)`,
+              transform: `translate${dimensions.width < 768 ? 'Y' : 'X'}(${(1 - progProjects) * (dimensions.width < 768 ? -50 : -100)}px)`,
               display: progProjects === 0 ? 'none' : 'flex'
             }}
             onClick={() => window.location.href = '/blog'}
@@ -788,7 +788,7 @@ export const Graph: React.FC = () => {
               </svg>
             </div>
             <div 
-              className="overflow-hidden md:relative absolute -top-12 md:top-auto left-1/2 md:left-auto -translate-x-1/2 md:translate-x-0"
+              className="overflow-hidden md:relative absolute top-12 md:top-auto left-1/2 md:left-auto -translate-x-1/2 md:translate-x-0"
               style={{
                 maxWidth: dimensions.width < 768 ? 'none' : `${progProjects * 200}px`,
                 maxHeight: dimensions.width < 768 ? `${progProjects * 100}px` : 'none',
@@ -807,7 +807,7 @@ export const Graph: React.FC = () => {
             className="pointer-events-auto flex flex-col md:flex-row items-center gap-2 md:gap-4 group relative"
             style={{ 
               opacity: progSettings,
-              transform: `translate${dimensions.width < 768 ? 'Y' : 'X'}(${(1 - progSettings) * (dimensions.width < 768 ? 50 : -100)}px)`,
+              transform: `translate${dimensions.width < 768 ? 'Y' : 'X'}(${(1 - progSettings) * (dimensions.width < 768 ? -50 : -100)}px)`,
               display: progSettings === 0 ? 'none' : 'flex'
             }}
           >
@@ -819,7 +819,7 @@ export const Graph: React.FC = () => {
               </svg>
             </div>
             <div 
-              className="overflow-hidden flex flex-col gap-1 md:gap-2 md:relative absolute -top-16 md:top-auto left-1/2 md:left-auto -translate-x-1/2 md:translate-x-0"
+              className="overflow-hidden flex flex-col gap-1 md:gap-2 md:relative absolute top-12 md:top-auto left-1/2 md:left-auto -translate-x-1/2 md:translate-x-0"
               style={{
                 maxWidth: dimensions.width < 768 ? 'none' : `${progSettings * 200}px`,
                 maxHeight: dimensions.width < 768 ? `${progSettings * 100}px` : 'none',
@@ -849,7 +849,7 @@ export const Graph: React.FC = () => {
             className="pointer-events-auto flex flex-col md:flex-row items-center gap-2 md:gap-4 cursor-pointer group relative"
             style={{ 
               opacity: progLinks,
-              transform: `translate${dimensions.width < 768 ? 'Y' : 'X'}(${(1 - progLinks) * (dimensions.width < 768 ? 50 : -100)}px)`,
+              transform: `translate${dimensions.width < 768 ? 'Y' : 'X'}(${(1 - progLinks) * (dimensions.width < 768 ? -50 : -100)}px)`,
               display: progLinks === 0 ? 'none' : 'flex'
             }}
             onClick={() => window.open('https://github.com/tinchak0207', '_blank')}
@@ -862,7 +862,7 @@ export const Graph: React.FC = () => {
               </svg>
             </div>
             <div 
-              className="overflow-hidden md:relative absolute -top-12 md:top-auto left-1/2 md:left-auto -translate-x-1/2 md:translate-x-0"
+              className="overflow-hidden md:relative absolute top-12 md:top-auto left-1/2 md:left-auto -translate-x-1/2 md:translate-x-0"
               style={{
                 maxWidth: dimensions.width < 768 ? 'none' : `${progLinks * 200}px`,
                 maxHeight: dimensions.width < 768 ? `${progLinks * 100}px` : 'none',
