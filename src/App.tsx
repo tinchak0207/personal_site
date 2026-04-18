@@ -1,5 +1,6 @@
 import { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { Analytics } from '@vercel/analytics/react';
 import { Home } from './pages/Home';
 
 const Blog = lazy(() => import('./pages/Blog').then(module => ({ default: module.Blog })));
@@ -23,6 +24,7 @@ function App() {
           <Route path="/settings" element={<Settings />} />
         </Routes>
       </Suspense>
+      <Analytics />
     </Router>
   );
 }
