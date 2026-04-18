@@ -546,10 +546,12 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
     simulationRef.current.alphaTarget(0);
   };
 
-  // Calculate hint color interpolating from Green to Cyan
+  // Calculate hint color interpolating from Green to Cyan smoothly
   const calculateHintColor = () => {
-    if (unfoldProgress < 1.0) return '#4ADE80';
-    const ratio = Math.min(1, unfoldProgress - 1.0);
+    // Before 0.3, stay solid green
+    if (unfoldProgress < 0.3) return '#4ADE80';
+    // Smoothly interpolate between 0.3 and 1.0
+    const ratio = Math.min(1, (unfoldProgress - 0.3) / 0.7);
     const r = Math.round(74 + (129 - 74) * ratio);
     const g = Math.round(222 + (212 - 222) * ratio);
     const b = Math.round(128 + (250 - 128) * ratio);
@@ -630,8 +632,8 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
       <div 
         className="absolute bottom-16 left-1/2 -translate-x-1/2 font-pixel text-sm opacity-80 tracking-[0.3em] pointer-events-none transition-all duration-700 flex flex-col items-center gap-3"
         style={{ 
-          opacity: unfoldProgress < 0.8 ? 0.8 : 1, // Keep it visible after 0.8
-          transform: `translate(-50%, ${unfoldProgress > 0.8 && unfoldProgress <= 1.0 ? '20px' : '0'})`,
+          opacity: unfoldProgress < 0.8 ? 0.8 : (unfoldProgress > 1.2 ? 0 : 1), // Fade out after 1.2
+          transform: `translate(-50%, ${unfoldProgress > 0.8 && unfoldProgress <= 1.2 ? '20px' : '0'})`,
           textShadow: `0 0 10px ${hintColor}`,
           color: hintColor
         }}
@@ -651,7 +653,21 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
           </svg>
           <div className="w-0.5 h-6 mt-1" style={{ background: `linear-gradient(to bottom, ${hintColor}, transparent)` }}></div>
         </div>
-        <p className="font-bold mt-1">{glitchText}</p>
+        <p className="font-bold mt-1 transition-colors duration-500">{glitchText}</p>
+        
+        {/* Charging Progress Bar */}
+        <div className="w-24 h-3 border-2 border-current mt-1 flex p-[1px]">
+          <div 
+            className="h-full bg-current transition-all duration-300 ease-out"
+            style={{ 
+              width: `${Math.min(100, Math.max(0, (unfoldProgress / 1.0) * 100))}%`,
+              boxShadow: `0 0 8px ${hintColor}`
+            }}
+          />
+        </div>
+        <div className="text-[10px] opacity-60">
+          {Math.round(Math.min(100, Math.max(0, (unfoldProgress / 1.0) * 100)))}%
+        </div>
       </div>
 
       <svg width="100%" height="100%" className="overflow-visible pointer-events-none absolute inset-0 z-0">
