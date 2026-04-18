@@ -331,24 +331,58 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
 
     const simNodes = dynamicNodes.map(d => ({ ...d }));
     // Generate links if they are not defined in DB yet? We just use INITIAL_LINKS for now
-    // A better approach is to fetch graph_links, but for simplicity, let's just connect everything to the center if no links exist.
     let simLinks = INITIAL_LINKS.map(d => ({ ...d }));
     
-    // If we loaded custom nodes, create default links to the center node if no links exist
+    // If we loaded custom nodes, try to find matching links from INITIAL_LINKS
+    // If none match, we will create a dynamic web instead of a boring star shape
     if (dynamicNodes !== INITIAL_NODES) {
-      const centerNode = dynamicNodes.find(n => n.group === 'center') || dynamicNodes[0];
-      if (centerNode) {
-        simLinks = dynamicNodes
-          .filter(n => n.id !== centerNode.id)
-          .map(n => ({ source: centerNode.id, target: n.id }));
+      // First, see if we have valid links from our INITIAL_LINKS that match the current DB nodes
+      const validInitialLinks = INITIAL_LINKS.filter(l => 
+        dynamicNodes.some(n => n.id === l.source) && dynamicNodes.some(n => n.id === l.target)
+      );
+
+      if (validInitialLinks.length > 0) {
+        simLinks = validInitialLinks.map(d => ({ ...d }));
+      } else {
+        // Create a more dynamic, interconnected web rather than a static star
+        const centerNode = dynamicNodes.find(n => n.group === 'center') || dynamicNodes[0];
+        const otherNodes = dynamicNodes.filter(n => n.id !== centerNode.id);
+        
+        simLinks = [];
+        if (centerNode) {
+          otherNodes.forEach((n, i) => {
+            // 1. Connect everything to center (base)
+            simLinks.push({ source: centerNode.id, target: n.id });
+            
+            // 2. Connect to neighbors to create a web/ring (more dynamic tension)
+            if (i > 0) {
+              simLinks.push({ source: otherNodes[i-1].id, target: n.id });
+            }
+            
+            // 3. Add some random cross-connections for organic chaos
+            if (Math.random() > 0.6 && otherNodes.length > 3) {
+              const randomTarget = otherNodes[Math.floor(Math.random() * otherNodes.length)];
+              if (randomTarget.id !== n.id) {
+                simLinks.push({ source: n.id, target: randomTarget.id });
+              }
+            }
+          });
+          
+          // Close the ring
+          if (otherNodes.length > 2) {
+            simLinks.push({ source: otherNodes[otherNodes.length - 1].id, target: otherNodes[0].id });
+          }
+        }
       }
     }
 
-    // Fix the center node strictly to the middle of the screen
+    // Don't strictly fix the center node, just use strong centering force
+    // This allows the whole graph to breathe and bounce organically
     const center = simNodes.find(n => n.group === 'center');
     if (center) {
-      center.fx = width / 2;
-      center.fy = height / 2;
+      center.x = width / 2;
+      center.y = height / 2;
+      // We removed fx/fy to let it float slightly
     }
 
     const simulation = d3.forceSimulation<NodeData, LinkData>(simNodes)
@@ -365,8 +399,8 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
       }
     });
 
-    // Run the simulation synchronously for a few ticks to settle initial positions
-    for (let i = 0; i < 50; ++i) simulation.tick();
+    // Remove the synchronous fast-forward loop to let the graph explode dynamically on screen
+    // for (let i = 0; i < 50; ++i) simulation.tick();
     
     // Set initial positions even if booting
     setNodes([...simulation.nodes()]);
@@ -391,8 +425,8 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
     // Update center node position on resize
     const centerNode = sim.nodes().find(n => n.group === 'center');
     if (centerNode) {
-      centerNode.fx = dimensions.width / 2;
-      centerNode.fy = dimensions.height / 2;
+      centerNode.x = dimensions.width / 2;
+      centerNode.y = dimensions.height / 2;
     }
     
     // Update centering force
@@ -429,34 +463,29 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
     const centerStrength = 1 - easeProgress * 0.4; 
     (sim.force('center') as d3.ForceCenter<NodeData>).strength(centerStrength);
     
-    // Bounding box force to strictly prevent nodes from leaving screen
+    // Bounding box force to gently push nodes back into screen, but not hard clamp them
     sim.force('bounding', () => {
       const padding = isMobile ? 30 : 80;
       const { width, height } = dimensions;
       
       for (let node of sim.nodes()) {
-        // Skip the fixed center node
-        if (node.group === 'center') continue;
-        
         if (node.x !== undefined && node.x < padding) {
-          node.vx! += (padding - node.x) * 0.8;
-          node.x = padding; // Hard clamp
+          node.vx! += (padding - node.x) * 0.1; // gentle push back
         }
         if (node.x !== undefined && node.x > width - padding) {
-          node.vx! -= (node.x - (width - padding)) * 0.8;
-          node.x = width - padding; // Hard clamp
+          node.vx! -= (node.x - (width - padding)) * 0.1;
         }
         if (node.y !== undefined && node.y < padding) {
-          node.vy! += (padding - node.y) * 0.8;
-          node.y = padding; // Hard clamp
+          node.vy! += (padding - node.y) * 0.1;
         }
         if (node.y !== undefined && node.y > height - padding) {
-          node.vy! -= (node.y - (height - padding)) * 0.8;
-          node.y = height - padding; // Hard clamp
+          node.vy! -= (node.y - (height - padding)) * 0.1;
         }
       }
     });
 
+    // Never let alpha hit exactly 0 so the graph has a permanent tiny breathing movement
+    sim.alphaTarget(0.02).restart();
     sim.alpha(easeProgress < 0.1 ? 1 : 0.6).restart(); 
   }, [unfoldProgress, dimensions]);
 
@@ -537,16 +566,12 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
     
     draggingNodeIdRef.current = null;
     
-    if (node.group === 'center') {
-      // Snap center node back to the exact middle of the screen
-      node.fx = window.innerWidth / 2;
-      node.fy = window.innerHeight / 2;
-    } else {
-      node.fx = null;
-      node.fy = null;
-    }
+    // We let ALL nodes float now, no hard fixing on drag end
+    node.fx = null;
+    node.fy = null;
     
-    simulationRef.current.alphaTarget(0);
+    // Restore the tiny baseline alpha to keep breathing
+    simulationRef.current.alphaTarget(0.02);
   };
 
   // Calculate hint color interpolating from Green to Cyan to Purple over the full 0-2.8 progress
