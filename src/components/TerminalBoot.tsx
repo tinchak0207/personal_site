@@ -1,13 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface TerminalBootProps {
   onComplete: () => void;
+  isReady?: boolean;
 }
 
-export const TerminalBoot: React.FC<TerminalBootProps> = ({ onComplete }) => {
+export const TerminalBoot: React.FC<TerminalBootProps> = ({ onComplete, isReady = true }) => {
   const [lines, setLines] = useState<{time: string, text: string, currentText: string}[]>([]);
   const [isDone, setIsDone] = useState(false);
+
+  const isReadyRef = useRef(isReady);
+  useEffect(() => {
+    isReadyRef.current = isReady;
+  }, [isReady]);
 
   const BOOT_LOGS = [
     "在想了...",
@@ -29,10 +35,43 @@ export const TerminalBoot: React.FC<TerminalBootProps> = ({ onComplete }) => {
 
     const startTyping = () => {
       if (currentLineIdx >= BOOT_LOGS.length) {
-        setTimeout(() => {
+        const finishBoot = () => {
           setIsDone(true);
           setTimeout(onComplete, 400); // reduced from 1200
-        }, 500); // reduced from 1500
+        };
+
+        if (isReadyRef.current) {
+          setTimeout(finishBoot, 500); // reduced from 1500
+        } else {
+          // Wait for Graph and Fonts to be ready
+          let dotCount = 0;
+          const now = new Date();
+          const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+          
+          setLines(prev => [
+            ...prev,
+            { time: timeStr, text: "等待核心模組同步", currentText: "等待核心模組同步" }
+          ]);
+
+          const checkReady = setInterval(() => {
+            if (isReadyRef.current) {
+              clearInterval(checkReady);
+              setLines(prev => {
+                const newLines = [...prev];
+                newLines[newLines.length - 1].currentText = "核心模組同步完成。";
+                return newLines;
+              });
+              setTimeout(finishBoot, 400);
+            } else {
+              dotCount = (dotCount + 1) % 4;
+              setLines(prev => {
+                const newLines = [...prev];
+                newLines[newLines.length - 1].currentText = "等待核心模組同步" + ".".repeat(dotCount);
+                return newLines;
+              });
+            }
+          }, 300);
+        }
         return;
       }
 
