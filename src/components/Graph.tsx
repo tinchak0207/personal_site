@@ -797,17 +797,10 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
               const isHoveredNode = hoveredNode === source.id || hoveredNode === target.id;
               const isAnyHovered = hoveredNode !== null;
               
-              // Firework logic indices for staggered reveal
-              const getRevealProgress = (n: NodeData) => {
-                if (n.group === 'center') return 0;
-                const idx = nodes.filter(nn => nn.group !== 'center').findIndex(nn => nn.id === n.id);
-                return 0.05 + (idx * 0.03) + 0.08; // fireworkEnd
-              };
-              
-              const isTargetRevealed = unfoldProgress >= getRevealProgress(target);
-              const isSourceRevealed = unfoldProgress >= getRevealProgress(source);
-              
-              const baseOpacity = (!isTargetRevealed || !isSourceRevealed) ? 0 : 0.3;
+              // Only show center links after unfoldProgress starts
+              // When unfoldProgress <= 0.1 (booting just finished), center links should be invisible
+              const isCenterLink = source.group === 'center' || target.group === 'center';
+              const baseOpacity = isCenterLink && unfoldProgress <= 0.1 ? 0 : 0.3;
               
               // Obsidian style link highlighting
               const linkOpacity = isAnyHovered ? (isHoveredNode ? 0.8 : 0.1) : baseOpacity;
@@ -836,21 +829,6 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
               const isHovered = hoveredNode === node.id && unfoldProgress >= 1;
               const isCenter = node.group === 'center';
               
-              // Firework Animation Logic
-              const nodeIndex = nodes.filter(n => n.group !== 'center').findIndex(n => n.id === node.id);
-              const fireworkStart = 0.05 + (nodeIndex * 0.03);
-              const fireworkEnd = fireworkStart + 0.08;
-              const explosionEnd = fireworkEnd + 0.05;
-              
-              const isFiring = !isCenter && unfoldProgress >= fireworkStart && unfoldProgress < fireworkEnd;
-              const isExploding = !isCenter && unfoldProgress >= fireworkEnd && unfoldProgress < explosionEnd;
-              const isRevealed = isCenter || unfoldProgress >= fireworkEnd;
-              
-              // Center node position for fireworks
-              const centerNode = nodes.find(n => n.group === 'center');
-              const cx = centerNode?.x || dimensions.width / 2;
-              const cy = centerNode?.y || dimensions.height / 2;
-              
               // Determine if this node is a neighbor of the hovered node
               const isNeighbor = hoveredNode && links.some(l => {
                 const s = l.source as NodeData;
@@ -872,52 +850,6 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
 
               return (
                 <React.Fragment key={node.id}>
-                  {/* Firework and Explosion */}
-                  {!isCenter && (isFiring || isExploding) && (
-                    <g>
-                      {isFiring && (() => {
-                        const p = (unfoldProgress - fireworkStart) / (fireworkEnd - fireworkStart);
-                        const easeOutQuart = 1 - Math.pow(1 - p, 4);
-                        const fx = cx + ((node.x || 0) - cx) * easeOutQuart;
-                        const fy = cy + ((node.y || 0) - cy) * easeOutQuart;
-                        
-                        const tailLength = 25;
-                        const angle = Math.atan2((node.y || 0) - cy, (node.x || 0) - cx);
-                        const tx = fx - Math.cos(angle) * tailLength * p;
-                        const ty = fy - Math.sin(angle) * tailLength * p;
-
-                        return (
-                          <g>
-                            <line x1={tx} y1={ty} x2={fx} y2={fy} stroke="#A5D6B7" strokeWidth={2} opacity={0.8} />
-                            <circle cx={fx} cy={fy} r={2} fill="#FFF" filter="drop-shadow(0 0 4px #4ADE80)" />
-                          </g>
-                        );
-                      })()}
-                      {isExploding && (() => {
-                        const p = (unfoldProgress - fireworkEnd) / (explosionEnd - fireworkEnd);
-                        const easeOut = 1 - Math.pow(1 - p, 3);
-                        const radius = 5 + easeOut * 20;
-                        const opacity = 1 - p;
-                        
-                        return (
-                          <g transform={`translate(${node.x || 0},${node.y || 0})`} opacity={opacity}>
-                            {Array.from({ length: 6 }).map((_, i) => {
-                              const angle = (i / 6) * Math.PI * 2;
-                              const px1 = Math.cos(angle) * (radius * 0.3);
-                              const py1 = Math.sin(angle) * (radius * 0.3);
-                              const px2 = Math.cos(angle) * radius;
-                              const py2 = Math.sin(angle) * radius;
-                              return (
-                                <line key={`line-${i}`} x1={px1} y1={py1} x2={px2} y2={py2} stroke="#4ADE80" strokeWidth={1.5} />
-                              );
-                            })}
-                            <circle r={radius * 0.4} fill="none" stroke="#FFF" strokeWidth={1} opacity={opacity * 0.6} />
-                          </g>
-                        );
-                      })()}
-                    </g>
-                  )}
-
                   <g 
                     transform={`translate(${node.x || 0},${node.y || 0})`}
                     className={`pointer-events-auto ${unfoldProgress >= 1 ? 'cursor-grab active:cursor-grabbing' : ''}`}
@@ -948,7 +880,7 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
                       r={isHovered ? node.radius * 1.5 : node.radius}
                       fill={nodeFill}
                       className="transition-all duration-300"
-                      style={{ opacity: isRevealed ? 1 : 0 }}
+                      style={{ opacity: isCenter || unfoldProgress > 0.05 ? 1 : 0 }}
                     />
                     
                     {/* Main Label */}
@@ -960,8 +892,8 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
                       style={{ 
                         pointerEvents: 'none', 
                         userSelect: 'none',
-                        opacity: isRevealed ? (isAnyHovered && !isHighlighted ? 0.3 : 1) : 0,
-                        transform: isCenter ? 'scale(1)' : `scale(${Math.min(1, Math.max(0, (unfoldProgress - fireworkEnd) * 10))})`
+                        opacity: isCenter || unfoldProgress > 0.15 ? (isAnyHovered && !isHighlighted ? 0.3 : 1) : 0,
+                        transform: isCenter ? 'scale(1)' : `scale(${Math.min(1, unfoldProgress * 5)})`
                       }}
                     >
                       {node.label}
@@ -1024,147 +956,352 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
         <div className="absolute left-6 md:left-12 top-0 bottom-0 py-32 pointer-events-none z-20 flex flex-col justify-between font-pixel">
           
           {/* ARCHIVE / BLOG */}
-          <div 
-            className="pointer-events-auto flex items-center gap-4 cursor-pointer group"
-            style={{ 
-              opacity: progArchive,
-              transform: `translateX(${(1 - progArchive) * -100}px)`,
-              display: progArchive === 0 ? 'none' : 'flex'
-            }}
-            onClick={() => window.location.href = '/blog'}
-          >
-            <div className="w-12 h-12 border border-[#4ADE80] flex items-center justify-center bg-[#0a140f]/90 group-hover:bg-[#1B3B2B] transition-colors relative z-10 shadow-[0_0_15px_rgba(74,222,128,0.2)]">
-              <div className="absolute inset-0 noise"></div>
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#4ADE80" strokeWidth="1.5" className={progArchive === 1 ? "group-hover:animate-pulse" : ""}>
-                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
-                <polyline points="17 21 17 13 7 13 7 21"/>
-                <polyline points="7 3 7 8 15 8"/>
-              </svg>
-            </div>
+          <div className="relative">
+            {/* Firework effect for ARCHIVE */}
+            {unfoldProgress >= 1.0 && unfoldProgress < 1.2 && (() => {
+              const p = (unfoldProgress - 1.0) / 0.2;
+              const easeOutQuart = 1 - Math.pow(1 - p, 4);
+              const cx = dimensions.width / 2;
+              const cy = dimensions.height / 2;
+              const tx = 48; // roughly left-12
+              const ty = 128; // roughly top padding
+              const fx = cx + (tx - cx) * easeOutQuart;
+              const fy = cy + (ty - cy) * easeOutQuart;
+              
+              const tailLength = 40;
+              const angle = Math.atan2(ty - cy, tx - cx);
+              const tailX = fx - Math.cos(angle) * tailLength * p;
+              const tailY = fy - Math.sin(angle) * tailLength * p;
+
+              return (
+                <div className="fixed pointer-events-none z-50" style={{ left: 0, top: 0 }}>
+                  <svg width={dimensions.width} height={dimensions.height}>
+                    <line x1={tailX} y1={tailY} x2={fx} y2={fy} stroke="#4ADE80" strokeWidth={3} opacity={0.8} filter="drop-shadow(0 0 5px #4ADE80)" />
+                    <circle cx={fx} cy={fy} r={3} fill="#FFF" filter="drop-shadow(0 0 6px #4ADE80)" />
+                  </svg>
+                </div>
+              );
+            })()}
+            {unfoldProgress >= 1.2 && unfoldProgress < 1.3 && (() => {
+              const p = (unfoldProgress - 1.2) / 0.1;
+              const easeOut = 1 - Math.pow(1 - p, 3);
+              const radius = 10 + easeOut * 40;
+              const opacity = 1 - p;
+              
+              return (
+                <div className="absolute left-0 top-0 w-12 h-12 flex items-center justify-center pointer-events-none z-50">
+                  <svg width="100" height="100" className="absolute" style={{ overflow: 'visible' }}>
+                    <g transform="translate(50, 50)" opacity={opacity}>
+                      {Array.from({ length: 8 }).map((_, i) => {
+                        const angle = (i / 8) * Math.PI * 2;
+                        const px1 = Math.cos(angle) * (radius * 0.3);
+                        const py1 = Math.sin(angle) * (radius * 0.3);
+                        const px2 = Math.cos(angle) * radius;
+                        const py2 = Math.sin(angle) * radius;
+                        return <line key={i} x1={px1} y1={py1} x2={px2} y2={py2} stroke="#4ADE80" strokeWidth={2} />;
+                      })}
+                      <circle r={radius * 0.5} fill="none" stroke="#FFF" strokeWidth={2} opacity={opacity * 0.8} />
+                    </g>
+                  </svg>
+                </div>
+              );
+            })()}
+            
             <div 
-              className="overflow-hidden"
-              style={{
-                maxWidth: `${progArchive * 200}px`,
-                opacity: progArchive > 0.5 ? (progArchive - 0.5) * 2 : 0
+              className="pointer-events-auto flex items-center gap-4 cursor-pointer group"
+              style={{ 
+                opacity: progArchive,
+                transform: `translateX(${(1 - progArchive) * -50}px)`,
+                display: progArchive === 0 ? 'none' : 'flex'
               }}
+              onClick={() => window.location.href = '/blog'}
             >
-              <div className="pl-2 whitespace-nowrap">
-                <h3 className="text-[#4ADE80] tracking-[0.3em] text-lg md:text-xl">碎碎念</h3>
-                <p className="text-[#4a6b57] text-xs tracking-widest mt-1">/logs</p>
+              <div className="w-12 h-12 border border-[#4ADE80] flex items-center justify-center bg-[#0a140f]/90 group-hover:bg-[#1B3B2B] transition-colors relative z-10 shadow-[0_0_15px_rgba(74,222,128,0.2)]">
+                <div className="absolute inset-0 noise"></div>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#4ADE80" strokeWidth="1.5" className={progArchive === 1 ? "group-hover:animate-pulse" : ""}>
+                  <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                  <polyline points="17 21 17 13 7 13 7 21"/>
+                  <polyline points="7 3 7 8 15 8"/>
+                </svg>
+              </div>
+              <div 
+                className="overflow-hidden"
+                style={{
+                  maxWidth: `${progArchive * 200}px`,
+                  opacity: progArchive > 0.5 ? (progArchive - 0.5) * 2 : 0
+                }}
+              >
+                <div className="pl-2 whitespace-nowrap">
+                  <h3 className="text-[#4ADE80] tracking-[0.3em] text-lg md:text-xl">碎碎念</h3>
+                  <p className="text-[#4a6b57] text-xs tracking-widest mt-1">/logs</p>
+                </div>
               </div>
             </div>
           </div>
 
           {/* PROJECTS */}
-          <div 
-            className="pointer-events-auto flex items-center gap-4 cursor-pointer group"
-            style={{ 
-              opacity: progProjects,
-              transform: `translateX(${(1 - progProjects) * -100}px)`,
-              display: progProjects === 0 ? 'none' : 'flex'
-            }}
-            onClick={() => window.location.href = '/blog'}
-          >
-            <div className="w-12 h-12 border border-[#81D4FA] flex items-center justify-center bg-[#0a140f]/90 group-hover:bg-[#01579B]/30 transition-colors relative z-10 shadow-[0_0_15px_rgba(129,212,250,0.2)]">
-              <div className="absolute inset-0 noise"></div>
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#81D4FA" strokeWidth="1.5" className={progProjects === 1 ? "group-hover:animate-pulse" : ""}>
-                <rect x="4" y="4" width="16" height="16" rx="2" ry="2"/>
-                <rect x="9" y="9" width="6" height="6"/>
-                <line x1="9" y1="1" x2="9" y2="4"/>
-                <line x1="15" y1="1" x2="15" y2="4"/>
-                <line x1="9" y1="20" x2="9" y2="23"/>
-                <line x1="15" y1="20" x2="15" y2="23"/>
-                <line x1="20" y1="9" x2="23" y2="9"/>
-                <line x1="20" y1="14" x2="23" y2="14"/>
-                <line x1="1" y1="9" x2="4" y2="9"/>
-                <line x1="1" y1="14" x2="4" y2="14"/>
-              </svg>
-            </div>
+          <div className="relative">
+            {/* Firework effect for PROJECTS */}
+            {unfoldProgress >= 1.4 && unfoldProgress < 1.6 && (() => {
+              const p = (unfoldProgress - 1.4) / 0.2;
+              const easeOutQuart = 1 - Math.pow(1 - p, 4);
+              const cx = dimensions.width / 2;
+              const cy = dimensions.height / 2;
+              const tx = 48;
+              const ty = dimensions.height / 2; // middle left
+              const fx = cx + (tx - cx) * easeOutQuart;
+              const fy = cy + (ty - cy) * easeOutQuart;
+              
+              const tailLength = 40;
+              const angle = Math.atan2(ty - cy, tx - cx);
+              const tailX = fx - Math.cos(angle) * tailLength * p;
+              const tailY = fy - Math.sin(angle) * tailLength * p;
+
+              return (
+                <div className="fixed pointer-events-none z-50" style={{ left: 0, top: 0 }}>
+                  <svg width={dimensions.width} height={dimensions.height}>
+                    <line x1={tailX} y1={tailY} x2={fx} y2={fy} stroke="#81D4FA" strokeWidth={3} opacity={0.8} filter="drop-shadow(0 0 5px #81D4FA)" />
+                    <circle cx={fx} cy={fy} r={3} fill="#FFF" filter="drop-shadow(0 0 6px #81D4FA)" />
+                  </svg>
+                </div>
+              );
+            })()}
+            {unfoldProgress >= 1.6 && unfoldProgress < 1.7 && (() => {
+              const p = (unfoldProgress - 1.6) / 0.1;
+              const easeOut = 1 - Math.pow(1 - p, 3);
+              const radius = 10 + easeOut * 40;
+              const opacity = 1 - p;
+              
+              return (
+                <div className="absolute left-0 top-0 w-12 h-12 flex items-center justify-center pointer-events-none z-50">
+                  <svg width="100" height="100" className="absolute" style={{ overflow: 'visible' }}>
+                    <g transform="translate(50, 50)" opacity={opacity}>
+                      {Array.from({ length: 8 }).map((_, i) => {
+                        const angle = (i / 8) * Math.PI * 2;
+                        const px1 = Math.cos(angle) * (radius * 0.3);
+                        const py1 = Math.sin(angle) * (radius * 0.3);
+                        const px2 = Math.cos(angle) * radius;
+                        const py2 = Math.sin(angle) * radius;
+                        return <line key={i} x1={px1} y1={py1} x2={px2} y2={py2} stroke="#81D4FA" strokeWidth={2} />;
+                      })}
+                      <circle r={radius * 0.5} fill="none" stroke="#FFF" strokeWidth={2} opacity={opacity * 0.8} />
+                    </g>
+                  </svg>
+                </div>
+              );
+            })()}
+
             <div 
-              className="overflow-hidden"
-              style={{
-                maxWidth: `${progProjects * 200}px`,
-                opacity: progProjects > 0.5 ? (progProjects - 0.5) * 2 : 0
+              className="pointer-events-auto flex items-center gap-4 cursor-pointer group"
+              style={{ 
+                opacity: progProjects,
+                transform: `translateX(${(1 - progProjects) * -50}px)`,
+                display: progProjects === 0 ? 'none' : 'flex'
               }}
+              onClick={() => window.location.href = '/blog'}
             >
-              <div className="pl-2 whitespace-nowrap">
-                <h3 className="text-[#81D4FA] tracking-[0.3em] text-lg md:text-xl">個人項目</h3>
-                <p className="text-[#0277BD] text-xs tracking-widest mt-1">/projects</p>
+              <div className="w-12 h-12 border border-[#81D4FA] flex items-center justify-center bg-[#0a140f]/90 group-hover:bg-[#01579B]/30 transition-colors relative z-10 shadow-[0_0_15px_rgba(129,212,250,0.2)]">
+                <div className="absolute inset-0 noise"></div>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#81D4FA" strokeWidth="1.5" className={progProjects === 1 ? "group-hover:animate-pulse" : ""}>
+                  <rect x="4" y="4" width="16" height="16" rx="2" ry="2"/>
+                  <rect x="9" y="9" width="6" height="6"/>
+                  <line x1="9" y1="1" x2="9" y2="4"/>
+                  <line x1="15" y1="1" x2="15" y2="4"/>
+                  <line x1="9" y1="20" x2="9" y2="23"/>
+                  <line x1="15" y1="20" x2="15" y2="23"/>
+                  <line x1="20" y1="9" x2="23" y2="9"/>
+                  <line x1="20" y1="14" x2="23" y2="14"/>
+                  <line x1="1" y1="9" x2="4" y2="9"/>
+                  <line x1="1" y1="14" x2="4" y2="14"/>
+                </svg>
+              </div>
+              <div 
+                className="overflow-hidden"
+                style={{
+                  maxWidth: `${progProjects * 200}px`,
+                  opacity: progProjects > 0.5 ? (progProjects - 0.5) * 2 : 0
+                }}
+              >
+                <div className="pl-2 whitespace-nowrap">
+                  <h3 className="text-[#81D4FA] tracking-[0.3em] text-lg md:text-xl">開源</h3>
+                  <p className="text-[#0288D1] text-xs tracking-widest mt-1">/projects</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          {/* SETTINGS (Admin) */}
+          <div className="relative">
+            {/* Firework effect for SETTINGS */}
+            {unfoldProgress >= 1.8 && unfoldProgress < 2.0 && (() => {
+              const p = (unfoldProgress - 1.8) / 0.2;
+              const easeOutQuart = 1 - Math.pow(1 - p, 4);
+              const cx = dimensions.width / 2;
+              const cy = dimensions.height / 2;
+              const tx = 48;
+              const ty = dimensions.height - 128; // roughly bottom padding
+              const fx = cx + (tx - cx) * easeOutQuart;
+              const fy = cy + (ty - cy) * easeOutQuart;
+              
+              const tailLength = 40;
+              const angle = Math.atan2(ty - cy, tx - cx);
+              const tailX = fx - Math.cos(angle) * tailLength * p;
+              const tailY = fy - Math.sin(angle) * tailLength * p;
+
+              return (
+                <div className="fixed pointer-events-none z-50" style={{ left: 0, top: 0 }}>
+                  <svg width={dimensions.width} height={dimensions.height}>
+                    <line x1={tailX} y1={tailY} x2={fx} y2={fy} stroke="#FFB74D" strokeWidth={3} opacity={0.8} filter="drop-shadow(0 0 5px #FFB74D)" />
+                    <circle cx={fx} cy={fy} r={3} fill="#FFF" filter="drop-shadow(0 0 6px #FFB74D)" />
+                  </svg>
+                </div>
+              );
+            })()}
+            {unfoldProgress >= 2.0 && unfoldProgress < 2.1 && (() => {
+              const p = (unfoldProgress - 2.0) / 0.1;
+              const easeOut = 1 - Math.pow(1 - p, 3);
+              const radius = 10 + easeOut * 40;
+              const opacity = 1 - p;
+              
+              return (
+                <div className="absolute left-0 top-0 w-12 h-12 flex items-center justify-center pointer-events-none z-50">
+                  <svg width="100" height="100" className="absolute" style={{ overflow: 'visible' }}>
+                    <g transform="translate(50, 50)" opacity={opacity}>
+                      {Array.from({ length: 8 }).map((_, i) => {
+                        const angle = (i / 8) * Math.PI * 2;
+                        const px1 = Math.cos(angle) * (radius * 0.3);
+                        const py1 = Math.sin(angle) * (radius * 0.3);
+                        const px2 = Math.cos(angle) * radius;
+                        const py2 = Math.sin(angle) * radius;
+                        return <line key={i} x1={px1} y1={py1} x2={px2} y2={py2} stroke="#FFB74D" strokeWidth={2} />;
+                      })}
+                      <circle r={radius * 0.5} fill="none" stroke="#FFF" strokeWidth={2} opacity={opacity * 0.8} />
+                    </g>
+                  </svg>
+                </div>
+              );
+            })()}
+
+            <div 
+              className="pointer-events-auto flex items-center gap-4 cursor-pointer group"
+              style={{ 
+                opacity: progSettings,
+                transform: `translateX(${(1 - progSettings) * -50}px)`,
+                display: progSettings === 0 ? 'none' : 'flex'
+              }}
+              onClick={() => window.location.href = '/admin'}
+            >
+              <div className="w-12 h-12 border border-[#FFB74D] flex items-center justify-center bg-[#0a140f]/90 group-hover:bg-[#E65100]/30 transition-colors relative z-10 shadow-[0_0_15px_rgba(255,183,77,0.2)]">
+                <div className="absolute inset-0 noise"></div>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#FFB74D" strokeWidth="1.5" className={progSettings === 1 ? "group-hover:animate-[spin_4s_linear_infinite]" : ""}>
+                  <circle cx="12" cy="12" r="3"></circle>
+                  <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                </svg>
+              </div>
+              <div 
+                className="overflow-hidden"
+                style={{
+                  maxWidth: `${progSettings * 200}px`,
+                  opacity: progSettings > 0.5 ? (progSettings - 0.5) * 2 : 0
+                }}
+              >
+                <div className="pl-2 whitespace-nowrap">
+                  <h3 className="text-[#FFB74D] tracking-[0.3em] text-lg md:text-xl">終端</h3>
+                  <p className="text-[#F57C00] text-xs tracking-widest mt-1">/admin</p>
+                </div>
               </div>
             </div>
           </div>
 
-          {/* SETTINGS */}
-          <div 
-            className="pointer-events-auto flex items-center gap-4 group"
-            style={{ 
-              opacity: progSettings,
-              transform: `translateX(${(1 - progSettings) * -100}px)`,
-              display: progSettings === 0 ? 'none' : 'flex'
-            }}
-          >
-            <div className="w-12 h-12 border border-[#B39DDB] flex items-center justify-center bg-[#0a140f]/90 relative z-10 shadow-[0_0_15px_rgba(179,157,219,0.2)]">
-              <div className="absolute inset-0 noise"></div>
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#B39DDB" strokeWidth="1.5" className={progSettings === 1 ? "animate-[spin_4s_linear_infinite]" : ""}>
-                <circle cx="12" cy="12" r="3"/>
-                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-              </svg>
-            </div>
+        </div>
+      )}
+
+      {/* LINKS Module - Right Side */}
+      {unfoldProgress > 1.0 && (
+        <div className="absolute right-6 md:right-12 top-1/2 -translate-y-1/2 pointer-events-none z-20 font-pixel">
+          
+          <div className="relative">
+            {/* Firework effect for LINKS */}
+            {unfoldProgress >= 2.2 && unfoldProgress < 2.4 && (() => {
+              const p = (unfoldProgress - 2.2) / 0.2;
+              const easeOutQuart = 1 - Math.pow(1 - p, 4);
+              const cx = dimensions.width / 2;
+              const cy = dimensions.height / 2;
+              const tx = dimensions.width - 48; // roughly right-12
+              const ty = dimensions.height / 2;
+              const fx = cx + (tx - cx) * easeOutQuart;
+              const fy = cy + (ty - cy) * easeOutQuart;
+              
+              const tailLength = 40;
+              const angle = Math.atan2(ty - cy, tx - cx);
+              const tailX = fx - Math.cos(angle) * tailLength * p;
+              const tailY = fy - Math.sin(angle) * tailLength * p;
+
+              return (
+                <div className="fixed pointer-events-none z-50" style={{ left: 0, top: 0 }}>
+                  <svg width={dimensions.width} height={dimensions.height}>
+                    <line x1={tailX} y1={tailY} x2={fx} y2={fy} stroke="#CE93D8" strokeWidth={3} opacity={0.8} filter="drop-shadow(0 0 5px #CE93D8)" />
+                    <circle cx={fx} cy={fy} r={3} fill="#FFF" filter="drop-shadow(0 0 6px #CE93D8)" />
+                  </svg>
+                </div>
+              );
+            })()}
+            {unfoldProgress >= 2.4 && unfoldProgress < 2.5 && (() => {
+              const p = (unfoldProgress - 2.4) / 0.1;
+              const easeOut = 1 - Math.pow(1 - p, 3);
+              const radius = 10 + easeOut * 40;
+              const opacity = 1 - p;
+              
+              return (
+                <div className="absolute right-0 top-0 w-12 h-12 flex items-center justify-center pointer-events-none z-50">
+                  <svg width="100" height="100" className="absolute" style={{ overflow: 'visible' }}>
+                    <g transform="translate(50, 50)" opacity={opacity}>
+                      {Array.from({ length: 8 }).map((_, i) => {
+                        const angle = (i / 8) * Math.PI * 2;
+                        const px1 = Math.cos(angle) * (radius * 0.3);
+                        const py1 = Math.sin(angle) * (radius * 0.3);
+                        const px2 = Math.cos(angle) * radius;
+                        const py2 = Math.sin(angle) * radius;
+                        return <line key={i} x1={px1} y1={py1} x2={px2} y2={py2} stroke="#CE93D8" strokeWidth={2} />;
+                      })}
+                      <circle r={radius * 0.5} fill="none" stroke="#FFF" strokeWidth={2} opacity={opacity * 0.8} />
+                    </g>
+                  </svg>
+                </div>
+              );
+            })()}
+
             <div 
-              className="overflow-hidden flex flex-col gap-2"
-              style={{
-                maxWidth: `${progSettings * 200}px`,
-                opacity: progSettings > 0.5 ? (progSettings - 0.5) * 2 : 0
+              className="pointer-events-auto flex items-center gap-4 flex-row-reverse cursor-pointer group"
+              style={{ 
+                opacity: progLinks,
+                transform: `translateX(${(1 - progLinks) * 50}px)`,
+                display: progLinks === 0 ? 'none' : 'flex'
               }}
+              onClick={() => window.open('https://github.com/tinchak', '_blank')}
             >
-              <div className="pl-2 whitespace-nowrap">
-                <h3 className="text-[#B39DDB] tracking-[0.3em] text-lg md:text-xl">系統設定</h3>
-                <p className="text-[#7E57C2] text-xs tracking-widest mt-1">/sys_config</p>
+              <div className="w-12 h-12 border border-[#CE93D8] flex items-center justify-center bg-[#0a140f]/90 group-hover:bg-[#6A1B9A]/30 transition-colors relative z-10 shadow-[0_0_15px_rgba(206,147,216,0.2)]">
+                <div className="absolute inset-0 noise"></div>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#CE93D8" strokeWidth="1.5" className={progLinks === 1 ? "group-hover:animate-pulse" : ""}>
+                  <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+                  <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+                </svg>
               </div>
-              <div className="pl-2 flex gap-2 text-[10px] whitespace-nowrap">
-                {['繁', '简', 'EN'].map(l => (
-                  <button 
-                    key={l}
-                    onClick={() => setLang(l)}
-                    className={`transition-colors ${lang === l ? 'text-[#B39DDB] font-bold' : 'text-[#7E57C2] hover:text-[#D1C4E9]'}`}
-                  >
-                    [{l}]
-                  </button>
-                ))}
+              <div 
+                className="overflow-hidden text-right"
+                style={{
+                  maxWidth: `${progLinks * 200}px`,
+                  opacity: progLinks > 0.5 ? (progLinks - 0.5) * 2 : 0
+                }}
+              >
+                <div className="pr-2 whitespace-nowrap">
+                  <h3 className="text-[#CE93D8] tracking-[0.3em] text-lg md:text-xl">友鏈</h3>
+                  <p className="text-[#AB47BC] text-xs tracking-widest mt-1">/links</p>
+                </div>
               </div>
             </div>
           </div>
 
-          {/* LINKS */}
-          <div 
-            className="pointer-events-auto flex items-center gap-4 cursor-pointer group"
-            style={{ 
-              opacity: progLinks,
-              transform: `translateX(${(1 - progLinks) * -100}px)`,
-              display: progLinks === 0 ? 'none' : 'flex'
-            }}
-            onClick={() => window.open('https://github.com/tinchak0207', '_blank')}
-          >
-            <div className="w-12 h-12 border border-[#FFCC80] flex items-center justify-center bg-[#0a140f]/90 group-hover:bg-[#E65100]/30 transition-colors relative z-10 shadow-[0_0_15px_rgba(255,204,128,0.2)]">
-              <div className="absolute inset-0 noise"></div>
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#FFCC80" strokeWidth="1.5" className={progLinks === 1 ? "group-hover:animate-pulse" : ""}>
-                <polyline points="4 17 10 11 4 5"/>
-                <line x1="12" y1="19" x2="20" y2="19"/>
-              </svg>
-            </div>
-            <div 
-              className="overflow-hidden"
-              style={{
-                maxWidth: `${progLinks * 200}px`,
-                opacity: progLinks > 0.5 ? (progLinks - 0.5) * 2 : 0
-              }}
-            >
-              <div className="pl-2 whitespace-nowrap">
-                <h3 className="text-[#FFCC80] tracking-[0.3em] text-lg md:text-xl">外部鏈接</h3>
-                <p className="text-[#EF6C00] text-xs tracking-widest mt-1">/external_uplinks</p>
-              </div>
-            </div>
-          </div>
         </div>
       )}
       
