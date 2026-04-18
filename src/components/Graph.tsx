@@ -711,7 +711,7 @@ export const Graph: React.FC = () => {
               </svg>
             </div>
             <div 
-              className="overflow-hidden"
+              className="hidden md:block overflow-hidden"
               style={{
                 maxWidth: `${progArchive * 200}px`,
                 opacity: progArchive > 0.5 ? (progArchive - 0.5) * 2 : 0
@@ -750,7 +750,7 @@ export const Graph: React.FC = () => {
               </svg>
             </div>
             <div 
-              className="overflow-hidden"
+              className="hidden md:block overflow-hidden"
               style={{
                 maxWidth: `${progProjects * 200}px`,
                 opacity: progProjects > 0.5 ? (progProjects - 0.5) * 2 : 0
@@ -780,7 +780,7 @@ export const Graph: React.FC = () => {
               </svg>
             </div>
             <div 
-              className="overflow-hidden flex flex-col gap-2"
+              className="hidden md:flex overflow-hidden flex-col gap-2"
               style={{
                 maxWidth: `${progSettings * 200}px`,
                 opacity: progSettings > 0.5 ? (progSettings - 0.5) * 2 : 0
@@ -822,7 +822,7 @@ export const Graph: React.FC = () => {
               </svg>
             </div>
             <div 
-              className="overflow-hidden"
+              className="hidden md:block overflow-hidden"
               style={{
                 maxWidth: `${progLinks * 200}px`,
                 opacity: progLinks > 0.5 ? (progLinks - 0.5) * 2 : 0
