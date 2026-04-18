@@ -23,6 +23,12 @@ CREATE POLICY "Public can read published posts"
   FOR SELECT
   USING (published = true);
 
+-- [SECURITY WARNING]: The following policies use auth.role() = 'authenticated'
+-- which means ANY logged-in user can modify posts. In a real production app,
+-- you MUST restrict this to specific admin emails or an admin role.
+-- Example of a secure policy:
+-- USING (auth.jwt() ->> 'email' = 'your-admin@email.com');
+
 -- Allow authenticated users (admin) to read all posts (including drafts)
 CREATE POLICY "Admins can read all posts"
   ON public.posts
