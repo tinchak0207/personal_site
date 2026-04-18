@@ -2,12 +2,33 @@ import { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { Home } from './pages/Home';
 
-const Blog = lazy(() => import('./pages/Blog').then(module => ({ default: module.Blog })));
-const BlogPost = lazy(() => import('./pages/BlogPost').then(module => ({ default: module.BlogPost })));
-const Admin = lazy(() => import('./pages/Admin').then(module => ({ default: module.Admin })));
-const Projects = lazy(() => import('./pages/Projects'));
-const Links = lazy(() => import('./pages/Links'));
-const Settings = lazy(() => import('./pages/Settings'));
+// Custom lazy function that automatically reloads the page if a chunk fails to load
+// This typically happens when a new version of the app is deployed while a user has the site open
+const lazyWithRetry = (componentImport: () => Promise<any>) =>
+  lazy(async () => {
+    const pageHasAlreadyBeenForceRefreshed = JSON.parse(
+      window.sessionStorage.getItem('page-has-been-force-refreshed') || 'false'
+    );
+
+    try {
+      const component = await componentImport();
+      window.sessionStorage.setItem('page-has-been-force-refreshed', 'false');
+      return component;
+    } catch (error) {
+      if (!pageHasAlreadyBeenForceRefreshed) {
+        window.sessionStorage.setItem('page-has-been-force-refreshed', 'true');
+        window.location.reload();
+      }
+      throw error;
+    }
+  });
+
+const Blog = lazyWithRetry(() => import('./pages/Blog').then(module => ({ default: module.Blog })));
+const BlogPost = lazyWithRetry(() => import('./pages/BlogPost').then(module => ({ default: module.BlogPost })));
+const Admin = lazyWithRetry(() => import('./pages/Admin').then(module => ({ default: module.Admin })));
+const Projects = lazyWithRetry(() => import('./pages/Projects'));
+const Links = lazyWithRetry(() => import('./pages/Links'));
+const Settings = lazyWithRetry(() => import('./pages/Settings'));
 
 function App() {
   return (
