@@ -46,6 +46,9 @@ jobs:
       - name: Add SPA fallback
         run: cp dist/index.html dist/404.html
         
+      - name: Add CNAME for Custom Domain
+        run: echo "tinchak0207.xyz" > dist/CNAME
+        
       - name: Setup Pages
         uses: actions/configure-pages@v5
         
