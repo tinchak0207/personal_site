@@ -148,9 +148,9 @@ CREATE TRIGGER update_external_links_updated_at
 -- ADD MISSING COLUMNS TO EXISTING TABLES (Idempotent)
 -- Run this if you get "Could not find the 'tags' column... in the schema cache"
 -- ==============================================================================
-ALTER TABLE public.posts ADD COLUMN IF NOT EXISTS tags TEXT[] DEFAULT '{}'::TEXT[];
-ALTER TABLE public.projects ADD COLUMN IF NOT EXISTS tags TEXT[] DEFAULT '{}'::TEXT[];
-ALTER TABLE public.external_links ADD COLUMN IF NOT EXISTS tags TEXT[] DEFAULT '{}'::TEXT[];
+ALTER TABLE IF EXISTS public.posts ADD COLUMN IF NOT EXISTS tags TEXT[] DEFAULT '{}'::TEXT[];
+ALTER TABLE IF EXISTS public.projects ADD COLUMN IF NOT EXISTS tags TEXT[] DEFAULT '{}'::TEXT[];
+ALTER TABLE IF EXISTS public.external_links ADD COLUMN IF NOT EXISTS tags TEXT[] DEFAULT '{}'::TEXT[];
 
 -- Force Supabase's PostgREST to reload the schema cache
 NOTIFY pgrst, 'reload schema';
