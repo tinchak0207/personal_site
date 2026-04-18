@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { memo } from 'react';
 
-export const CRTFilter: React.FC = () => {
+export const CRTFilter: React.FC = memo(() => {
   return (
     <div className="fixed inset-0 pointer-events-none z-50 overflow-hidden mix-blend-screen">
       <div className="absolute inset-0 noise"></div>
@@ -9,4 +9,6 @@ export const CRTFilter: React.FC = () => {
       <div className="absolute inset-0 vignette"></div>
     </div>
   );
-};
+});
+
+CRTFilter.displayName = 'CRTFilter';

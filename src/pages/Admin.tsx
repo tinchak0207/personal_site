@@ -1,8 +1,86 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, useImperativeHandle, forwardRef } from 'react';
 import { Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import { CRTFilter } from '../components/CRTFilter';
 import { Post, NewPost } from '../types';
+
+export interface MarkdownEditorRef {
+  getContent: () => string;
+}
+
+const MarkdownEditor = forwardRef<MarkdownEditorRef, { initialValue: string }>(({ initialValue }, ref) => {
+  const [localContent, setLocalContent] = useState(initialValue);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    setLocalContent(initialValue);
+  }, [initialValue]);
+
+  useImperativeHandle(ref, () => ({
+    getContent: () => localContent
+  }));
+
+  const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setLocalContent(e.target.value);
+  };
+
+  const insertMarkdown = (prefix: string, suffix: string = '') => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const text = localContent || '';
+    const selectedText = text.substring(start, end);
+
+    const newText = text.substring(0, start) + prefix + selectedText + suffix + text.substring(end);
+    setLocalContent(newText);
+
+    // Reset focus and selection
+    setTimeout(() => {
+      textarea.focus();
+      textarea.setSelectionRange(start + prefix.length, end + prefix.length);
+    }, 0);
+  };
+
+  return (
+    <div className="flex-1 flex flex-col min-h-[500px]">
+      <div className="flex justify-between items-end mb-2">
+        <label className="block font-pixel text-xs text-[#4a6b57]">MARKDOWN CONTENT</label>
+        <div className="flex gap-1 bg-[#0a140f] border border-[#1B3B2B] p-1 rounded-sm">
+          <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => insertMarkdown('**', '**')} className="p-1.5 text-[#A5D6B7] hover:bg-[#1B3B2B] hover:text-[#4ADE80] transition-colors rounded" title="Bold">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 12a4 4 0 0 0 0-8H6v8"/><path d="M15 20a4 4 0 0 0 0-8H6v8Z"/></svg>
+          </button>
+          <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => insertMarkdown('*', '*')} className="p-1.5 text-[#A5D6B7] hover:bg-[#1B3B2B] hover:text-[#4ADE80] transition-colors rounded" title="Italic">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="4" x2="10" y2="4"/><line x1="14" y1="20" x2="5" y2="20"/><line x1="15" y1="4" x2="9" y2="20"/></svg>
+          </button>
+          <div className="w-px bg-[#1B3B2B] mx-1"></div>
+          <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => insertMarkdown('### ', '')} className="p-1.5 text-[#A5D6B7] hover:bg-[#1B3B2B] hover:text-[#4ADE80] transition-colors rounded" title="Heading">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12h8"/><path d="M4 18V6"/><path d="M12 18V6"/><path d="M21 18h-4c0-4 4-3 4-6 0-1.5-2-2.5-4-1"/></svg>
+          </button>
+          <div className="w-px bg-[#1B3B2B] mx-1"></div>
+          <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => insertMarkdown('[', '](url)')} className="p-1.5 text-[#A5D6B7] hover:bg-[#1B3B2B] hover:text-[#4ADE80] transition-colors rounded" title="Link">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+          </button>
+          <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => insertMarkdown('![alt](', ')')} className="p-1.5 text-[#A5D6B7] hover:bg-[#1B3B2B] hover:text-[#4ADE80] transition-colors rounded" title="Image">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+          </button>
+          <div className="w-px bg-[#1B3B2B] mx-1"></div>
+          <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => insertMarkdown('```\n', '\n```')} className="p-1.5 text-[#A5D6B7] hover:bg-[#1B3B2B] hover:text-[#4ADE80] transition-colors rounded" title="Code Block">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+          </button>
+        </div>
+      </div>
+      <textarea 
+        ref={textareaRef}
+        value={localContent}
+        onChange={handleChange}
+        className="flex-1 w-full bg-[#0a140f] border border-[#1B3B2B] focus:border-[#4ADE80] text-[#A5D6B7] p-4 font-mono outline-none resize-y min-h-[400px] placeholder-[#4a6b57]/50"
+        placeholder="# H1 Header&#10;Write your thoughts here..."
+      />
+    </div>
+  );
+});
 
 export function Admin() {
   const [session, setSession] = useState<Session | null>(null);
@@ -13,6 +91,7 @@ export function Admin() {
 
   const [posts, setPosts] = useState<Post[]>([]);
   const [editingPost, setEditingPost] = useState<Partial<Post> | null>(null);
+  const editorRef = useRef<MarkdownEditorRef>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -93,25 +172,6 @@ export function Admin() {
     });
   };
 
-  const insertMarkdown = (prefix: string, suffix: string = '') => {
-    const textarea = document.getElementById('markdown-editor') as HTMLTextAreaElement;
-    if (!textarea) return;
-
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const text = editingPost.content || '';
-    const selectedText = text.substring(start, end);
-
-    const newText = text.substring(0, start) + prefix + selectedText + suffix + text.substring(end);
-    setEditingPost({ ...editingPost, content: newText });
-
-    // Reset focus and selection
-    setTimeout(() => {
-      textarea.focus();
-      textarea.setSelectionRange(start + prefix.length, end + prefix.length);
-    }, 0);
-  };
-
   const handleLogout = async () => {
     await supabase.auth.signOut();
     setPosts([]);
@@ -127,11 +187,13 @@ export function Admin() {
     // Automatically generate slug before saving if it's empty
     const finalSlug = editingPost.slug || editingPost.title.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
 
+    const finalContent = editorRef.current?.getContent() || editingPost.content || '';
+
     setLoading(true);
     const postData = {
       title: editingPost.title,
       slug: finalSlug,
-      content: editingPost.content,
+      content: finalContent,
       published: editingPost.published,
       tags: editingPost.tags || [],
     };
@@ -318,41 +380,12 @@ export function Admin() {
               </label>
             </div>
 
-            <div className="flex-1 flex flex-col min-h-[500px]">
-              <div className="flex justify-between items-end mb-2">
-                <label className="block font-pixel text-xs text-[#4a6b57]">MARKDOWN CONTENT</label>
-                <div className="flex gap-1 bg-[#0a140f] border border-[#1B3B2B] p-1 rounded-sm">
-                  <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => insertMarkdown('**', '**')} className="p-1.5 text-[#A5D6B7] hover:bg-[#1B3B2B] hover:text-[#4ADE80] transition-colors rounded" title="Bold">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 12a4 4 0 0 0 0-8H6v8"/><path d="M15 20a4 4 0 0 0 0-8H6v8Z"/></svg>
-                  </button>
-                  <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => insertMarkdown('*', '*')} className="p-1.5 text-[#A5D6B7] hover:bg-[#1B3B2B] hover:text-[#4ADE80] transition-colors rounded" title="Italic">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="4" x2="10" y2="4"/><line x1="14" y1="20" x2="5" y2="20"/><line x1="15" y1="4" x2="9" y2="20"/></svg>
-                  </button>
-                  <div className="w-px bg-[#1B3B2B] mx-1"></div>
-                  <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => insertMarkdown('### ', '')} className="p-1.5 text-[#A5D6B7] hover:bg-[#1B3B2B] hover:text-[#4ADE80] transition-colors rounded" title="Heading">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12h8"/><path d="M4 18V6"/><path d="M12 18V6"/><path d="M21 18h-4c0-4 4-3 4-6 0-1.5-2-2.5-4-1"/></svg>
-                  </button>
-                  <div className="w-px bg-[#1B3B2B] mx-1"></div>
-                  <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => insertMarkdown('[', '](url)')} className="p-1.5 text-[#A5D6B7] hover:bg-[#1B3B2B] hover:text-[#4ADE80] transition-colors rounded" title="Link">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
-                  </button>
-                  <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => insertMarkdown('![alt](', ')')} className="p-1.5 text-[#A5D6B7] hover:bg-[#1B3B2B] hover:text-[#4ADE80] transition-colors rounded" title="Image">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-                  </button>
-                  <div className="w-px bg-[#1B3B2B] mx-1"></div>
-                  <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => insertMarkdown('```\n', '\n```')} className="p-1.5 text-[#A5D6B7] hover:bg-[#1B3B2B] hover:text-[#4ADE80] transition-colors rounded" title="Code Block">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
-                  </button>
-                </div>
-              </div>
-              <textarea 
-                id="markdown-editor"
-                value={editingPost.content || ''}
-                onChange={(e) => setEditingPost({...editingPost, content: e.target.value})}
-                className="flex-1 w-full bg-[#0a140f] border border-[#1B3B2B] focus:border-[#4ADE80] text-[#A5D6B7] p-4 font-mono outline-none resize-y min-h-[400px] placeholder-[#4a6b57]/50"
-                placeholder="# H1 Header&#10;Write your thoughts here..."
-              />
-            </div>
+            {/* Markdown editor state is kept isolated to avoid re-rendering Admin on every keystroke */}
+            <MarkdownEditor 
+              key={editingPost.id || 'new'}
+              ref={editorRef}
+              initialValue={editingPost.content || ''} 
+            />
           </form>
         ) : (
           <div>
