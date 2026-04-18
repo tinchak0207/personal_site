@@ -3,16 +3,12 @@ import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { CRTFilter } from '../components/CRTFilter';
 
-export interface Post {
-  id: string;
-  title: string;
-  slug: string;
-  created_at: string;
-  tags?: string[];
-}
+import { Post } from '../types';
+
+type BlogListItem = Pick<Post, 'id' | 'title' | 'slug' | 'created_at' | 'tags'>;
 
 export function Blog() {
-  const [posts, setPosts] = useState<Post[]>([]);
+  const [posts, setPosts] = useState<BlogListItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -21,7 +17,8 @@ export function Blog() {
         .from('posts')
         .select('id, title, slug, created_at, tags')
         .eq('published', true)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(50); // Added limit to prevent infinite data fetching
 
       if (error) {
         console.error('Error fetching posts:', error);

@@ -107,7 +107,114 @@ const INITIAL_LINKS: LinkData[] = [
   { source: '10', target: 'Otaku' },
 ];
 
-export const Graph: React.FC = () => {
+export interface GraphProps {
+  onReady?: () => void;
+  isBooting?: boolean;
+}
+
+const Starfield = React.memo(({ 
+  mousePos, 
+  unfoldProgress 
+}: { 
+  mousePos: { x: number, y: number }, 
+  unfoldProgress: number 
+}) => {
+  return (
+    <g style={{
+      transform: typeof window !== 'undefined' 
+        ? `translate(${(mousePos.x - window.innerWidth / 2) * -0.015}px, ${(mousePos.y - window.innerHeight / 2) * -0.015}px)` 
+        : 'translate(0, 0)',
+      transition: 'transform 0.5s ease-out'
+    }}>
+      {/* Base scattered tiny stars */}
+      {Array.from({ length: 400 }).map((_, i) => {
+        const x = ((Math.sin(i * 12.345) + 1) / 2) * (typeof window !== 'undefined' ? window.innerWidth + 800 : 2000) - 400;
+        const y = ((Math.cos(i * 54.321) + 1) / 2) * (typeof window !== 'undefined' ? window.innerHeight + 800 : 1500) - 400;
+        const size = ((Math.sin(i * 98.765) + 1) / 2) * 1 + 0.5; // Very small
+        
+        // Only start showing stars after 50% unfold progress, and ramp up quickly
+        const starOpacity = unfoldProgress < 0.5 ? 0 : Math.max(0, Math.min(1, Math.pow((unfoldProgress - 0.5) * 2, 3) * ((Math.sin(i) + 1) / 2 * 0.4 + 0.1)));
+        
+        return (
+          <rect 
+            key={`star-base-${i}`} x={x} y={y} width={size} height={size} 
+            fill={i % 3 === 0 ? "#8FBC8F" : "#A5D6B7"} 
+            opacity={starOpacity}
+            className={i % 10 === 0 ? "animate-pulse" : ""}
+          />
+        );
+      })}
+
+      {/* Milky Way Band (Dense cluster along a diagonal curve) */}
+      {Array.from({ length: 800 }).map((_, i) => {
+        const w = typeof window !== 'undefined' ? window.innerWidth : 1920;
+        const h = typeof window !== 'undefined' ? window.innerHeight : 1080;
+        
+        // Progress along the diagonal (from bottom-left to top-right roughly)
+        const t = ((Math.sin(i * 3.14159) + 1) / 2); 
+        
+        // Base curve for the milky way
+        const baseX = t * (w + 800) - 400;
+        const baseY = h - (t * (h + 800) - 400) + Math.sin(t * Math.PI * 3) * 150; 
+        
+        // Gaussian-like spread from the center of the band
+        const spread = (Math.pow(Math.sin(i * 7.777), 3)) * 250;
+        const offsetX = Math.cos(i * 11.11) * spread;
+        const offsetY = Math.sin(i * 11.11) * spread;
+        
+        const x = baseX + offsetX;
+        const y = baseY + offsetY;
+        
+        // Size is smaller closer to the band center to create density
+        const distFromCenter = Math.abs(spread) / 250;
+        const size = distFromCenter < 0.2 ? 0.8 : (distFromCenter < 0.6 ? 1.2 : 1.5);
+        
+        // Opacity is higher in the center of the band
+        const baseOpacity = 1 - Math.pow(distFromCenter, 0.5);
+        // Only start showing stars after 50% unfold progress
+        const starOpacity = unfoldProgress < 0.5 ? 0 : Math.max(0, Math.min(1, Math.pow((unfoldProgress - 0.5) * 2, 4) * baseOpacity * 0.7));
+        
+        // Color variation: mostly blue/purple tint in the dense parts, some bright white
+        const color = distFromCenter < 0.15 ? "#E8F5E9" : (i % 4 === 0 ? "#7da38a" : "#366B4E");
+
+        return (
+          <rect 
+            key={`star-mw-${i}`} x={x} y={y} width={size} height={size} 
+            fill={color} 
+            opacity={starOpacity}
+            className={i % 15 === 0 ? "animate-pulse" : ""}
+          />
+        );
+      })}
+
+      {/* Large cross-shaped twinkling stars (Pixel art style) */}
+      {Array.from({ length: 15 }).map((_, i) => {
+        const x = ((Math.sin(i * 33.33) + 1) / 2) * (typeof window !== 'undefined' ? window.innerWidth : 1920);
+        const y = ((Math.cos(i * 44.44) + 1) / 2) * (typeof window !== 'undefined' ? window.innerHeight : 1080);
+        
+        const starOpacity = unfoldProgress < 0.6 ? 0 : Math.max(0, Math.min(1, Math.pow((unfoldProgress - 0.6) * 2.5, 3) * 0.8));
+        const isYellowish = i % 3 === 0;
+        const color = isYellowish ? "#F5DEB3" : "#E8F5E9"; // Wheat / Bright Mint
+
+        return (
+          <g 
+            key={`star-cross-${i}`} 
+            transform={`translate(${x}, ${y})`} 
+            opacity={starOpacity}
+            className="animate-pulse"
+            style={{ animationDuration: `${2 + i % 3}s` }}
+          >
+            <rect x="-1" y="-4" width="2" height="8" fill={color} />
+            <rect x="-4" y="-1" width="8" height="2" fill={color} />
+            <rect x="-1" y="-1" width="2" height="2" fill="#FFF" />
+          </g>
+        );
+      })}
+    </g>
+  );
+});
+
+export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [nodes, setNodes] = useState<NodeData[]>([]);
   const [links, setLinks] = useState<LinkData[]>([]);
@@ -130,6 +237,15 @@ export const Graph: React.FC = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  const isBootingRef = useRef(isBooting);
+  useEffect(() => {
+    isBootingRef.current = isBooting;
+    if (!isBooting && simulationRef.current) {
+      // Wake up the simulation when booting finishes
+      simulationRef.current.alpha(0.3).restart();
+    }
+  }, [isBooting]);
+
   useEffect(() => {
     if (!containerRef.current) return;
     const { width, height } = dimensions;
@@ -151,11 +267,26 @@ export const Graph: React.FC = () => {
       .force('collide', d3.forceCollide<NodeData>().radius(d => d.radius + 30));
 
     simulation.on('tick', () => {
-      setNodes([...simulation.nodes()]);
-      setLinks([...simLinks]);
+      // If we are booting, skip the expensive React re-renders to save CPU for the terminal typing animation.
+      if (!isBootingRef.current) {
+        setNodes([...simulation.nodes()]);
+        setLinks([...simLinks]);
+      }
     });
 
+    // Run the simulation synchronously for a few ticks to settle initial positions
+    for (let i = 0; i < 50; ++i) simulation.tick();
+    
+    // Set initial positions even if booting
+    setNodes([...simulation.nodes()]);
+    setLinks([...simLinks]);
+
     simulationRef.current = simulation;
+
+    // Signal that the heavy lifting is done
+    if (onReady) {
+      requestAnimationFrame(() => onReady());
+    }
 
     return () => {
       simulation.stop();
@@ -437,97 +568,7 @@ export const Graph: React.FC = () => {
 
       <svg width="100%" height="100%" className="overflow-visible pointer-events-none absolute inset-0 z-0">
         {/* Starfield Background Layer (Dense Pixel Art Milky Way) */}
-        <g style={{
-          transform: typeof window !== 'undefined' 
-            ? `translate(${(mousePos.x - window.innerWidth / 2) * -0.015}px, ${(mousePos.y - window.innerHeight / 2) * -0.015}px)` 
-            : 'translate(0, 0)',
-          transition: 'transform 0.5s ease-out'
-        }}>
-          {/* Base scattered tiny stars */}
-          {Array.from({ length: 400 }).map((_, i) => {
-            const x = ((Math.sin(i * 12.345) + 1) / 2) * (typeof window !== 'undefined' ? window.innerWidth + 800 : 2000) - 400;
-            const y = ((Math.cos(i * 54.321) + 1) / 2) * (typeof window !== 'undefined' ? window.innerHeight + 800 : 1500) - 400;
-            const size = ((Math.sin(i * 98.765) + 1) / 2) * 1 + 0.5; // Very small
-            
-            // Only start showing stars after 50% unfold progress, and ramp up quickly
-            const starOpacity = unfoldProgress < 0.5 ? 0 : Math.max(0, Math.min(1, Math.pow((unfoldProgress - 0.5) * 2, 3) * ((Math.sin(i) + 1) / 2 * 0.4 + 0.1)));
-            
-            return (
-              <rect 
-                key={`star-base-${i}`} x={x} y={y} width={size} height={size} 
-                fill={i % 3 === 0 ? "#8FBC8F" : "#A5D6B7"} 
-                opacity={starOpacity}
-                className={i % 10 === 0 ? "animate-pulse" : ""}
-              />
-            );
-          })}
-
-          {/* Milky Way Band (Dense cluster along a diagonal curve) */}
-          {Array.from({ length: 800 }).map((_, i) => {
-            const w = typeof window !== 'undefined' ? window.innerWidth : 1920;
-            const h = typeof window !== 'undefined' ? window.innerHeight : 1080;
-            
-            // Progress along the diagonal (from bottom-left to top-right roughly)
-            const t = ((Math.sin(i * 3.14159) + 1) / 2); 
-            
-            // Base curve for the milky way
-            const baseX = t * (w + 800) - 400;
-            const baseY = h - (t * (h + 800) - 400) + Math.sin(t * Math.PI * 3) * 150; 
-            
-            // Gaussian-like spread from the center of the band
-            const spread = (Math.pow(Math.sin(i * 7.777), 3)) * 250;
-            const offsetX = Math.cos(i * 11.11) * spread;
-            const offsetY = Math.sin(i * 11.11) * spread;
-            
-            const x = baseX + offsetX;
-            const y = baseY + offsetY;
-            
-            // Size is smaller closer to the band center to create density
-            const distFromCenter = Math.abs(spread) / 250;
-            const size = distFromCenter < 0.2 ? 0.8 : (distFromCenter < 0.6 ? 1.2 : 1.5);
-            
-            // Opacity is higher in the center of the band
-            const baseOpacity = 1 - Math.pow(distFromCenter, 0.5);
-            // Only start showing stars after 50% unfold progress
-            const starOpacity = unfoldProgress < 0.5 ? 0 : Math.max(0, Math.min(1, Math.pow((unfoldProgress - 0.5) * 2, 4) * baseOpacity * 0.7));
-            
-            // Color variation: mostly blue/purple tint in the dense parts, some bright white
-            const color = distFromCenter < 0.15 ? "#E8F5E9" : (i % 4 === 0 ? "#7da38a" : "#366B4E");
-
-            return (
-              <rect 
-                key={`star-mw-${i}`} x={x} y={y} width={size} height={size} 
-                fill={color} 
-                opacity={starOpacity}
-                className={i % 15 === 0 ? "animate-pulse" : ""}
-              />
-            );
-          })}
-
-          {/* Large cross-shaped twinkling stars (Pixel art style) */}
-          {Array.from({ length: 15 }).map((_, i) => {
-            const x = ((Math.sin(i * 33.33) + 1) / 2) * (typeof window !== 'undefined' ? window.innerWidth : 1920);
-            const y = ((Math.cos(i * 44.44) + 1) / 2) * (typeof window !== 'undefined' ? window.innerHeight : 1080);
-            
-            const starOpacity = unfoldProgress < 0.6 ? 0 : Math.max(0, Math.min(1, Math.pow((unfoldProgress - 0.6) * 2.5, 3) * 0.8));
-            const isYellowish = i % 3 === 0;
-            const color = isYellowish ? "#F5DEB3" : "#E8F5E9"; // Wheat / Bright Mint
-
-            return (
-              <g 
-                key={`star-cross-${i}`} 
-                transform={`translate(${x}, ${y})`} 
-                opacity={starOpacity}
-                className="animate-pulse"
-                style={{ animationDuration: `${2 + i % 3}s` }}
-              >
-                <rect x="-1" y="-4" width="2" height="8" fill={color} />
-                <rect x="-4" y="-1" width="8" height="2" fill={color} />
-                <rect x="-1" y="-1" width="2" height="2" fill="#FFF" />
-              </g>
-            );
-          })}
-        </g>
+        <Starfield mousePos={mousePos} unfoldProgress={unfoldProgress} />
 
         {/* Foreground Graph Layer */}
         <g style={{

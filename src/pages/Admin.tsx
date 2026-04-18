@@ -1,16 +1,18 @@
 import { useEffect, useState } from 'react';
+import { Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import { CRTFilter } from '../components/CRTFilter';
+import { Post, NewPost } from '../types';
 
 export function Admin() {
-  const [session, setSession] = useState<any>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState('');
 
-  const [posts, setPosts] = useState<any[]>([]);
-  const [editingPost, setEditingPost] = useState<any>(null);
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [editingPost, setEditingPost] = useState<Partial<Post> | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -44,7 +46,8 @@ export function Admin() {
     const { data, error } = await supabase
       .from('posts')
       .select('*')
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(100); // Add a limit to prevent overloading memory with too many posts
     
     if (error) {
       setErrorMsg(error.message);
