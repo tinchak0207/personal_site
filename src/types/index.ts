@@ -5,6 +5,7 @@ export interface Post {
   content: string;
   published: boolean;
   tags: string[];
+  folder: string;
   created_at: string;
   updated_at: string;
 }
