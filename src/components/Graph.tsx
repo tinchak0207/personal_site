@@ -309,12 +309,57 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
 
   // Handle window resize
   useEffect(() => {
-    const handleResize = () => {
-      setDimensions({ width: window.innerWidth, height: window.innerHeight });
+    if (!containerRef.current) return;
+    
+    const updateDimensions = () => {
+      setDimensions({
+        width: containerRef.current?.clientWidth || window.innerWidth,
+        height: containerRef.current?.clientHeight || window.innerHeight
+      });
     };
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    
+    window.addEventListener('resize', updateDimensions);
+    updateDimensions();
+    
+    return () => window.removeEventListener('resize', updateDimensions);
   }, []);
+
+  // Update dynamicSubNodes when window resizes or dimensions change
+  useEffect(() => {
+    // Generate sub-nodes dynamically based on DB sub_nodes or fallback to SUB_NODES_MAP
+    const newDynamicSubNodes: Record<string, any[]> = {};
+    
+    nodes.forEach(node => {
+      if (node.group === 'center') return;
+      
+      const subNodesData = SUB_NODES_MAP[node.id] || [];
+      if (subNodesData.length > 0) {
+        newDynamicSubNodes[node.id] = subNodesData.map((sub, idx, arr) => {
+          const angle = (idx / arr.length) * Math.PI * 2 - Math.PI / 2;
+          const dist = 35; // Initial intended distance
+          let sx = Math.cos(angle) * dist;
+          let sy = Math.sin(angle) * dist;
+          
+          // Calculate absolute screen position to check boundaries
+          const absoluteX = (node.x || 0) + sx;
+          const absoluteY = (node.y || 0) + sy;
+          
+          // Screen padding
+          const padding = 20;
+          
+          // Adjust local offsets (sx, sy) if the absolute position goes out of bounds
+          if (absoluteX < padding) sx += (padding - absoluteX);
+          if (absoluteX > dimensions.width - padding) sx -= (absoluteX - (dimensions.width - padding));
+          if (absoluteY < padding) sy += (padding - absoluteY);
+          if (absoluteY > dimensions.height - padding) sy -= (absoluteY - (dimensions.height - padding));
+
+          return { ...sub, sx, sy }; // Store pre-calculated, boundary-safe local offsets
+        });
+      }
+    });
+    
+    setDynamicSubNodes(newDynamicSubNodes);
+  }, [nodes, dimensions]); // Recalculate when nodes or screen size change
 
   const isBootingRef = useRef(isBooting);
   useEffect(() => {
@@ -752,8 +797,13 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
               const isHoveredNode = hoveredNode === source.id || hoveredNode === target.id;
               const isAnyHovered = hoveredNode !== null;
               
+              // Only show center links after unfoldProgress starts
+              // When unfoldProgress <= 0.1 (booting just finished), center links should be invisible
+              const isCenterLink = source.group === 'center' || target.group === 'center';
+              const baseOpacity = isCenterLink && unfoldProgress <= 0.1 ? 0 : 0.3;
+              
               // Obsidian style link highlighting
-              const linkOpacity = isAnyHovered ? (isHoveredNode ? 0.8 : 0.1) : 0.3;
+              const linkOpacity = isAnyHovered ? (isHoveredNode ? 0.8 : 0.1) : baseOpacity;
               const linkColor = isHoveredNode ? "#A5D6B7" : "#4a6b57";
               const linkWidth = isHoveredNode ? 1.5 : 1;
 
@@ -868,10 +918,8 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
 
                   {/* Sub-nodes that pop out on hover */}
                   {isHovered && !isCenter && dynamicSubNodes[node.id]?.map((sub, idx, arr) => {
-                    const angle = (idx / arr.length) * Math.PI * 2 - Math.PI / 2; 
-                    const dist = 35; 
-                    const sx = Math.cos(angle) * dist;
-                    const sy = Math.sin(angle) * dist;
+                    const sx = sub.sx || 0;
+                    const sy = sub.sy || 0;
                     return (
                       <g 
                         key={`sub-${sub.id}`} 
@@ -886,9 +934,12 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
                         onMouseDown={(e) => e.stopPropagation()}
                         onTouchStart={(e) => e.stopPropagation()}
                       >
-                        <line x1={0} y1={0} x2={sx} y2={sy} stroke="#30363d" strokeWidth={1} opacity={0.8} />
-                        <circle cx={sx} cy={sy} r={2} fill={sub.link ? "#58a6ff" : "#8b949e"} />
-                        <text x={sx} y={sy - 5} textAnchor="middle" fill={sub.link ? "#58a6ff" : "#8b949e"} className="font-sans text-[8px] tracking-wide">{sub.label}</text>
+                        {/* Sub-node connection line - Pixel style */}
+                        <line x1={0} y1={0} x2={sx} y2={sy} stroke="#30363d" strokeWidth={1} opacity={0.8} strokeDasharray="2 2" />
+                        {/* Sub-node dot - Pixel style (square instead of circle) */}
+                        <rect x={sx - 1.5} y={sy - 1.5} width={3} height={3} fill={sub.link ? "#58a6ff" : "#8b949e"} />
+                        {/* Sub-node label - Pixel style */}
+                        <text x={sx} y={sy - 5} textAnchor="middle" fill={sub.link ? "#58a6ff" : "#8b949e"} className="font-pixel text-[8px] tracking-wide">{sub.label}</text>
                       </g>
                     )
                   })}
@@ -1048,7 +1099,7 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
         </div>
       )}
       
-      {/* Hover Tooltip - Obsidian Style */}
+      {/* Hover Tooltip - Obsidian Style (Pixel variation) */}
       <AnimatePresence>
         {hoveredNode && unfoldProgress >= 1 && unfoldProgress <= 1.1 && (
           <motion.div
@@ -1056,21 +1107,21 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95 }}
             transition={{ duration: 0.1 }}
-            className="fixed z-50 pointer-events-none border border-[#30363d] bg-[#161b22] rounded-md p-3 shadow-lg min-w-[150px] max-w-[250px]"
+            className="fixed z-50 pointer-events-none border-2 border-[#30363d] bg-[#161b22] p-3 shadow-lg min-w-[150px] max-w-[250px]"
             style={{ left: mousePos.x + 15, top: mousePos.y + 15 }}
           >
-            <h3 className="font-sans font-semibold text-[#c9d1d9] text-sm mb-1">
+            <h3 className="font-pixel text-[#c9d1d9] text-sm mb-1 tracking-wide">
               {nodes.find(n => n.id === hoveredNode)?.label}
             </h3>
             
             {/* Display Subnodes in Tooltip */}
             {dynamicSubNodes[hoveredNode] && dynamicSubNodes[hoveredNode].length > 0 && (
-              <div className="flex flex-col gap-1.5 mt-2 pt-2 border-t border-[#30363d]">
+              <div className="flex flex-col gap-2 mt-2 pt-2 border-t-2 border-[#30363d] border-dotted">
                 {dynamicSubNodes[hoveredNode].map(sub => (
                   <div key={sub.id} className="flex flex-col">
-                    <span className="font-sans text-[#8b949e] text-[11px]">• {sub.label}</span>
+                    <span className="font-pixel text-[#8b949e] text-[10px] tracking-wider">• {sub.label}</span>
                     {sub.desc && (
-                      <span className="font-sans text-[#8b949e] text-[9px] ml-2 leading-relaxed opacity-70">{sub.desc}</span>
+                      <span className="font-pixel text-[#8b949e] text-[8px] ml-2 mt-1 leading-relaxed opacity-70 tracking-wide">{sub.desc}</span>
                     )}
                   </div>
                 ))}
