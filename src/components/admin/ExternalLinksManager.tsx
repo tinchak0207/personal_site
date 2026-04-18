@@ -47,6 +47,24 @@ export function ExternalLinksManager({ setLoading, setErrorMsg }: { setLoading: 
     }
   };
 
+  const insertMarkdown = (prefix: string, suffix: string = '') => {
+    const textarea = document.getElementById('link-description-editor') as HTMLTextAreaElement;
+    if (!textarea || !editingLink) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const text = editingLink.description || '';
+    const selectedText = text.substring(start, end);
+
+    const newText = text.substring(0, start) + prefix + selectedText + suffix + text.substring(end);
+    setEditingLink({ ...editingLink, description: newText });
+
+    setTimeout(() => {
+      textarea.focus();
+      textarea.setSelectionRange(start + prefix.length, end + prefix.length);
+    }, 0);
+  };
+
   const handleSaveLink = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingLink || !editingLink.title || !editingLink.url) {
@@ -162,11 +180,21 @@ export function ExternalLinksManager({ setLoading, setErrorMsg }: { setLoading: 
         </div>
 
         <div className="flex-1 flex flex-col">
-          <label className="block font-pixel text-xs text-[#4a6b57] mb-2">DESCRIPTION (Optional)</label>
+          <div className="flex justify-between items-end mb-2">
+            <label className="block font-pixel text-xs text-[#4a6b57]">DESCRIPTION (Optional)</label>
+            <div className="flex gap-1 bg-[#0a140f] border border-[#1B3B2B] p-1 rounded-sm">
+              <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => insertMarkdown('**', '**')} className="p-1.5 text-[#A5D6B7] hover:bg-[#1B3B2B] hover:text-[#4ADE80] transition-colors rounded" title="Bold">B</button>
+              <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => insertMarkdown('*', '*')} className="p-1.5 text-[#A5D6B7] hover:bg-[#1B3B2B] hover:text-[#4ADE80] transition-colors rounded" title="Italic">I</button>
+              <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => insertMarkdown('### ', '')} className="p-1.5 text-[#A5D6B7] hover:bg-[#1B3B2B] hover:text-[#4ADE80] transition-colors rounded" title="Heading">H</button>
+              <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => insertMarkdown('[', '](url)')} className="p-1.5 text-[#A5D6B7] hover:bg-[#1B3B2B] hover:text-[#4ADE80] transition-colors rounded" title="Link">L</button>
+              <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => insertMarkdown('```\n', '\n```')} className="p-1.5 text-[#A5D6B7] hover:bg-[#1B3B2B] hover:text-[#4ADE80] transition-colors rounded" title="Code Block">{'<>'}</button>
+            </div>
+          </div>
           <textarea 
+            id="link-description-editor"
             value={editingLink.description || ''}
             onChange={(e) => setEditingLink({...editingLink, description: e.target.value})}
-            className="flex-1 w-full bg-[#0a140f] border border-[#1B3B2B] focus:border-[#4ADE80] text-[#A5D6B7] p-4 font-mono outline-none resize-y min-h-[100px] placeholder-[#4a6b57]/50"
+            className="flex-1 w-full bg-[#0a140f] border border-[#1B3B2B] focus:border-[#4ADE80] text-[#A5D6B7] p-4 font-mono outline-none resize-y min-h-[150px] placeholder-[#4a6b57]/50"
             placeholder="Short description..."
           />
         </div>
