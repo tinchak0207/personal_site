@@ -16,7 +16,22 @@ CREATE TABLE IF NOT EXISTS public.posts (
 -- 2. Enable Row Level Security (RLS)
 ALTER TABLE public.posts ENABLE ROW LEVEL SECURITY;
 
+CREATE OR REPLACE FUNCTION handle_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = timezone('utc'::text, now());
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
 -- 3. Create RLS Policies
+-- Drop existing policies first to allow re-running the script
+DROP POLICY IF EXISTS "Public can read published posts" ON public.posts;
+DROP POLICY IF EXISTS "Admins can read all posts" ON public.posts;
+DROP POLICY IF EXISTS "Admins can insert posts" ON public.posts;
+DROP POLICY IF EXISTS "Admins can update posts" ON public.posts;
+DROP POLICY IF EXISTS "Admins can delete posts" ON public.posts;
+
 -- Allow public read access to published posts
 CREATE POLICY "Public can read published posts"
   ON public.posts
@@ -54,14 +69,7 @@ CREATE POLICY "Admins can delete posts"
   USING (auth.role() = 'authenticated');
 
 -- 4. Create an automatic updated_at trigger
-CREATE OR REPLACE FUNCTION handle_updated_at()
-RETURNS TRIGGER AS $$
-BEGIN
-  NEW.updated_at = timezone('utc'::text, now());
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
+DROP TRIGGER IF EXISTS update_posts_updated_at ON public.posts;
 CREATE TRIGGER update_posts_updated_at
   BEFORE UPDATE ON public.posts
   FOR EACH ROW
@@ -83,12 +91,19 @@ CREATE TABLE IF NOT EXISTS public.projects (
 
 ALTER TABLE public.projects ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Public can read published projects" ON public.projects;
+DROP POLICY IF EXISTS "Admins can read all projects" ON public.projects;
+DROP POLICY IF EXISTS "Admins can insert projects" ON public.projects;
+DROP POLICY IF EXISTS "Admins can update projects" ON public.projects;
+DROP POLICY IF EXISTS "Admins can delete projects" ON public.projects;
+
 CREATE POLICY "Public can read published projects" ON public.projects FOR SELECT USING (published = true);
 CREATE POLICY "Admins can read all projects" ON public.projects FOR SELECT USING (auth.role() = 'authenticated');
 CREATE POLICY "Admins can insert projects" ON public.projects FOR INSERT WITH CHECK (auth.role() = 'authenticated');
 CREATE POLICY "Admins can update projects" ON public.projects FOR UPDATE USING (auth.role() = 'authenticated');
 CREATE POLICY "Admins can delete projects" ON public.projects FOR DELETE USING (auth.role() = 'authenticated');
 
+DROP TRIGGER IF EXISTS update_projects_updated_at ON public.projects;
 CREATE TRIGGER update_projects_updated_at
   BEFORE UPDATE ON public.projects
   FOR EACH ROW
@@ -105,6 +120,10 @@ CREATE TABLE IF NOT EXISTS public.graph_nodes (
 );
 
 ALTER TABLE public.graph_nodes ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Public can read graph_nodes" ON public.graph_nodes;
+DROP POLICY IF EXISTS "Admins can manage graph_nodes" ON public.graph_nodes;
+
 CREATE POLICY "Public can read graph_nodes" ON public.graph_nodes FOR SELECT USING (true);
 CREATE POLICY "Admins can manage graph_nodes" ON public.graph_nodes USING (auth.role() = 'authenticated');
 
@@ -118,8 +137,13 @@ CREATE TABLE IF NOT EXISTS public.graph_links (
 );
 
 ALTER TABLE public.graph_links ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Public can read graph_links" ON public.graph_links;
+DROP POLICY IF EXISTS "Admins can manage graph_links" ON public.graph_links;
+
 CREATE POLICY "Public can read graph_links" ON public.graph_links FOR SELECT USING (true);
 CREATE POLICY "Admins can manage graph_links" ON public.graph_links USING (auth.role() = 'authenticated');
+
 CREATE TABLE IF NOT EXISTS public.external_links (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   title TEXT NOT NULL,
@@ -133,12 +157,19 @@ CREATE TABLE IF NOT EXISTS public.external_links (
 
 ALTER TABLE public.external_links ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Public can read published external_links" ON public.external_links;
+DROP POLICY IF EXISTS "Admins can read all external_links" ON public.external_links;
+DROP POLICY IF EXISTS "Admins can insert external_links" ON public.external_links;
+DROP POLICY IF EXISTS "Admins can update external_links" ON public.external_links;
+DROP POLICY IF EXISTS "Admins can delete external_links" ON public.external_links;
+
 CREATE POLICY "Public can read published external_links" ON public.external_links FOR SELECT USING (published = true);
 CREATE POLICY "Admins can read all external_links" ON public.external_links FOR SELECT USING (auth.role() = 'authenticated');
 CREATE POLICY "Admins can insert external_links" ON public.external_links FOR INSERT WITH CHECK (auth.role() = 'authenticated');
 CREATE POLICY "Admins can update external_links" ON public.external_links FOR UPDATE USING (auth.role() = 'authenticated');
 CREATE POLICY "Admins can delete external_links" ON public.external_links FOR DELETE USING (auth.role() = 'authenticated');
 
+DROP TRIGGER IF EXISTS update_external_links_updated_at ON public.external_links;
 CREATE TRIGGER update_external_links_updated_at
   BEFORE UPDATE ON public.external_links
   FOR EACH ROW
