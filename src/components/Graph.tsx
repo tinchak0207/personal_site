@@ -778,13 +778,23 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
       >
         <div className="flex flex-col items-center gap-1 animate-bounce">
           {isMobile ? (
-            <svg width="24" height="36" viewBox="0 0 24 36" fill="none" xmlns="http://www.w3.org/2000/svg" className="opacity-80">
-              {/* Pixel Hand/Swipe Up Icon */}
-              <path d="M12 0H14V4H16V8H18V14H20V20H22V30H20V34H18V36H6V34H4V30H2V20H4V14H6V8H8V4H10V0H12Z" fill="currentColor" fillOpacity="0.2"/>
-              <path d="M12 2H14V4H16V8H18V14H20V20H22V30H20V32H18V34H6V32H4V30H2V20H4V14H6V8H8V4H10V2H12Z" fill="#030a07"/>
-              <path d="M12 0H14V2H12V0ZM10 2H12V4H10V2ZM14 4H16V8H14V4ZM8 4H10V8H8V4ZM16 8H18V14H16V8ZM6 8H8V14H6V8ZM18 14H20V20H18V14ZM4 14H6V20H4V14ZM20 20H22V30H20V20ZM2 20H4V30H2V20ZM20 30H18V34H20V30ZM4 30H6V34H4V30ZM18 34H6V36H18V34Z" fill="currentColor"/>
-              {/* Swipe Arrow Detail */}
-              <path d="M10 12H14V14H10V12ZM8 14H10V16H8V14ZM14 14H16V16H14V14ZM12 16H14V24H12V16ZM10 16H12V24H10V16Z" fill="currentColor" className="animate-pulse"/>
+            <svg width="28" height="40" viewBox="0 0 28 40" fill="none" xmlns="http://www.w3.org/2000/svg" className="opacity-80">
+              {/* Smartphone Body Outline */}
+              <path d="M6 4H22V32H6V4Z" fill="currentColor" fillOpacity="0.1"/>
+              <path d="M8 6H20V28H8V6Z" fill="#030a07"/>
+              <path d="M8 2H20V4H8V2ZM6 4H8V6H6V4ZM20 4H22V6H20V4ZM4 6H6V30H4V6ZM22 6H24V30H22V6ZM6 30H8V32H6V30ZM20 30H22V32H20V30ZM8 32H20V34H8V32Z" fill="currentColor"/>
+              
+              {/* Phone Screen/Content Lines */}
+              <path d="M10 8H18V10H10V8ZM10 12H16V14H10V12Z" fill="currentColor" fillOpacity="0.3"/>
+              
+              {/* Hand/Thumb swiping up */}
+              <path d="M12 18H16V22H12V18Z" fill="currentColor" className="animate-[pulse_1.5s_ease-in-out_infinite]"/>
+              <path d="M14 22H18V28H14V22Z" fill="currentColor" />
+              <path d="M16 28H22V36H16V28Z" fill="currentColor" />
+              <path d="M22 30H26V38H22V30Z" fill="currentColor" />
+              
+              {/* Swipe Up Arrow (Animated) */}
+              <path d="M14 10H16V12H14V10ZM12 12H14V14H12V12ZM16 12H18V14H16V12ZM14 14H16V18H14V14Z" fill="#4ADE80" className="animate-[bounce_1.5s_infinite]"/>
             </svg>
           ) : (
             <svg width="24" height="36" viewBox="0 0 24 36" fill="none" xmlns="http://www.w3.org/2000/svg" className="opacity-80">
