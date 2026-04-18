@@ -20,6 +20,6 @@ const isValidUrl = (url: string) => {
 };
 
 export const supabase = createClient(
-  isValidUrl(supabaseUrl) ? supabaseUrl : 'https://eiwbebgaocdkabeucpxm.supabase.co', // Fallback to your actual URL found in vercel.json if env vars are missing
-  supabaseAnonKey || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVpd2JlYmdhb2Nka2FiZXVjcHhtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0OTExMjUsImV4cCI6MjA5MjA2NzEyNX0.5-CQhPBsWlyv2CQQQkrtinfxgFEkDbXg3YyZAOOsR4Y' // We need a real anon key here, falling back to dummy won't work for real queries
+  isValidUrl(supabaseUrl) ? supabaseUrl : 'https://placeholder.supabase.co',
+  supabaseAnonKey || 'placeholder-key'
 );
