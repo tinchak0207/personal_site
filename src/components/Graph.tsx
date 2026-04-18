@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import * as d3 from 'd3-force';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabase';
@@ -216,6 +217,7 @@ const Starfield = React.memo(({
 
 export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
   const containerRef = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
   const [nodes, setNodes] = useState<NodeData[]>([]);
   const [links, setLinks] = useState<LinkData[]>([]);
   const [hoveredNode, setHoveredNode] = useState<string | null>(null);
@@ -281,6 +283,9 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
         // Fetch Links
         const { data: links } = await supabase.from('external_links').select('id, title, url, tags').eq('published', true);
 
+        // Fetch DB SubNodes
+        const { data: dbSubNodes } = await supabase.from('graph_subnodes').select('*');
+
         // Build SubNodes map
         const newSubNodes = { ...SUB_NODES_MAP }; // Keep initial static ones or replace? Let's merge.
 
@@ -293,6 +298,22 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
             }
           });
         };
+
+        // Add dynamically created subnodes from Admin
+        if (dbSubNodes) {
+          dbSubNodes.forEach(s => {
+            const parentId = s.parent_node_id;
+            if (!newSubNodes[parentId]) newSubNodes[parentId] = [];
+            if (!newSubNodes[parentId].find(n => n.id === s.id)) {
+              newSubNodes[parentId].push({
+                id: s.id,
+                label: s.label,
+                desc: s.description || undefined,
+                link: s.url || undefined
+              });
+            }
+          });
+        }
 
         if (posts) {
           posts.forEach(p => addToSubNodes(p.tags, {
@@ -961,7 +982,7 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
                         onClick={(e) => {
                           if (sub.link) {
                             e.stopPropagation();
-                            window.location.href = sub.link; // Or use React Router if implemented later
+                            navigate(sub.link);
                           }
                         }}
                         onMouseDown={(e) => e.stopPropagation()}
@@ -984,9 +1005,95 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
         </g>
       </svg>
 
-      {/* HUD Modules Layer - Vertical Left Sidebar */}
+      {/* HUD Modules Layer - Mobile Top Bar */}
       {unfoldProgress > 1.0 && (
-        <div className="absolute left-6 md:left-12 top-0 bottom-0 py-32 pointer-events-none z-20 flex flex-col justify-between font-pixel">
+        <div className="md:hidden absolute top-8 left-0 right-0 pointer-events-none z-20 flex justify-center gap-3 font-pixel px-4">
+          {/* ARCHIVE */}
+          <div 
+            className="pointer-events-auto flex items-center justify-center cursor-pointer group"
+            style={{ 
+              opacity: progArchive,
+              transform: `translateY(${(1 - progArchive) * -20}px)`,
+              display: progArchive === 0 ? 'none' : 'flex'
+            }}
+            onClick={() => navigate('/blog')}
+          >
+            <div className="w-10 h-10 border border-[#4ADE80] flex items-center justify-center bg-[#0a140f]/90 active:bg-[#1B3B2B] transition-colors relative z-10 shadow-[0_0_10px_rgba(74,222,128,0.2)]">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4ADE80" strokeWidth="1.5">
+                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                <polyline points="17 21 17 13 7 13 7 21"/>
+                <polyline points="7 3 7 8 15 8"/>
+              </svg>
+            </div>
+          </div>
+
+          {/* PROJECTS */}
+          <div 
+            className="pointer-events-auto flex items-center justify-center cursor-pointer group"
+            style={{ 
+              opacity: progProjects,
+              transform: `translateY(${(1 - progProjects) * -20}px)`,
+              display: progProjects === 0 ? 'none' : 'flex'
+            }}
+            onClick={() => navigate('/projects')}
+          >
+            <div className="w-10 h-10 border border-[#81D4FA] flex items-center justify-center bg-[#0a140f]/90 active:bg-[#01579B]/30 transition-colors relative z-10 shadow-[0_0_10px_rgba(129,212,250,0.2)]">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#81D4FA" strokeWidth="1.5">
+                <rect x="4" y="4" width="16" height="16" rx="2" ry="2"/>
+                <rect x="9" y="9" width="6" height="6"/>
+                <line x1="9" y1="1" x2="9" y2="4"/>
+                <line x1="15" y1="1" x2="15" y2="4"/>
+                <line x1="9" y1="20" x2="9" y2="23"/>
+                <line x1="15" y1="20" x2="15" y2="23"/>
+                <line x1="20" y1="9" x2="23" y2="9"/>
+                <line x1="20" y1="14" x2="23" y2="14"/>
+                <line x1="1" y1="9" x2="4" y2="9"/>
+                <line x1="1" y1="14" x2="4" y2="14"/>
+              </svg>
+            </div>
+          </div>
+
+          {/* LINKS */}
+          <div 
+            className="pointer-events-auto flex items-center justify-center cursor-pointer group"
+            style={{ 
+              opacity: progLinks,
+              transform: `translateY(${(1 - progLinks) * -20}px)`,
+              display: progLinks === 0 ? 'none' : 'flex'
+            }}
+            onClick={() => navigate('/links')}
+          >
+            <div className="w-10 h-10 border border-[#FFCC80] flex items-center justify-center bg-[#0a140f]/90 active:bg-[#E65100]/30 transition-colors relative z-10 shadow-[0_0_10px_rgba(255,204,128,0.2)]">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFCC80" strokeWidth="1.5">
+                <polyline points="4 17 10 11 4 5"/>
+                <line x1="12" y1="19" x2="20" y2="19"/>
+              </svg>
+            </div>
+          </div>
+
+          {/* SETTINGS */}
+          <div 
+            className="pointer-events-auto flex items-center justify-center cursor-pointer group"
+            style={{ 
+              opacity: progSettings,
+              transform: `translateY(${(1 - progSettings) * -20}px)`,
+              display: progSettings === 0 ? 'none' : 'flex'
+            }}
+            onClick={() => navigate('/settings')}
+          >
+            <div className="w-10 h-10 border border-[#B39DDB] flex items-center justify-center bg-[#0a140f]/90 active:bg-[#4527A0]/30 transition-colors relative z-10 shadow-[0_0_10px_rgba(179,157,219,0.2)]">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#B39DDB" strokeWidth="1.5">
+                <circle cx="12" cy="12" r="3"/>
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+              </svg>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* HUD Modules Layer - Desktop Vertical Left Sidebar */}
+      {unfoldProgress > 1.0 && (
+        <div className="hidden md:flex absolute left-6 md:left-12 top-0 bottom-0 py-32 pointer-events-none z-20 flex-col justify-between font-pixel">
           
           {/* ARCHIVE / BLOG */}
           <div className="relative">
@@ -1055,7 +1162,7 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
                 transform: `translateX(${(1 - progArchive) * -50}px)`,
                 display: progArchive === 0 ? 'none' : 'flex'
               }}
-              onClick={() => window.location.href = '/blog'}
+              onClick={() => navigate('/blog')}
             >
               <div className="w-12 h-12 border border-[#4ADE80] flex items-center justify-center bg-[#0a140f]/90 group-hover:bg-[#1B3B2B] transition-colors relative z-10 shadow-[0_0_15px_rgba(74,222,128,0.2)]">
                 <div className="absolute inset-0 noise"></div>
@@ -1147,7 +1254,7 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
                 transform: `translateX(${(1 - progProjects) * -50}px)`,
                 display: progProjects === 0 ? 'none' : 'flex'
               }}
-              onClick={() => window.location.href = '/projects'}
+              onClick={() => navigate('/projects')}
             >
               <div className="w-12 h-12 border border-[#81D4FA] flex items-center justify-center bg-[#0a140f]/90 group-hover:bg-[#01579B]/30 transition-colors relative z-10 shadow-[0_0_15px_rgba(129,212,250,0.2)]">
                 <div className="absolute inset-0 noise"></div>
@@ -1246,7 +1353,7 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
                 transform: `translateX(${(1 - progSettings) * -50}px)`,
                 display: progSettings === 0 ? 'none' : 'flex'
               }}
-              onClick={() => window.location.href = '/settings'}
+              onClick={() => navigate('/settings')}
             >
               <div className="w-12 h-12 border border-[#B39DDB] flex items-center justify-center bg-[#0a140f]/90 group-hover:bg-[#4527A0]/30 transition-colors relative z-10 shadow-[0_0_15px_rgba(179,157,219,0.2)]">
                 <div className="absolute inset-0 noise"></div>
@@ -1273,9 +1380,9 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
         </div>
       )}
 
-          {/* LINKS Module - Right Side */}
-          {unfoldProgress > 1.0 && (
-            <div className="absolute right-6 md:right-12 top-1/2 -translate-y-1/2 pointer-events-none z-20 font-pixel">
+          {/* LINKS Module - Desktop Right Side */}
+      {unfoldProgress > 1.0 && (
+        <div className="hidden md:block absolute right-6 md:right-12 top-1/2 -translate-y-1/2 pointer-events-none z-20 font-pixel">
               
               <div className="relative">
                 {/* Firework effect for LINKS */}
@@ -1343,7 +1450,7 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
                     transform: `translateX(${(1 - progLinks) * 50}px)`,
                     display: progLinks === 0 ? 'none' : 'flex'
                   }}
-                  onClick={() => window.location.href = '/links'}
+                  onClick={() => navigate('/links')}
                 >
                   <div className="w-12 h-12 border border-[#FFCC80] flex items-center justify-center bg-[#0a140f]/90 group-hover:bg-[#E65100]/30 transition-colors relative z-10 shadow-[0_0_15px_rgba(255,204,128,0.2)]">
                     <div className="absolute inset-0 noise"></div>
