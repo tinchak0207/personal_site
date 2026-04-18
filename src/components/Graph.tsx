@@ -1234,11 +1234,11 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
                 transform: `translateX(${(1 - progSettings) * -50}px)`,
                 display: progSettings === 0 ? 'none' : 'flex'
               }}
-              onClick={() => window.location.href = '/admin'}
+              onClick={() => window.location.href = '/settings'}
             >
-              <div className="w-12 h-12 border border-[#B39DDB] flex items-center justify-center bg-[#0a140f]/90 relative z-10 shadow-[0_0_15px_rgba(179,157,219,0.2)]">
+              <div className="w-12 h-12 border border-[#B39DDB] flex items-center justify-center bg-[#0a140f]/90 group-hover:bg-[#4527A0]/30 transition-colors relative z-10 shadow-[0_0_15px_rgba(179,157,219,0.2)]">
                 <div className="absolute inset-0 noise"></div>
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#B39DDB" strokeWidth="1.5" className={progSettings === 1 ? "animate-[spin_4s_linear_infinite]" : ""}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#B39DDB" strokeWidth="1.5" className={progSettings === 1 ? "group-hover:animate-[spin_2s_linear_infinite]" : ""}>
                   <circle cx="12" cy="12" r="3"/>
                   <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
                 </svg>
@@ -1253,17 +1253,6 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
                 <div className="pl-2 whitespace-nowrap">
                   <h3 className="text-[#B39DDB] tracking-[0.3em] text-lg md:text-xl">系統設定</h3>
                   <p className="text-[#7E57C2] text-xs tracking-widest mt-1">/sys_config</p>
-                </div>
-                <div className="pl-2 flex gap-2 text-[10px] whitespace-nowrap">
-                  {['繁', '简', 'EN'].map(l => (
-                    <button 
-                      key={l}
-                      onClick={() => setLang(l)}
-                      className={`transition-colors ${lang === l ? 'text-[#B39DDB] font-bold' : 'text-[#7E57C2] hover:text-[#D1C4E9]'}`}
-                    >
-                      [{l}]
-                    </button>
-                  ))}
                 </div>
               </div>
             </div>
@@ -1342,7 +1331,7 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
                     transform: `translateX(${(1 - progLinks) * 50}px)`,
                     display: progLinks === 0 ? 'none' : 'flex'
                   }}
-                  onClick={() => window.open('https://github.com/tinchak0207', '_blank')}
+                  onClick={() => window.location.href = '/links'}
                 >
                   <div className="w-12 h-12 border border-[#FFCC80] flex items-center justify-center bg-[#0a140f]/90 group-hover:bg-[#E65100]/30 transition-colors relative z-10 shadow-[0_0_15px_rgba(255,204,128,0.2)]">
                     <div className="absolute inset-0 noise"></div>
