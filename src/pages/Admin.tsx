@@ -5,8 +5,9 @@ import { CRTFilter } from '../components/CRTFilter';
 import { RamblingsManager } from '../components/admin/RamblingsManager';
 import { ProjectsManager } from '../components/admin/ProjectsManager';
 import { ExternalLinksManager } from '../components/admin/ExternalLinksManager';
+import { GraphNodesManager } from '../components/admin/GraphNodesManager';
 
-type AdminTab = 'ramblings' | 'projects' | 'links';
+type AdminTab = 'ramblings' | 'projects' | 'links' | 'nodes';
 
 export function Admin() {
   const [session, setSession] = useState<Session | null>(null);
@@ -146,6 +147,12 @@ export function Admin() {
           >
             4. 外部鏈接 (EXTERNAL LINKS)
           </button>
+          <button 
+            onClick={() => setActiveTab('nodes')}
+            className={`px-4 py-2 border transition-colors ${activeTab === 'nodes' ? 'border-[#4ADE80] text-[#4ADE80] bg-[#0a140f]' : 'border-[#1B3B2B] text-[#4a6b57] hover:border-[#4a6b57]'}`}
+          >
+            5. 節點管理 (NODES)
+          </button>
         </div>
 
         {errorMsg && (
@@ -164,6 +171,9 @@ export function Admin() {
           )}
           {activeTab === 'links' && (
             <ExternalLinksManager setLoading={setLoading} setErrorMsg={setErrorMsg} />
+          )}
+          {activeTab === 'nodes' && (
+            <GraphNodesManager setLoading={setLoading} setErrorMsg={setErrorMsg} />
           )}
         </div>
       </div>

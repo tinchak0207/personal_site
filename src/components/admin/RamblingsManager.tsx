@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Post } from '../../types';
+import { NodeSelector } from './NodeSelector';
 
 export function RamblingsManager({ setLoading, setErrorMsg }: { setLoading: (l: boolean) => void, setErrorMsg: (m: string) => void }) {
   const [posts, setPosts] = useState<Post[]>([]);
@@ -129,8 +130,17 @@ export function RamblingsManager({ setLoading, setErrorMsg }: { setLoading: (l: 
           </div>
         </div>
 
+        <NodeSelector 
+          selectedTags={editingPost.tags || []} 
+          onAddTag={(tag) => {
+            const currentTags = editingPost.tags || [];
+            if (!currentTags.includes(tag)) setEditingPost({ ...editingPost, tags: [...currentTags, tag] });
+          }}
+          onRemoveTag={removeTag}
+        />
+
         <div>
-          <label className="block font-pixel text-xs text-[#4a6b57] mb-2">TAGS</label>
+          <label className="block font-pixel text-xs text-[#4a6b57] mb-2">CUSTOM TAGS</label>
           <div className="flex flex-wrap gap-2 mb-2">
             {(editingPost.tags || []).map((tag: string) => (
               <span key={tag} className="flex items-center gap-1 bg-[#1B3B2B] text-[#4ADE80] px-3 py-1 text-sm font-pixel border border-[#4a6b57]">

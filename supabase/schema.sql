@@ -94,7 +94,32 @@ CREATE TRIGGER update_projects_updated_at
   FOR EACH ROW
   EXECUTE FUNCTION handle_updated_at();
 
--- 6. Create external_links table
+-- 7. Create graph_nodes table
+CREATE TABLE public.graph_nodes (
+  id TEXT PRIMARY KEY,
+  label TEXT NOT NULL,
+  address TEXT NOT NULL,
+  group_type TEXT DEFAULT 'node' NOT NULL,
+  radius INTEGER DEFAULT 5 NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+ALTER TABLE public.graph_nodes ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Public can read graph_nodes" ON public.graph_nodes FOR SELECT USING (true);
+CREATE POLICY "Admins can manage graph_nodes" ON public.graph_nodes USING (auth.role() = 'authenticated');
+
+-- 8. Create graph_links table
+CREATE TABLE public.graph_links (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  source TEXT REFERENCES public.graph_nodes(id) ON DELETE CASCADE,
+  target TEXT REFERENCES public.graph_nodes(id) ON DELETE CASCADE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+  UNIQUE(source, target)
+);
+
+ALTER TABLE public.graph_links ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Public can read graph_links" ON public.graph_links FOR SELECT USING (true);
+CREATE POLICY "Admins can manage graph_links" ON public.graph_links USING (auth.role() = 'authenticated');
 CREATE TABLE public.external_links (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   title TEXT NOT NULL,
