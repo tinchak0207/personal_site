@@ -36,11 +36,6 @@ export interface SubNode {
 }
 
 const SUB_NODES_MAP: Record<string, SubNode[]> = {
-  'ME': [
-    { id: 'core', label: 'Core' },
-    { id: 'root', label: 'Root' },
-    { id: 'obs', label: 'Observer' }
-  ],
   'INFP': [
     { id: 'fi', label: 'Fi' },
     { id: 'ne', label: 'Ne' },
@@ -120,6 +115,12 @@ export const Graph: React.FC = () => {
   const [dimensions, setDimensions] = useState({ width: typeof window !== 'undefined' ? window.innerWidth : 1920, height: typeof window !== 'undefined' ? window.innerHeight : 1080 });
 
   const [lang, setLang] = useState('繁');
+  const [dynamicScale, setDynamicScale] = useState(1);
+
+  const dimensionsRef = useRef(dimensions);
+  useEffect(() => {
+    dimensionsRef.current = dimensions;
+  }, [dimensions]);
 
   // Handle window resize
   useEffect(() => {
@@ -151,8 +152,35 @@ export const Graph: React.FC = () => {
       .force('collide', d3.forceCollide<NodeData>().radius(d => d.radius + 30));
 
     simulation.on('tick', () => {
-      setNodes([...simulation.nodes()]);
+      const currentNodes = simulation.nodes();
+      setNodes([...currentNodes]);
       setLinks([...simLinks]);
+
+      // Calculate dynamic scale to ensure nodes never exceed screen
+      const { width, height } = dimensionsRef.current;
+      let minX = width / 2;
+      let maxX = width / 2;
+      let minY = height / 2;
+      let maxY = height / 2;
+      
+      const margin = Math.min(width, height) * 0.15 + 50; // Dynamic margin for labels, hover effects, subnodes
+
+      currentNodes.forEach(node => {
+        if (node.x !== undefined && node.y !== undefined) {
+          minX = Math.min(minX, node.x - margin);
+          maxX = Math.max(maxX, node.x + margin);
+          minY = Math.min(minY, node.y - margin);
+          maxY = Math.max(maxY, node.y + margin);
+        }
+      });
+
+      const graphWidth = maxX - minX;
+      const graphHeight = maxY - minY;
+
+      const scaleX = width / Math.max(graphWidth, 1);
+      const scaleY = height / Math.max(graphHeight, 1);
+
+      setDynamicScale(Math.min(1, scaleX, scaleY));
     });
 
     simulationRef.current = simulation;
@@ -209,8 +237,9 @@ export const Graph: React.FC = () => {
     
     // Bounding box force to strictly prevent nodes from leaving screen
     sim.force('bounding', () => {
-      const padding = isMobile ? 30 : 80;
-      const { width, height } = dimensions;
+      const { width, height } = dimensionsRef.current;
+      const isMobile = width < 768;
+      const padding = isMobile ? 60 : 120; // Increased padding
       
       for (let node of sim.nodes()) {
         // Skip the fixed center node
@@ -218,19 +247,15 @@ export const Graph: React.FC = () => {
         
         if (node.x !== undefined && node.x < padding) {
           node.vx! += (padding - node.x) * 0.8;
-          node.x = padding; // Hard clamp
         }
         if (node.x !== undefined && node.x > width - padding) {
           node.vx! -= (node.x - (width - padding)) * 0.8;
-          node.x = width - padding; // Hard clamp
         }
         if (node.y !== undefined && node.y < padding) {
           node.vy! += (padding - node.y) * 0.8;
-          node.y = padding; // Hard clamp
         }
         if (node.y !== undefined && node.y > height - padding) {
           node.vy! -= (node.y - (height - padding)) * 0.8;
-          node.y = height - padding; // Hard clamp
         }
       }
     });
@@ -531,13 +556,13 @@ export const Graph: React.FC = () => {
 
         {/* Foreground Graph Layer */}
         <g style={{
-          transformOrigin: zoomTarget ? `${zoomTarget.x}px ${zoomTarget.y}px` : '50% 50%',
+          transformOrigin: '50% 50%',
           transform: typeof window !== 'undefined' 
-            ? `translate(${(mousePos.x - window.innerWidth / 2) * -0.05}px, ${(mousePos.y - window.innerHeight / 2) * -0.05}px) scale(${hoveredNode && unfoldProgress >= 1 ? 2.5 : 1})` 
+            ? `translate(${(mousePos.x - window.innerWidth / 2) * -0.05}px, ${(mousePos.y - window.innerHeight / 2) * -0.05}px) scale(${dynamicScale})` 
             : 'translate(0, 0) scale(1)',
           opacity: 1, // Graph stays visible, never fades out
           pointerEvents: 'auto', // Graph always interactive
-          transition: 'transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), transform-origin 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease'
+          transition: 'transform 0.1s ease-out, transform-origin 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease'
         }}>
           {/* Subtle background grid for parallax reference */}
           <g stroke="#1B3B2B" strokeOpacity={0.15} strokeWidth={1} strokeDasharray="2 10">
