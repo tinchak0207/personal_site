@@ -80,3 +80,20 @@
     transform: scale(1);
   }
 }
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(3, 10, 7, 0.5);
+  border-left: 1px solid #1B3B2B;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #1B3B2B;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #4a6b57;
+}

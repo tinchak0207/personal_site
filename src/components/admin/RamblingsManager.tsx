@@ -105,94 +105,97 @@ export function RamblingsManager({ setLoading, setErrorMsg }: { setLoading: (l: 
     setLoading(false);
   };
 
-  if (editingPost) {
-    return (
-      <form onSubmit={handleSavePost} className="flex flex-col gap-6">
-        <div className="flex justify-between items-center border-b border-[#1B3B2B] pb-4">
-          <h2 className="text-xl font-pixel text-[#A5D6B7]">{editingPost.id ? 'EDIT LOG' : 'NEW LOG'}</h2>
-          <div className="flex gap-4">
-            <button type="button" onClick={() => setEditingPost(null)} className="text-[#4a6b57] hover:text-[#A5D6B7] font-pixel text-sm transition-colors">CANCEL</button>
-            <button type="submit" className="text-[#030a07] bg-[#4ADE80] px-4 py-1 font-pixel text-sm hover:bg-[#E8F5E9] transition-colors">COMMIT</button>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 gap-6">
-          <div>
-            <label className="block font-pixel text-xs text-[#4a6b57] mb-2">TITLE</label>
+    if (editingPost) {
+      return (
+        <form onSubmit={handleSavePost} className="flex flex-col h-[calc(100vh-200px)]">
+          {/* Header Bar */}
+          <div className="flex justify-between items-center border-b border-[#1B3B2B] pb-3 mb-4 shrink-0">
             <input 
               type="text" 
               value={editingPost.title || ''}
               onChange={(e) => setEditingPost({...editingPost, title: e.target.value})}
-              className="w-full bg-[#0a140f] border border-[#1B3B2B] focus:border-[#4ADE80] text-[#E8F5E9] p-3 outline-none placeholder-[#4a6b57]/50"
-              placeholder="Enter log title..."
+              className="bg-transparent border-none text-[#E8F5E9] text-2xl font-pixel outline-none placeholder-[#4a6b57]/50 w-1/2"
+              placeholder="Untitled Log"
               required
             />
-          </div>
-        </div>
-
-        <NodeSelector 
-          selectedTags={editingPost.tags || []} 
-          onAddTag={(tag) => {
-            const currentTags = editingPost.tags || [];
-            if (!currentTags.includes(tag)) setEditingPost({ ...editingPost, tags: [...currentTags, tag] });
-          }}
-          onRemoveTag={removeTag}
-        />
-
-        <div>
-          <label className="block font-pixel text-xs text-[#4a6b57] mb-2">CUSTOM TAGS</label>
-          <div className="flex flex-wrap gap-2 mb-2">
-            {(editingPost.tags || []).map((tag: string) => (
-              <span key={tag} className="flex items-center gap-1 bg-[#1B3B2B] text-[#4ADE80] px-3 py-1 text-sm font-pixel border border-[#4a6b57]">
-                #{tag}
-                <button type="button" onClick={() => removeTag(tag)} className="ml-1 text-[#E8F5E9] hover:text-red-400 focus:outline-none">×</button>
-              </span>
-            ))}
-          </div>
-          <input 
-            type="text" 
-            onKeyDown={handleTagInput}
-            className="w-full bg-[#0a140f] border border-[#1B3B2B] focus:border-[#4ADE80] text-[#E8F5E9] p-3 outline-none font-pixel text-sm placeholder-[#4a6b57]/50"
-            placeholder="Type tag and press Enter or Comma..."
-          />
-        </div>
-
-        <div className="flex items-center gap-3">
-          <input 
-            type="checkbox" 
-            id="published"
-            checked={editingPost.published || false}
-            onChange={(e) => setEditingPost({...editingPost, published: e.target.checked})}
-            className="w-4 h-4 accent-[#4ADE80] bg-[#0a140f] border-[#1B3B2B]"
-          />
-          <label htmlFor="published" className="font-pixel text-sm text-[#A5D6B7] cursor-pointer">
-            PUBLISH TO PUBLIC ARCHIVE
-          </label>
-        </div>
-
-        <div className="flex-1 flex flex-col min-h-[500px]">
-          <div className="flex justify-between items-end mb-2">
-            <label className="block font-pixel text-xs text-[#4a6b57]">MARKDOWN CONTENT</label>
-            <div className="flex gap-1 bg-[#0a140f] border border-[#1B3B2B] p-1 rounded-sm">
-              <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => insertMarkdown('**', '**')} className="p-1.5 text-[#A5D6B7] hover:bg-[#1B3B2B] hover:text-[#4ADE80] transition-colors rounded" title="Bold">B</button>
-              <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => insertMarkdown('*', '*')} className="p-1.5 text-[#A5D6B7] hover:bg-[#1B3B2B] hover:text-[#4ADE80] transition-colors rounded" title="Italic">I</button>
-              <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => insertMarkdown('### ', '')} className="p-1.5 text-[#A5D6B7] hover:bg-[#1B3B2B] hover:text-[#4ADE80] transition-colors rounded" title="Heading">H</button>
-              <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => insertMarkdown('[', '](url)')} className="p-1.5 text-[#A5D6B7] hover:bg-[#1B3B2B] hover:text-[#4ADE80] transition-colors rounded" title="Link">L</button>
-              <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => insertMarkdown('![alt](', ')')} className="p-1.5 text-[#A5D6B7] hover:bg-[#1B3B2B] hover:text-[#4ADE80] transition-colors rounded" title="Image">IMG</button>
-              <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => insertMarkdown('```\n', '\n```')} className="p-1.5 text-[#A5D6B7] hover:bg-[#1B3B2B] hover:text-[#4ADE80] transition-colors rounded" title="Code Block">{'<>'}</button>
+            <div className="flex items-center gap-4">
+              <label className="flex items-center gap-2 cursor-pointer text-[#A5D6B7] hover:text-[#4ADE80] transition-colors font-pixel text-xs">
+                <input 
+                  type="checkbox" 
+                  checked={editingPost.published || false}
+                  onChange={(e) => setEditingPost({...editingPost, published: e.target.checked})}
+                  className="w-3 h-3 accent-[#4ADE80] bg-[#0a140f] border-[#1B3B2B]"
+                />
+                PUBLISH
+              </label>
+              <button type="button" onClick={() => setEditingPost(null)} className="text-[#4a6b57] hover:text-red-400 font-pixel text-sm transition-colors">DISCARD</button>
+              <button type="submit" className="text-[#030a07] bg-[#4ADE80] px-4 py-1.5 font-pixel text-sm hover:bg-[#E8F5E9] transition-colors shadow-[0_0_10px_rgba(74,222,128,0.2)]">COMMIT</button>
             </div>
           </div>
-          <textarea 
-            id="markdown-editor"
-            value={editingPost.content || ''}
-            onChange={(e) => setEditingPost({...editingPost, content: e.target.value})}
-            className="flex-1 w-full bg-[#0a140f] border border-[#1B3B2B] focus:border-[#4ADE80] text-[#A5D6B7] p-4 font-mono outline-none resize-y min-h-[400px] placeholder-[#4a6b57]/50"
-            placeholder="# H1 Header&#10;Write your thoughts here..."
-          />
-        </div>
-      </form>
-    );
-  }
+  
+          <div className="flex flex-1 gap-6 min-h-0">
+            {/* Left Column: Properties (Tags, etc) */}
+            <div className="w-64 shrink-0 flex flex-col gap-6 overflow-y-auto pr-2 custom-scrollbar">
+              <div className="border border-[#1B3B2B] bg-[#0a140f]/50 p-4">
+                <h3 className="font-pixel text-xs text-[#4a6b57] mb-3 border-b border-[#1B3B2B] pb-2">PROPERTIES</h3>
+                
+                <div className="mb-4">
+                  <label className="block font-pixel text-[10px] tracking-widest text-[#4a6b57] mb-2">CUSTOM TAGS</label>
+                  <div className="flex flex-wrap gap-2 mb-2">
+                    {(editingPost.tags || []).map((tag: string) => (
+                      <span key={tag} className="flex items-center gap-1 bg-[#1B3B2B] text-[#4ADE80] px-2 py-0.5 text-[10px] font-pixel border border-[#4a6b57] hover:border-red-900 transition-colors group cursor-pointer" onClick={() => removeTag(tag)}>
+                        #{tag}
+                        <span className="text-[#E8F5E9] opacity-0 group-hover:opacity-100 group-hover:text-red-400 transition-opacity">×</span>
+                      </span>
+                    ))}
+                  </div>
+                  <input 
+                    type="text" 
+                    onKeyDown={handleTagInput}
+                    className="w-full bg-[#030a07] border border-[#1B3B2B] focus:border-[#4ADE80] text-[#E8F5E9] p-2 outline-none font-pixel text-[10px] placeholder-[#4a6b57]/50 transition-colors"
+                    placeholder="Add tag..."
+                  />
+                </div>
+                
+                <div className="mb-2">
+                  <label className="block font-pixel text-[10px] tracking-widest text-[#4a6b57] mb-2">NODE SELECTOR</label>
+                  <NodeSelector 
+                    selectedTags={editingPost.tags || []} 
+                    onAddTag={(tag) => {
+                      const currentTags = editingPost.tags || [];
+                      if (!currentTags.includes(tag)) setEditingPost({ ...editingPost, tags: [...currentTags, tag] });
+                    }}
+                    onRemoveTag={removeTag}
+                  />
+                </div>
+              </div>
+            </div>
+  
+            {/* Right Column: Editor */}
+            <div className="flex-1 flex flex-col min-h-0 border border-[#1B3B2B] bg-[#0a140f]/30">
+              <div className="flex justify-between items-center bg-[#0a140f] border-b border-[#1B3B2B] p-2 shrink-0">
+                <span className="font-pixel text-[10px] tracking-widest text-[#4a6b57] ml-2">MARKDOWN EDITOR</span>
+                <div className="flex gap-1">
+                  <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => insertMarkdown('**', '**')} className="px-2 py-1 text-[#A5D6B7] font-mono text-xs hover:bg-[#1B3B2B] hover:text-[#4ADE80] transition-colors" title="Bold">B</button>
+                  <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => insertMarkdown('*', '*')} className="px-2 py-1 text-[#A5D6B7] font-mono text-xs hover:bg-[#1B3B2B] hover:text-[#4ADE80] transition-colors italic" title="Italic">I</button>
+                  <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => insertMarkdown('### ', '')} className="px-2 py-1 text-[#A5D6B7] font-mono text-xs hover:bg-[#1B3B2B] hover:text-[#4ADE80] transition-colors font-bold" title="Heading">H</button>
+                  <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => insertMarkdown('[', '](url)')} className="px-2 py-1 text-[#A5D6B7] font-mono text-xs hover:bg-[#1B3B2B] hover:text-[#4ADE80] transition-colors" title="Link">L</button>
+                  <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => insertMarkdown('![alt](', ')')} className="px-2 py-1 text-[#A5D6B7] font-mono text-xs hover:bg-[#1B3B2B] hover:text-[#4ADE80] transition-colors" title="Image">IMG</button>
+                  <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => insertMarkdown('```\n', '\n```')} className="px-2 py-1 text-[#A5D6B7] font-mono text-xs hover:bg-[#1B3B2B] hover:text-[#4ADE80] transition-colors" title="Code Block">{'<>'}</button>
+                </div>
+              </div>
+              <textarea 
+                id="markdown-editor"
+                value={editingPost.content || ''}
+                onChange={(e) => setEditingPost({...editingPost, content: e.target.value})}
+                className="flex-1 w-full bg-transparent border-none text-[#A5D6B7] p-6 font-mono outline-none resize-none placeholder-[#4a6b57]/30 custom-scrollbar leading-relaxed"
+                placeholder="Start typing..."
+              />
+            </div>
+          </div>
+        </form>
+      );
+    }
 
   return (
     <div>
