@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Post } from '../../types';
 import { NodeSelector } from './NodeSelector';
@@ -121,17 +121,17 @@ export function RamblingsManager({ setLoading, setErrorMsg }: { setLoading: (l: 
     }
   };
 
-  const handleSavePost = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSavePost = async (e?: React.FormEvent, isAutoSave = false) => {
+    if (e) e.preventDefault();
     if (!editingPost || !editingPost.title) {
-      setErrorMsg('Title is required');
+      if (!isAutoSave) setErrorMsg('Title is required');
       return;
     }
     
     const finalSlug = editingPost.slug || editingPost.title.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
     const finalFolder = editingPost.folder?.trim() || '/';
 
-    setLoading(true);
+    if (!isAutoSave) setLoading(true);
     const postData = {
       title: editingPost.title,
       slug: finalSlug,
@@ -147,11 +147,16 @@ export function RamblingsManager({ setLoading, setErrorMsg }: { setLoading: (l: 
         .update({ ...postData, updated_at: new Date().toISOString() })
         .eq('id', editingPost.id);
         
-      if (error) setErrorMsg(error.message);
-      else {
-        fetchPosts();
+      if (error) {
+        if (!isAutoSave) setErrorMsg(error.message);
+      } else {
+        if (!isAutoSave) fetchPosts();
+        else {
+          setPosts(prev => prev.map(p => p.id === editingPost.id ? { ...p, ...postData, updated_at: new Date().toISOString() } as Post : p));
+        }
       }
     } else {
+      if (isAutoSave) return; // Do not auto-save a brand new post without ID
       const { data, error } = await supabase.from('posts').insert([postData]).select();
       if (error) setErrorMsg(error.message);
       else if (data && data.length > 0) {
@@ -159,8 +164,17 @@ export function RamblingsManager({ setLoading, setErrorMsg }: { setLoading: (l: 
         fetchPosts();
       }
     }
-    setLoading(false);
+    if (!isAutoSave) setLoading(false);
   };
+
+  // Auto-save effect
+  useEffect(() => {
+    if (!editingPost || !editingPost.id) return;
+    const timer = setTimeout(() => {
+      handleSavePost(undefined, true);
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, [editingPost]);
 
   const handleDeletePost = async () => {
     if (!editingPost?.id) return;
@@ -177,12 +191,14 @@ export function RamblingsManager({ setLoading, setErrorMsg }: { setLoading: (l: 
   };
 
   // Group posts by folder
-  const postsByFolder = posts.reduce((acc, post) => {
-    const f = post.folder || '/';
-    if (!acc[f]) acc[f] = [];
-    acc[f].push(post);
-    return acc;
-  }, {} as Record<string, Post[]>);
+  const postsByFolder = useMemo(() => {
+    return posts.reduce((acc, post) => {
+      const f = post.folder || '/';
+      if (!acc[f]) acc[f] = [];
+      acc[f].push(post);
+      return acc;
+    }, {} as Record<string, Post[]>);
+  }, [posts]);
 
   const toggleFolder = (folder: string) => {
     if (expandedFolders.includes(folder)) {

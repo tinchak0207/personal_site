@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Project } from '../../types';
 import { NodeSelector } from './NodeSelector';
@@ -66,14 +66,14 @@ export function ProjectsManager({ setLoading, setErrorMsg }: { setLoading: (l: b
     }, 0);
   };
 
-  const handleSaveProject = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSaveProject = async (e?: React.FormEvent, isAutoSave = false) => {
+    if (e) e.preventDefault();
     if (!editingProject || !editingProject.title || !editingProject.description) {
-      setErrorMsg('Title and description are required');
+      if (!isAutoSave) setErrorMsg('Title and description are required');
       return;
     }
     
-    setLoading(true);
+    if (!isAutoSave) setLoading(true);
     const projectData = {
       title: editingProject.title,
       description: editingProject.description,
@@ -91,11 +91,16 @@ export function ProjectsManager({ setLoading, setErrorMsg }: { setLoading: (l: b
         .update({ ...projectData, updated_at: new Date().toISOString() })
         .eq('id', editingProject.id);
         
-      if (error) setErrorMsg(error.message);
-      else {
-        fetchProjects();
+      if (error) {
+        if (!isAutoSave) setErrorMsg(error.message);
+      } else {
+        if (!isAutoSave) fetchProjects();
+        else {
+          setProjects(prev => prev.map(p => p.id === editingProject.id ? { ...p, ...projectData, updated_at: new Date().toISOString() } as Project : p));
+        }
       }
     } else {
+      if (isAutoSave) return;
       const { data, error } = await supabase.from('projects').insert([projectData]).select();
       if (error) setErrorMsg(error.message);
       else if (data && data.length > 0) {
@@ -103,8 +108,17 @@ export function ProjectsManager({ setLoading, setErrorMsg }: { setLoading: (l: b
         fetchProjects();
       }
     }
-    setLoading(false);
+    if (!isAutoSave) setLoading(false);
   };
+
+  // Auto-save effect
+  useEffect(() => {
+    if (!editingProject || !editingProject.id) return;
+    const timer = setTimeout(() => {
+      handleSaveProject(undefined, true);
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, [editingProject]);
 
   const handleDeleteProject = async () => {
     if (!editingProject?.id) return;
@@ -121,12 +135,14 @@ export function ProjectsManager({ setLoading, setErrorMsg }: { setLoading: (l: b
   };
 
   // Group projects by folder
-  const projectsByFolder = projects.reduce((acc, project) => {
-    const f = project.folder || '/';
-    if (!acc[f]) acc[f] = [];
-    acc[f].push(project);
-    return acc;
-  }, {} as Record<string, Project[]>);
+  const projectsByFolder = useMemo(() => {
+    return projects.reduce((acc, project) => {
+      const f = project.folder || '/';
+      if (!acc[f]) acc[f] = [];
+      acc[f].push(project);
+      return acc;
+    }, {} as Record<string, Project[]>);
+  }, [projects]);
 
   const toggleFolder = (folder: string) => {
     if (expandedFolders.includes(folder)) {

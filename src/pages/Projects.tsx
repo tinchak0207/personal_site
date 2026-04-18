@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { Project } from '../types';
+import { CRTFilter } from '../components/CRTFilter';
 
 export default function Projects() {
   const [projects, setProjects] = useState<Project[]>([]);
@@ -25,7 +26,7 @@ export default function Projects() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#030a07] text-[#A5D6B7] font-mono p-6 selection:bg-[#4ADE80] selection:text-[#030a07] noise relative">
+    <div className="min-h-screen bg-[#030a07] text-[#A5D6B7] font-mono p-6 selection:bg-[#4ADE80] selection:text-[#030a07] relative">
       <div className="max-w-5xl mx-auto relative z-10">
         <div className="flex justify-between items-end mb-12 border-b-2 border-[#1B3B2B] pb-4">
           <div>
@@ -96,6 +97,7 @@ export default function Projects() {
           </div>
         )}
       </div>
+      <CRTFilter />
     </div>
   );
 }

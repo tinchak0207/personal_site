@@ -222,7 +222,13 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
   const [zoomTarget, setZoomTarget] = useState<{x: number, y: number} | null>(null);
   const simulationRef = useRef<d3.Simulation<NodeData, LinkData> | null>(null);
   const draggingNodeIdRef = useRef<string | null>(null);
-  const [unfoldProgress, setUnfoldProgress] = useState(0);
+  const [unfoldProgress, setUnfoldProgress] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = sessionStorage.getItem('unfolded');
+      if (saved === 'true') return 3;
+    }
+    return 0;
+  });
   const [dimensions, setDimensions] = useState({ width: typeof window !== 'undefined' ? window.innerWidth : 1920, height: typeof window !== 'undefined' ? window.innerHeight : 1080 });
 
   const [lang, setLang] = useState('繁');
@@ -654,6 +660,12 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
 
   const [glitchText, setGlitchText] = useState('向下滾動');
   
+  useEffect(() => {
+    if (unfoldProgress >= 2.8 && typeof window !== 'undefined') {
+      sessionStorage.setItem('unfolded', 'true');
+    }
+  }, [unfoldProgress]);
+
   useEffect(() => {
     if (unfoldProgress <= 1.0) {
       setGlitchText('向下滾動');

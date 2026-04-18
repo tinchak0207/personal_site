@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { CRTFilter } from '../components/CRTFilter';
 
 export default function Settings() {
   const [lang, setLang] = useState('繁');
 
   return (
-    <div className="min-h-screen bg-[#030a07] text-[#A5D6B7] font-mono p-6 selection:bg-[#4ADE80] selection:text-[#030a07] noise relative">
+    <div className="min-h-screen bg-[#030a07] text-[#A5D6B7] font-mono p-6 selection:bg-[#4ADE80] selection:text-[#030a07] relative">
       {/* Grid Background */}
       <div className="fixed inset-0 pointer-events-none" style={{
         backgroundImage: `
@@ -97,6 +98,7 @@ export default function Settings() {
           </section>
         </div>
       </div>
+      <CRTFilter />
     </div>
   );
 }

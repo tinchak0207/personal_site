@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { ExternalLink } from '../types';
+import { CRTFilter } from '../components/CRTFilter';
 
 export default function Links() {
   const [links, setLinks] = useState<ExternalLink[]>([]);
@@ -25,7 +26,7 @@ export default function Links() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#030a07] text-[#A5D6B7] font-mono p-6 selection:bg-[#4ADE80] selection:text-[#030a07] noise relative">
+    <div className="min-h-screen bg-[#030a07] text-[#A5D6B7] font-mono p-6 selection:bg-[#4ADE80] selection:text-[#030a07] relative">
       <div className="max-w-4xl mx-auto relative z-10">
         <div className="flex justify-between items-end mb-12 border-b-2 border-[#1B3B2B] pb-4">
           <div>
@@ -85,6 +86,7 @@ export default function Links() {
           </div>
         )}
       </div>
+      <CRTFilter />
     </div>
   );
 }
