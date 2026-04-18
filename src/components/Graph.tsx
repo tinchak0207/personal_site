@@ -602,9 +602,9 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
       
       setUnfoldProgress(prev => {
         // Continuous touch scroll delta calculation
-        // A full screen swipe of ~600px * 0.0035 ≈ 2.1 progress,
-        // so it takes roughly 2-3 comfortable swipes to unlock everything smoothly
-        let delta = deltaY * 0.0035;
+        // A full screen swipe of ~600px * 0.0012 ≈ 0.72 progress,
+        // which forces the user to swipe around 4 full times to reach 3.0
+        let delta = deltaY * 0.0012;
         return Math.max(0, Math.min(3.0, prev + delta));
       });
     };
