@@ -688,16 +688,16 @@ export const Graph: React.FC = () => {
         </g>
       </svg>
 
-      {/* HUD Modules Layer - Vertical Left Sidebar */}
+      {/* HUD Modules Layer - Top Bar on Mobile, Vertical Left Sidebar on Desktop */}
       {unfoldProgress > 1.0 && (
-        <div className="absolute left-6 md:left-12 top-0 bottom-0 py-32 pointer-events-none z-20 flex flex-col justify-between font-pixel">
+        <div className="absolute top-8 md:top-0 left-1/2 md:left-12 -translate-x-1/2 md:translate-x-0 bottom-auto md:bottom-0 py-0 md:py-32 w-[90%] md:w-auto pointer-events-none z-20 flex flex-row md:flex-col justify-center md:justify-between gap-4 md:gap-0 font-pixel">
           
           {/* ARCHIVE / BLOG */}
           <div 
             className="pointer-events-auto flex items-center gap-4 cursor-pointer group"
             style={{ 
               opacity: progArchive,
-              transform: `translateX(${(1 - progArchive) * -100}px)`,
+              transform: dimensions.width < 768 ? `translateY(${(1 - progArchive) * -100}px)` : `translateX(${(1 - progArchive) * -100}px)`,
               display: progArchive === 0 ? 'none' : 'flex'
             }}
             onClick={() => window.location.href = '/blog'}
@@ -729,7 +729,7 @@ export const Graph: React.FC = () => {
             className="pointer-events-auto flex items-center gap-4 cursor-pointer group"
             style={{ 
               opacity: progProjects,
-              transform: `translateX(${(1 - progProjects) * -100}px)`,
+              transform: dimensions.width < 768 ? `translateY(${(1 - progProjects) * -100}px)` : `translateX(${(1 - progProjects) * -100}px)`,
               display: progProjects === 0 ? 'none' : 'flex'
             }}
             onClick={() => window.location.href = '/blog'}
@@ -768,7 +768,7 @@ export const Graph: React.FC = () => {
             className="pointer-events-auto flex items-center gap-4 group"
             style={{ 
               opacity: progSettings,
-              transform: `translateX(${(1 - progSettings) * -100}px)`,
+              transform: dimensions.width < 768 ? `translateY(${(1 - progSettings) * -100}px)` : `translateX(${(1 - progSettings) * -100}px)`,
               display: progSettings === 0 ? 'none' : 'flex'
             }}
           >
@@ -809,7 +809,7 @@ export const Graph: React.FC = () => {
             className="pointer-events-auto flex items-center gap-4 cursor-pointer group"
             style={{ 
               opacity: progLinks,
-              transform: `translateX(${(1 - progLinks) * -100}px)`,
+              transform: dimensions.width < 768 ? `translateY(${(1 - progLinks) * -100}px)` : `translateX(${(1 - progLinks) * -100}px)`,
               display: progLinks === 0 ? 'none' : 'flex'
             }}
             onClick={() => window.open('https://github.com/tinchak0207', '_blank')}
