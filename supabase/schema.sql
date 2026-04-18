@@ -2,7 +2,7 @@
 -- Execute this in the Supabase SQL Editor
 
 -- 1. Create the posts table
-CREATE TABLE public.posts (
+CREATE TABLE IF NOT EXISTS public.posts (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   title TEXT NOT NULL,
   slug TEXT NOT NULL UNIQUE,
@@ -68,7 +68,7 @@ CREATE TRIGGER update_posts_updated_at
   EXECUTE FUNCTION handle_updated_at();
 
 -- 5. Create projects table
-CREATE TABLE public.projects (
+CREATE TABLE IF NOT EXISTS public.projects (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   title TEXT NOT NULL,
   description TEXT NOT NULL,
@@ -95,7 +95,7 @@ CREATE TRIGGER update_projects_updated_at
   EXECUTE FUNCTION handle_updated_at();
 
 -- 7. Create graph_nodes table
-CREATE TABLE public.graph_nodes (
+CREATE TABLE IF NOT EXISTS public.graph_nodes (
   id TEXT PRIMARY KEY,
   label TEXT NOT NULL,
   address TEXT NOT NULL,
@@ -109,7 +109,7 @@ CREATE POLICY "Public can read graph_nodes" ON public.graph_nodes FOR SELECT USI
 CREATE POLICY "Admins can manage graph_nodes" ON public.graph_nodes USING (auth.role() = 'authenticated');
 
 -- 8. Create graph_links table
-CREATE TABLE public.graph_links (
+CREATE TABLE IF NOT EXISTS public.graph_links (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   source TEXT REFERENCES public.graph_nodes(id) ON DELETE CASCADE,
   target TEXT REFERENCES public.graph_nodes(id) ON DELETE CASCADE,
@@ -120,7 +120,7 @@ CREATE TABLE public.graph_links (
 ALTER TABLE public.graph_links ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Public can read graph_links" ON public.graph_links FOR SELECT USING (true);
 CREATE POLICY "Admins can manage graph_links" ON public.graph_links USING (auth.role() = 'authenticated');
-CREATE TABLE public.external_links (
+CREATE TABLE IF NOT EXISTS public.external_links (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   title TEXT NOT NULL,
   url TEXT NOT NULL,
@@ -143,3 +143,14 @@ CREATE TRIGGER update_external_links_updated_at
   BEFORE UPDATE ON public.external_links
   FOR EACH ROW
   EXECUTE FUNCTION handle_updated_at();
+
+-- ==============================================================================
+-- ADD MISSING COLUMNS TO EXISTING TABLES (Idempotent)
+-- Run this if you get "Could not find the 'tags' column... in the schema cache"
+-- ==============================================================================
+ALTER TABLE public.posts ADD COLUMN IF NOT EXISTS tags TEXT[] DEFAULT '{}'::TEXT[];
+ALTER TABLE public.projects ADD COLUMN IF NOT EXISTS tags TEXT[] DEFAULT '{}'::TEXT[];
+ALTER TABLE public.external_links ADD COLUMN IF NOT EXISTS tags TEXT[] DEFAULT '{}'::TEXT[];
+
+-- Force Supabase's PostgREST to reload the schema cache
+NOTIFY pgrst, 'reload schema';
