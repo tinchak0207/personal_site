@@ -34,6 +34,8 @@ export interface SubNode {
   label: string;
   desc?: string;
   link?: string;
+  sx?: number;
+  sy?: number;
 }
 
 const SUB_NODES_MAP: Record<string, SubNode[]> = {
