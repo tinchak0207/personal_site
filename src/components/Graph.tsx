@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as d3 from 'd3-force';
 import { motion, AnimatePresence } from 'framer-motion';
+import { supabase } from '../lib/supabase';
 
 interface NodeData extends d3.SimulationNodeDatum {
   id: string;
@@ -228,6 +229,79 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
 
   const [lang, setLang] = useState('繁');
 
+  const [dynamicNodes, setDynamicNodes] = useState<NodeData[]>(INITIAL_NODES);
+  const [dynamicSubNodes, setDynamicSubNodes] = useState<Record<string, SubNode[]>>(SUB_NODES_MAP);
+
+  // Fetch data from Supabase
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // Fetch Graph Nodes
+        const { data: graphNodes } = await supabase.from('graph_nodes').select('*');
+        if (graphNodes && graphNodes.length > 0) {
+          const formattedNodes: NodeData[] = graphNodes.map(n => ({
+            id: n.id,
+            label: n.label,
+            address: n.address,
+            group: n.group_type as 'center' | 'node',
+            radius: n.radius,
+          }));
+          setDynamicNodes(formattedNodes);
+        }
+
+        // Fetch Posts (Ramblings)
+        const { data: posts } = await supabase.from('posts').select('id, title, slug, tags').eq('published', true);
+        // Fetch Projects
+        const { data: projects } = await supabase.from('projects').select('id, title, description, url, tags').eq('published', true);
+        // Fetch Links
+        const { data: links } = await supabase.from('external_links').select('id, title, url, tags').eq('published', true);
+
+        // Build SubNodes map
+        const newSubNodes = { ...SUB_NODES_MAP }; // Keep initial static ones or replace? Let's merge.
+
+        const addToSubNodes = (tags: string[], subNode: SubNode) => {
+          if (!tags || !tags.length) return;
+          tags.forEach(tag => {
+            if (!newSubNodes[tag]) newSubNodes[tag] = [];
+            if (!newSubNodes[tag].find(s => s.id === subNode.id)) {
+              newSubNodes[tag].push(subNode);
+            }
+          });
+        };
+
+        if (posts) {
+          posts.forEach(p => addToSubNodes(p.tags, {
+            id: `post-${p.id}`,
+            label: p.title || 'Untitled Log',
+            link: `/blog/${p.slug}`,
+            desc: 'Log Entry'
+          }));
+        }
+        if (projects) {
+          projects.forEach(p => addToSubNodes(p.tags, {
+            id: `proj-${p.id}`,
+            label: p.title,
+            link: p.url || '#',
+            desc: 'Project'
+          }));
+        }
+        if (links) {
+          links.forEach(l => addToSubNodes(l.tags, {
+            id: `link-${l.id}`,
+            label: l.title,
+            link: l.url || '#',
+            desc: 'External Link'
+          }));
+        }
+
+        setDynamicSubNodes(newSubNodes);
+      } catch (err) {
+        console.error('Failed to fetch graph data:', err);
+      }
+    };
+    fetchData();
+  }, []);
+
   // Handle window resize
   useEffect(() => {
     const handleResize = () => {
@@ -250,14 +324,26 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
     if (!containerRef.current) return;
     const { width, height } = dimensions;
 
-    const simNodes = INITIAL_NODES.map(d => ({ ...d }));
-    const simLinks = INITIAL_LINKS.map(d => ({ ...d }));
+    const simNodes = dynamicNodes.map(d => ({ ...d }));
+    // Generate links if they are not defined in DB yet? We just use INITIAL_LINKS for now
+    // A better approach is to fetch graph_links, but for simplicity, let's just connect everything to the center if no links exist.
+    let simLinks = INITIAL_LINKS.map(d => ({ ...d }));
+    
+    // If we loaded custom nodes, create default links to the center node if no links exist
+    if (dynamicNodes !== INITIAL_NODES) {
+      const centerNode = dynamicNodes.find(n => n.group === 'center') || dynamicNodes[0];
+      if (centerNode) {
+        simLinks = dynamicNodes
+          .filter(n => n.id !== centerNode.id)
+          .map(n => ({ source: centerNode.id, target: n.id }));
+      }
+    }
 
     // Fix the center node strictly to the middle of the screen
-    const centerNode = simNodes.find(n => n.group === 'center');
-    if (centerNode) {
-      centerNode.fx = width / 2;
-      centerNode.fy = height / 2;
+    const center = simNodes.find(n => n.group === 'center');
+    if (center) {
+      center.fx = width / 2;
+      center.fy = height / 2;
     }
 
     const simulation = d3.forceSimulation<NodeData, LinkData>(simNodes)
@@ -291,7 +377,7 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
     return () => {
       simulation.stop();
     };
-  }, []);
+  }, [dynamicNodes]);
 
   useEffect(() => {
     if (!simulationRef.current) return;
@@ -697,7 +783,7 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
                   </text>
 
                   {/* Sub-nodes that pop out on hover */}
-                  {isHovered && SUB_NODES_MAP[node.id]?.map((sub, idx, arr) => {
+                  {isHovered && dynamicSubNodes[node.id]?.map((sub, idx, arr) => {
                     const angle = (idx / arr.length) * Math.PI * 2 - Math.PI / 2; 
                     const dist = 35; 
                     const sx = Math.cos(angle) * dist;
@@ -898,9 +984,9 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
             <div className="w-full h-px bg-[#1B3B2B] my-2"></div>
             
             {/* Display Subnodes in Tooltip */}
-            {SUB_NODES_MAP[hoveredNode] && SUB_NODES_MAP[hoveredNode].length > 0 && (
+            {dynamicSubNodes[hoveredNode] && dynamicSubNodes[hoveredNode].length > 0 && (
               <div className="flex flex-col gap-2 mt-2">
-                {SUB_NODES_MAP[hoveredNode].map(sub => (
+                {dynamicSubNodes[hoveredNode].map(sub => (
                   <div key={sub.id} className="flex flex-col">
                     <span className="font-pixel text-[#A5D6B7] text-[10px]">• {sub.label}</span>
                     {sub.desc && (

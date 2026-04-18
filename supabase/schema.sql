@@ -66,3 +66,80 @@ CREATE TRIGGER update_posts_updated_at
   BEFORE UPDATE ON public.posts
   FOR EACH ROW
   EXECUTE FUNCTION handle_updated_at();
+
+-- 5. Create projects table
+CREATE TABLE public.projects (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  title TEXT NOT NULL,
+  description TEXT NOT NULL,
+  url TEXT,
+  github_url TEXT,
+  image_url TEXT,
+  published BOOLEAN DEFAULT false,
+  tags TEXT[] DEFAULT '{}'::TEXT[],
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+ALTER TABLE public.projects ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Public can read published projects" ON public.projects FOR SELECT USING (published = true);
+CREATE POLICY "Admins can read all projects" ON public.projects FOR SELECT USING (auth.role() = 'authenticated');
+CREATE POLICY "Admins can insert projects" ON public.projects FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+CREATE POLICY "Admins can update projects" ON public.projects FOR UPDATE USING (auth.role() = 'authenticated');
+CREATE POLICY "Admins can delete projects" ON public.projects FOR DELETE USING (auth.role() = 'authenticated');
+
+CREATE TRIGGER update_projects_updated_at
+  BEFORE UPDATE ON public.projects
+  FOR EACH ROW
+  EXECUTE FUNCTION handle_updated_at();
+
+-- 7. Create graph_nodes table
+CREATE TABLE public.graph_nodes (
+  id TEXT PRIMARY KEY,
+  label TEXT NOT NULL,
+  address TEXT NOT NULL,
+  group_type TEXT DEFAULT 'node' NOT NULL,
+  radius INTEGER DEFAULT 5 NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+ALTER TABLE public.graph_nodes ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Public can read graph_nodes" ON public.graph_nodes FOR SELECT USING (true);
+CREATE POLICY "Admins can manage graph_nodes" ON public.graph_nodes USING (auth.role() = 'authenticated');
+
+-- 8. Create graph_links table
+CREATE TABLE public.graph_links (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  source TEXT REFERENCES public.graph_nodes(id) ON DELETE CASCADE,
+  target TEXT REFERENCES public.graph_nodes(id) ON DELETE CASCADE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+  UNIQUE(source, target)
+);
+
+ALTER TABLE public.graph_links ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Public can read graph_links" ON public.graph_links FOR SELECT USING (true);
+CREATE POLICY "Admins can manage graph_links" ON public.graph_links USING (auth.role() = 'authenticated');
+CREATE TABLE public.external_links (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  title TEXT NOT NULL,
+  url TEXT NOT NULL,
+  description TEXT,
+  published BOOLEAN DEFAULT false,
+  tags TEXT[] DEFAULT '{}'::TEXT[],
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+ALTER TABLE public.external_links ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Public can read published external_links" ON public.external_links FOR SELECT USING (published = true);
+CREATE POLICY "Admins can read all external_links" ON public.external_links FOR SELECT USING (auth.role() = 'authenticated');
+CREATE POLICY "Admins can insert external_links" ON public.external_links FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+CREATE POLICY "Admins can update external_links" ON public.external_links FOR UPDATE USING (auth.role() = 'authenticated');
+CREATE POLICY "Admins can delete external_links" ON public.external_links FOR DELETE USING (auth.role() = 'authenticated');
+
+CREATE TRIGGER update_external_links_updated_at
+  BEFORE UPDATE ON public.external_links
+  FOR EACH ROW
+  EXECUTE FUNCTION handle_updated_at();
