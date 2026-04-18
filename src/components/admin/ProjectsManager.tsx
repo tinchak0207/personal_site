@@ -7,6 +7,7 @@ export function ProjectsManager({ setLoading, setErrorMsg }: { setLoading: (l: b
   const [projects, setProjects] = useState<Project[]>([]);
   const [editingProject, setEditingProject] = useState<Partial<Project> | null>(null);
   const [expandedFolders, setExpandedFolders] = useState<string[]>(['/']);
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
 
   useEffect(() => {
     fetchProjects();
@@ -74,6 +75,8 @@ export function ProjectsManager({ setLoading, setErrorMsg }: { setLoading: (l: b
     }
     
     if (!isAutoSave) setLoading(true);
+    setSaveStatus('saving');
+
     const projectData = {
       title: editingProject.title,
       description: editingProject.description,
@@ -93,19 +96,29 @@ export function ProjectsManager({ setLoading, setErrorMsg }: { setLoading: (l: b
         
       if (error) {
         if (!isAutoSave) setErrorMsg(error.message);
+        setSaveStatus('error');
       } else {
         if (!isAutoSave) fetchProjects();
         else {
           setProjects(prev => prev.map(p => p.id === editingProject.id ? { ...p, ...projectData, updated_at: new Date().toISOString() } as Project : p));
         }
+        setSaveStatus('saved');
+        setTimeout(() => setSaveStatus('idle'), 2000);
       }
     } else {
-      if (isAutoSave) return;
+      if (isAutoSave) {
+        setSaveStatus('idle');
+        return;
+      }
       const { data, error } = await supabase.from('projects').insert([projectData]).select();
-      if (error) setErrorMsg(error.message);
-      else if (data && data.length > 0) {
+      if (error) {
+        setErrorMsg(error.message);
+        setSaveStatus('error');
+      } else if (data && data.length > 0) {
         setEditingProject(data[0]);
         fetchProjects();
+        setSaveStatus('saved');
+        setTimeout(() => setSaveStatus('idle'), 2000);
       }
     }
     if (!isAutoSave) setLoading(false);
@@ -240,6 +253,9 @@ export function ProjectsManager({ setLoading, setErrorMsg }: { setLoading: (l: b
                 />
               </div>
               <div className="flex items-center gap-4 shrink-0">
+                {saveStatus === 'saving' && <span className="text-[#81D4FA] font-pixel text-[10px] animate-pulse tracking-widest">SAVING...</span>}
+                {saveStatus === 'saved' && <span className="text-[#4ADE80] font-pixel text-[10px] tracking-widest">SAVED</span>}
+                {saveStatus === 'error' && <span className="text-red-400 font-pixel text-[10px] tracking-widest">ERROR</span>}
                 <label className="flex items-center gap-2 cursor-pointer text-[#A5D6B7] hover:text-[#4ADE80] transition-colors font-pixel text-xs">
                   <input 
                     type="checkbox" 

@@ -7,6 +7,7 @@ export function RamblingsManager({ setLoading, setErrorMsg }: { setLoading: (l: 
   const [posts, setPosts] = useState<Post[]>([]);
   const [editingPost, setEditingPost] = useState<Partial<Post> | null>(null);
   const [expandedFolders, setExpandedFolders] = useState<string[]>(['/']);
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -132,6 +133,8 @@ export function RamblingsManager({ setLoading, setErrorMsg }: { setLoading: (l: 
     const finalFolder = editingPost.folder?.trim() || '/';
 
     if (!isAutoSave) setLoading(true);
+    setSaveStatus('saving');
+    
     const postData = {
       title: editingPost.title,
       slug: finalSlug,
@@ -149,19 +152,29 @@ export function RamblingsManager({ setLoading, setErrorMsg }: { setLoading: (l: 
         
       if (error) {
         if (!isAutoSave) setErrorMsg(error.message);
+        setSaveStatus('error');
       } else {
         if (!isAutoSave) fetchPosts();
         else {
           setPosts(prev => prev.map(p => p.id === editingPost.id ? { ...p, ...postData, updated_at: new Date().toISOString() } as Post : p));
         }
+        setSaveStatus('saved');
+        setTimeout(() => setSaveStatus('idle'), 2000);
       }
     } else {
-      if (isAutoSave) return; // Do not auto-save a brand new post without ID
+      if (isAutoSave) {
+        setSaveStatus('idle');
+        return; // Do not auto-save a brand new post without ID
+      }
       const { data, error } = await supabase.from('posts').insert([postData]).select();
-      if (error) setErrorMsg(error.message);
-      else if (data && data.length > 0) {
+      if (error) {
+        setErrorMsg(error.message);
+        setSaveStatus('error');
+      } else if (data && data.length > 0) {
         setEditingPost(data[0]);
         fetchPosts();
+        setSaveStatus('saved');
+        setTimeout(() => setSaveStatus('idle'), 2000);
       }
     }
     if (!isAutoSave) setLoading(false);
@@ -297,6 +310,9 @@ export function RamblingsManager({ setLoading, setErrorMsg }: { setLoading: (l: 
                 />
               </div>
               <div className="flex items-center gap-4 shrink-0">
+                {saveStatus === 'saving' && <span className="text-[#81D4FA] font-pixel text-[10px] animate-pulse tracking-widest">SAVING...</span>}
+                {saveStatus === 'saved' && <span className="text-[#4ADE80] font-pixel text-[10px] tracking-widest">SAVED</span>}
+                {saveStatus === 'error' && <span className="text-red-400 font-pixel text-[10px] tracking-widest">ERROR</span>}
                 <label className="flex items-center gap-2 cursor-pointer text-[#A5D6B7] hover:text-[#4ADE80] transition-colors font-pixel text-xs">
                   <input 
                     type="checkbox" 

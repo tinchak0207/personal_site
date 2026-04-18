@@ -7,6 +7,7 @@ export function ExternalLinksManager({ setLoading, setErrorMsg }: { setLoading: 
   const [links, setLinks] = useState<ExternalLink[]>([]);
   const [editingLink, setEditingLink] = useState<Partial<ExternalLink> | null>(null);
   const [expandedFolders, setExpandedFolders] = useState<string[]>(['/']);
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
 
   useEffect(() => {
     fetchLinks();
@@ -74,6 +75,8 @@ export function ExternalLinksManager({ setLoading, setErrorMsg }: { setLoading: 
     }
     
     if (!isAutoSave) setLoading(true);
+    setSaveStatus('saving');
+
     const linkData = {
       title: editingLink.title,
       url: editingLink.url,
@@ -91,19 +94,29 @@ export function ExternalLinksManager({ setLoading, setErrorMsg }: { setLoading: 
         
       if (error) {
         if (!isAutoSave) setErrorMsg(error.message);
+        setSaveStatus('error');
       } else {
         if (!isAutoSave) fetchLinks();
         else {
           setLinks(prev => prev.map(p => p.id === editingLink.id ? { ...p, ...linkData, updated_at: new Date().toISOString() } as ExternalLink : p));
         }
+        setSaveStatus('saved');
+        setTimeout(() => setSaveStatus('idle'), 2000);
       }
     } else {
-      if (isAutoSave) return;
+      if (isAutoSave) {
+        setSaveStatus('idle');
+        return;
+      }
       const { data, error } = await supabase.from('external_links').insert([linkData]).select();
-      if (error) setErrorMsg(error.message);
-      else if (data && data.length > 0) {
+      if (error) {
+        setErrorMsg(error.message);
+        setSaveStatus('error');
+      } else if (data && data.length > 0) {
         setEditingLink(data[0]);
         fetchLinks();
+        setSaveStatus('saved');
+        setTimeout(() => setSaveStatus('idle'), 2000);
       }
     }
     if (!isAutoSave) setLoading(false);
@@ -238,6 +251,9 @@ export function ExternalLinksManager({ setLoading, setErrorMsg }: { setLoading: 
                 />
               </div>
               <div className="flex items-center gap-4 shrink-0">
+                {saveStatus === 'saving' && <span className="text-[#81D4FA] font-pixel text-[10px] animate-pulse tracking-widest">SAVING...</span>}
+                {saveStatus === 'saved' && <span className="text-[#4ADE80] font-pixel text-[10px] tracking-widest">SAVED</span>}
+                {saveStatus === 'error' && <span className="text-red-400 font-pixel text-[10px] tracking-widest">ERROR</span>}
                 <label className="flex items-center gap-2 cursor-pointer text-[#A5D6B7] hover:text-[#4ADE80] transition-colors font-pixel text-xs">
                   <input 
                     type="checkbox" 
