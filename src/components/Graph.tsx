@@ -364,10 +364,10 @@ export const Graph: React.FC = () => {
     return (current - start) / (end - start);
   };
 
-  const progArchive = getModuleProgress(unfoldProgress, 1.2, 1.6);
-  const progProjects = getModuleProgress(unfoldProgress, 1.6, 2.0);
-  const progSettings = getModuleProgress(unfoldProgress, 2.0, 2.4);
-  const progLinks = getModuleProgress(unfoldProgress, 2.4, 2.8);
+  const progArchive = getModuleProgress(unfoldProgress, 1.2, 1.4);
+  const progProjects = getModuleProgress(unfoldProgress, 1.6, 1.8);
+  const progSettings = getModuleProgress(unfoldProgress, 2.0, 2.2);
+  const progLinks = getModuleProgress(unfoldProgress, 2.4, 2.6);
 
   return (
     <div 
@@ -688,16 +688,107 @@ export const Graph: React.FC = () => {
         </g>
       </svg>
 
+      {/* Fireworks Animation Layer */}
+      {unfoldProgress > 1.0 && (
+        <svg width="100%" height="100%" className="absolute inset-0 pointer-events-none z-15">
+          <g>
+            {/* Archive Firework */}
+            {unfoldProgress > 1.0 && unfoldProgress < 1.2 && (
+              <motion.circle
+                r={2}
+                fill="#4ADE80"
+                initial={{ 
+                  cx: dimensions.width / 2, 
+                  cy: dimensions.height / 2,
+                  opacity: 1
+                }}
+                animate={{ 
+                  cx: dimensions.width < 768 ? dimensions.width / 2 - 105 : 72, 
+                  cy: dimensions.width < 768 ? 40 : dimensions.height / 2 - 120,
+                  opacity: [1, 1, 0],
+                  scale: [1, 2, 0]
+                }}
+                transition={{ duration: 0.3, ease: "easeOut" }}
+                onAnimationComplete={() => {}}
+              />
+            )}
+            
+            {/* Projects Firework */}
+            {unfoldProgress > 1.4 && unfoldProgress < 1.6 && (
+              <motion.circle
+                r={2}
+                fill="#81D4FA"
+                initial={{ 
+                  cx: dimensions.width / 2, 
+                  cy: dimensions.height / 2,
+                  opacity: 1
+                }}
+                animate={{ 
+                  cx: dimensions.width < 768 ? dimensions.width / 2 - 35 : 72, 
+                  cy: dimensions.width < 768 ? 40 : dimensions.height / 2 - 40,
+                  opacity: [1, 1, 0],
+                  scale: [1, 2, 0]
+                }}
+                transition={{ duration: 0.3, ease: "easeOut" }}
+                onAnimationComplete={() => {}}
+              />
+            )}
+
+            {/* Settings Firework */}
+            {unfoldProgress > 1.8 && unfoldProgress < 2.0 && (
+              <motion.circle
+                r={2}
+                fill="#B39DDB"
+                initial={{ 
+                  cx: dimensions.width / 2, 
+                  cy: dimensions.height / 2,
+                  opacity: 1
+                }}
+                animate={{ 
+                  cx: dimensions.width < 768 ? dimensions.width / 2 + 35 : 72, 
+                  cy: dimensions.width < 768 ? 40 : dimensions.height / 2 + 40,
+                  opacity: [1, 1, 0],
+                  scale: [1, 2, 0]
+                }}
+                transition={{ duration: 0.3, ease: "easeOut" }}
+                onAnimationComplete={() => {}}
+              />
+            )}
+
+            {/* Links Firework */}
+            {unfoldProgress > 2.2 && unfoldProgress < 2.4 && (
+              <motion.circle
+                r={2}
+                fill="#FFCC80"
+                initial={{ 
+                  cx: dimensions.width / 2, 
+                  cy: dimensions.height / 2,
+                  opacity: 1
+                }}
+                animate={{ 
+                  cx: dimensions.width < 768 ? dimensions.width / 2 + 105 : 72, 
+                  cy: dimensions.width < 768 ? 40 : dimensions.height / 2 + 120,
+                  opacity: [1, 1, 0],
+                  scale: [1, 2, 0]
+                }}
+                transition={{ duration: 0.3, ease: "easeOut" }}
+                onAnimationComplete={() => {}}
+              />
+            )}
+          </g>
+        </svg>
+      )}
+
       {/* HUD Modules Layer - Top Bar on Mobile, Vertical Left Sidebar on Desktop */}
       {unfoldProgress > 1.0 && (
-        <div className="absolute top-8 md:top-0 left-1/2 md:left-12 -translate-x-1/2 md:translate-x-0 bottom-auto md:bottom-0 py-0 md:py-32 w-[90%] md:w-auto pointer-events-none z-20 flex flex-row md:flex-col justify-center md:justify-between gap-4 md:gap-0 font-pixel">
+        <div className="absolute top-4 md:top-0 left-0 md:left-12 right-0 md:right-auto bottom-auto md:bottom-0 py-0 md:py-32 pointer-events-none z-20 flex flex-row md:flex-col justify-center md:justify-between items-center md:items-start gap-6 md:gap-0 font-pixel">
           
           {/* ARCHIVE / BLOG */}
           <div 
             className="pointer-events-auto flex items-center gap-4 cursor-pointer group"
             style={{ 
-              opacity: progArchive,
-              transform: dimensions.width < 768 ? `translateY(${(1 - progArchive) * -100}px)` : `translateX(${(1 - progArchive) * -100}px)`,
+              opacity: progArchive > 0 ? 1 : 0,
+              transform: dimensions.width < 768 ? `translateY(${(1 - progArchive) * -20}px) scale(${progArchive})` : `translateX(${(1 - progArchive) * -20}px) scale(${progArchive})`,
               display: progArchive === 0 ? 'none' : 'flex'
             }}
             onClick={() => window.location.href = '/blog'}
@@ -728,8 +819,8 @@ export const Graph: React.FC = () => {
           <div 
             className="pointer-events-auto flex items-center gap-4 cursor-pointer group"
             style={{ 
-              opacity: progProjects,
-              transform: dimensions.width < 768 ? `translateY(${(1 - progProjects) * -100}px)` : `translateX(${(1 - progProjects) * -100}px)`,
+              opacity: progProjects > 0 ? 1 : 0,
+              transform: dimensions.width < 768 ? `translateY(${(1 - progProjects) * -20}px) scale(${progProjects})` : `translateX(${(1 - progProjects) * -20}px) scale(${progProjects})`,
               display: progProjects === 0 ? 'none' : 'flex'
             }}
             onClick={() => window.location.href = '/blog'}
@@ -767,8 +858,8 @@ export const Graph: React.FC = () => {
           <div 
             className="pointer-events-auto flex items-center gap-4 group"
             style={{ 
-              opacity: progSettings,
-              transform: dimensions.width < 768 ? `translateY(${(1 - progSettings) * -100}px)` : `translateX(${(1 - progSettings) * -100}px)`,
+              opacity: progSettings > 0 ? 1 : 0,
+              transform: dimensions.width < 768 ? `translateY(${(1 - progSettings) * -20}px) scale(${progSettings})` : `translateX(${(1 - progSettings) * -20}px) scale(${progSettings})`,
               display: progSettings === 0 ? 'none' : 'flex'
             }}
           >
@@ -808,8 +899,8 @@ export const Graph: React.FC = () => {
           <div 
             className="pointer-events-auto flex items-center gap-4 cursor-pointer group"
             style={{ 
-              opacity: progLinks,
-              transform: dimensions.width < 768 ? `translateY(${(1 - progLinks) * -100}px)` : `translateX(${(1 - progLinks) * -100}px)`,
+              opacity: progLinks > 0 ? 1 : 0,
+              transform: dimensions.width < 768 ? `translateY(${(1 - progLinks) * -20}px) scale(${progLinks})` : `translateX(${(1 - progLinks) * -20}px) scale(${progLinks})`,
               display: progLinks === 0 ? 'none' : 'flex'
             }}
             onClick={() => window.open('https://github.com/tinchak0207', '_blank')}
