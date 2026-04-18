@@ -17,7 +17,13 @@ export function GraphNodesManager({ setLoading, setErrorMsg }: { setLoading: (l:
       .select('*')
       .order('created_at', { ascending: false });
     
-    if (error) setErrorMsg(error.message);
+    if (error) {
+      if (error.code === 'PGRST116' || error.message.includes('Could not find the table')) {
+        setErrorMsg("Supabase 中尚未建立 'graph_nodes' 資料表，請在 SQL Editor 執行 schema.sql 建立表結構。");
+      } else {
+        setErrorMsg(error.message);
+      }
+    }
     else if (data) setNodes(data);
     setLoading(false);
   };

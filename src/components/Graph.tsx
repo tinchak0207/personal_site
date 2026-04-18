@@ -237,8 +237,10 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
     const fetchData = async () => {
       try {
         // Fetch Graph Nodes
-        const { data: graphNodes } = await supabase.from('graph_nodes').select('*');
-        if (graphNodes && graphNodes.length > 0) {
+        const { data: graphNodes, error: graphNodesError } = await supabase.from('graph_nodes').select('*');
+        if (graphNodesError) {
+          console.warn('Supabase graph_nodes table not found. Using default nodes:', graphNodesError.message);
+        } else if (graphNodes && graphNodes.length > 0) {
           const formattedNodes: NodeData[] = graphNodes.map(n => ({
             id: n.id,
             label: n.label,

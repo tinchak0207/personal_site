@@ -14,8 +14,12 @@ export function NodeSelector({ selectedTags, onAddTag, onRemoveTag }: NodeSelect
 
   useEffect(() => {
     const fetchNodes = async () => {
-      const { data } = await supabase.from('graph_nodes').select('*').order('created_at', { ascending: true });
-      if (data) setNodes(data);
+      const { data, error } = await supabase.from('graph_nodes').select('*').order('created_at', { ascending: true });
+      if (error) {
+        console.warn('graph_nodes table missing:', error.message);
+      } else if (data) {
+        setNodes(data);
+      }
       setLoading(false);
     };
     fetchNodes();
