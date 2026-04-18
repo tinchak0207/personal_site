@@ -226,14 +226,19 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
   const [lang, setLang] = useState('繁');
 
   const [dynamicNodes, setDynamicNodes] = useState<NodeData[]>(INITIAL_NODES);
+  const [dynamicLinks, setDynamicLinks] = useState<LinkData[]>(INITIAL_LINKS);
   const [dynamicSubNodes, setDynamicSubNodes] = useState<Record<string, SubNode[]>>(SUB_NODES_MAP);
 
   // Fetch data from Supabase
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Fetch Graph Nodes
-        const { data: graphNodes, error: graphNodesError } = await supabase.from('graph_nodes').select('*');
+        // Fetch Graph Nodes and Edges
+        const [{ data: graphNodes, error: graphNodesError }, { data: graphEdges, error: graphEdgesError }] = await Promise.all([
+          supabase.from('graph_nodes').select('*'),
+          supabase.from('graph_edges').select('*')
+        ]);
+        
         if (graphNodesError) {
           console.warn('Supabase graph_nodes table not found. Using default nodes:', graphNodesError.message);
         } else if (graphNodes && graphNodes.length > 0) {
@@ -248,6 +253,17 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
         } else if (graphNodes && graphNodes.length === 0) {
           console.warn('No nodes found in DB. Falling back to INITIAL_NODES.');
           setDynamicNodes(INITIAL_NODES);
+        }
+
+        // Handle dynamic edges
+        if (graphEdges && graphEdges.length > 0) {
+          const formattedEdges: LinkData[] = graphEdges.map(e => ({
+            source: e.source,
+            target: e.target
+          }));
+          setDynamicLinks(formattedEdges);
+        } else {
+          setDynamicLinks(INITIAL_LINKS);
         }
 
         // Fetch Posts (Ramblings)
@@ -374,11 +390,11 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
     // Generate links if they are not defined in DB yet? We just use INITIAL_LINKS for now
     let simLinks = INITIAL_LINKS.map(d => ({ ...d }));
     
-    // If we loaded custom nodes, try to find matching links from INITIAL_LINKS
+    // If we loaded custom nodes, try to find matching links from dynamicLinks
     // If none match, we will create a dynamic web instead of a boring star shape
     if (dynamicNodes !== INITIAL_NODES) {
-      // First, see if we have valid links from our INITIAL_LINKS that match the current DB nodes
-      const validInitialLinks = INITIAL_LINKS.filter(l => 
+      // First, see if we have valid links from our dynamicLinks that match the current DB nodes
+      const validInitialLinks = dynamicLinks.filter(l => 
         dynamicNodes.some(n => n.id === l.source) && dynamicNodes.some(n => n.id === l.target)
       );
 
@@ -457,7 +473,7 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
     return () => {
       simulation.stop();
     };
-  }, [dynamicNodes]);
+  }, [dynamicNodes, dynamicLinks]);
 
   useEffect(() => {
     if (!simulationRef.current) return;
