@@ -526,7 +526,9 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
     const sim = simulationRef.current;
     
     // Apply smooth quadratic scaling for a gentle, even expansion
-    const cappedProgress = Math.min(1, unfoldProgress);
+    // Multiply unfoldProgress by 2 so it reaches fully unfolded state (cappedProgress=1) at unfoldProgress=0.5
+    // instead of unfoldProgress=1.0, effectively halving the scroll distance needed.
+    const cappedProgress = Math.min(1, unfoldProgress * 2);
     const easeProgress = Math.pow(cappedProgress, 2);
     
     // Extreme tangled state: charge is positive (attracting to center)
@@ -708,16 +710,18 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
   }, [unfoldProgress, defaultText, isMobile]);
 
   // Opacities and progressions for HUD modules
+  // Since graph unfolding is 2x faster (finishes around unfoldProgress=0.5),
+  // we shift all HUD module trigger thresholds forward so they appear sooner.
   const getModuleProgress = (current: number, start: number, end: number) => {
     if (current <= start) return 0;
     if (current >= end) return 1;
     return (current - start) / (end - start);
   };
 
-  const progArchive = getModuleProgress(unfoldProgress, 1.2, 1.6);
-  const progProjects = getModuleProgress(unfoldProgress, 1.6, 2.0);
-  const progSettings = getModuleProgress(unfoldProgress, 2.0, 2.4);
-  const progLinks = getModuleProgress(unfoldProgress, 2.4, 2.8);
+  const progArchive = getModuleProgress(unfoldProgress, 0.6, 1.0);
+  const progProjects = getModuleProgress(unfoldProgress, 1.0, 1.4);
+  const progSettings = getModuleProgress(unfoldProgress, 1.4, 1.8);
+  const progLinks = getModuleProgress(unfoldProgress, 1.8, 2.2);
 
   return (
     <div 
@@ -770,8 +774,8 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
       <div 
         className={`absolute bottom-16 left-1/2 -translate-x-1/2 font-pixel text-sm opacity-80 tracking-[0.3em] pointer-events-none transition-all duration-700 flex flex-col items-center gap-3 ${unfoldProgress >= 2.8 ? 'opacity-0 translate-y-10' : ''}`}
         style={{ 
-          opacity: unfoldProgress >= 2.8 ? 0 : (unfoldProgress < 0.8 ? 0.8 : 1), // Fade out after 2.8
-          transform: `translate(-50%, ${unfoldProgress > 0.8 && unfoldProgress < 2.8 ? '20px' : (unfoldProgress >= 2.8 ? '40px' : '0')})`,
+          opacity: unfoldProgress >= 2.8 ? 0 : (unfoldProgress < 0.3 ? 0.8 : 1), // Fade out after 2.8, adjust fade in threshold
+          transform: `translate(-50%, ${unfoldProgress > 0.3 && unfoldProgress < 2.8 ? '20px' : (unfoldProgress >= 2.8 ? '40px' : '0')})`,
           textShadow: `0 0 10px ${hintColor}`,
           color: hintColor
         }}
@@ -1036,8 +1040,8 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
           {/* ARCHIVE */}
           <div className="relative">
             {/* Mobile Firework */}
-            {unfoldProgress >= 1.0 && unfoldProgress < 1.2 && (() => {
-              const p = (unfoldProgress - 1.0) / 0.2;
+            {unfoldProgress >= 0.4 && unfoldProgress < 0.6 && (() => {
+              const p = (unfoldProgress - 0.4) / 0.2;
               const easeOutQuart = 1 - Math.pow(1 - p, 4);
               const cx = dimensions.width / 2;
               const cy = dimensions.height / 2;
@@ -1058,8 +1062,8 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
                 </div>
               );
             })()}
-            {unfoldProgress >= 1.2 && unfoldProgress < 1.3 && (() => {
-              const p = (unfoldProgress - 1.2) / 0.1;
+            {unfoldProgress >= 0.6 && unfoldProgress < 0.7 && (() => {
+              const p = (unfoldProgress - 0.6) / 0.1;
               const easeOut = 1 - Math.pow(1 - p, 3);
               const radius = 15 + easeOut * 45;
               const opacity = 1 - p;
@@ -1109,8 +1113,8 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
           {/* PROJECTS */}
           <div className="relative">
             {/* Mobile Firework */}
-            {unfoldProgress >= 1.4 && unfoldProgress < 1.6 && (() => {
-              const p = (unfoldProgress - 1.4) / 0.2;
+            {unfoldProgress >= 0.8 && unfoldProgress < 1.0 && (() => {
+              const p = (unfoldProgress - 0.8) / 0.2;
               const easeOutQuart = 1 - Math.pow(1 - p, 4);
               const cx = dimensions.width / 2;
               const cy = dimensions.height / 2;
@@ -1131,8 +1135,8 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
                 </div>
               );
             })()}
-            {unfoldProgress >= 1.6 && unfoldProgress < 1.7 && (() => {
-              const p = (unfoldProgress - 1.6) / 0.1;
+            {unfoldProgress >= 1.0 && unfoldProgress < 1.1 && (() => {
+              const p = (unfoldProgress - 1.0) / 0.1;
               const easeOut = 1 - Math.pow(1 - p, 3);
               const radius = 15 + easeOut * 45;
               const opacity = 1 - p;
