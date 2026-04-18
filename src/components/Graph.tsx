@@ -578,20 +578,52 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
   }, [unfoldProgress, dimensions]);
 
   useEffect(() => {
+    let wheelTimeout: NodeJS.Timeout | null = null;
+    let wheelAccumulator = 0;
+    
     const handleWheel = (e: WheelEvent) => {
-      setUnfoldProgress(prev => {
-        // Slow down on mobile/small screens
-        let delta = e.deltaY * (dimensions.width < 768 ? 0.001 : 0.002);
-        let newProgress = prev + delta;
-        return Math.max(0, Math.min(3, newProgress));
-      });
+      // Prevent default scrolling to handle the "swipe/scroll 4 times" logic
+      e.preventDefault();
+      
+      wheelAccumulator += Math.abs(e.deltaY);
+      
+      // Threshold for a "swipe" or "scroll action"
+      if (wheelAccumulator > 50) {
+        if (wheelTimeout) clearTimeout(wheelTimeout);
+        
+        wheelTimeout = setTimeout(() => {
+          setUnfoldProgress(prev => {
+            // Devilish feature: Snap to exact unlock stages instead of smooth scrolling
+            // Stages: 0 -> 0.6 -> 1.0 -> 1.4 -> 1.8 -> 2.2
+            if (e.deltaY > 0) {
+              if (prev < 0.6) return 0.6; // Unfolds graph
+              if (prev < 1.0) return 1.0; // Unlocks Archive
+              if (prev < 1.4) return 1.4; // Unlocks Projects
+              if (prev < 1.8) return 1.8; // Unlocks Settings
+              if (prev < 2.2) return 2.2; // Unlocks Links
+              return 2.2; // Max
+            } else {
+              if (prev > 1.8) return 1.8;
+              if (prev > 1.4) return 1.4;
+              if (prev > 1.0) return 1.0;
+              if (prev > 0.6) return 0.6;
+              return 0; // Min
+            }
+          });
+          wheelAccumulator = 0;
+        }, 100); // Debounce to group scroll events into a single "swipe"
+      }
     };
 
     let touchStartY = 0;
+    let touchAccumulator = 0;
+
     const handleTouchStart = (e: TouchEvent) => {
+      if (draggingNodeIdRef.current) return;
       touchStartY = e.touches[0].clientY;
+      touchAccumulator = 0;
     };
-    
+
     const handleTouchMove = (e: TouchEvent) => {
       if (draggingNodeIdRef.current) return; // Prevent scrolling when dragging a node
       
@@ -599,12 +631,28 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
       const deltaY = touchStartY - touchY;
       touchStartY = touchY;
       
-      setUnfoldProgress(prev => {
-        // Slow down mobile scroll by another 30% (0.00075 * 0.7 ≈ 0.0005)
-        let delta = deltaY * 0.0005;
-        let newProgress = prev + delta;
-        return Math.max(0, Math.min(3, newProgress));
-      });
+      touchAccumulator += deltaY;
+
+      // Threshold for a touch "swipe"
+      if (Math.abs(touchAccumulator) > 30) {
+        setUnfoldProgress(prev => {
+          if (touchAccumulator > 0) { // Swipe up (scroll down)
+            if (prev < 0.6) return 0.6;
+            if (prev < 1.0) return 1.0;
+            if (prev < 1.4) return 1.4;
+            if (prev < 1.8) return 1.8;
+            if (prev < 2.2) return 2.2;
+            return 2.2;
+          } else { // Swipe down (scroll up)
+            if (prev > 1.8) return 1.8;
+            if (prev > 1.4) return 1.4;
+            if (prev > 1.0) return 1.0;
+            if (prev > 0.6) return 0.6;
+            return 0;
+          }
+        });
+        touchAccumulator = 0; // Reset after snapping to stage
+      }
     };
 
     window.addEventListener('wheel', handleWheel);
@@ -693,7 +741,7 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
   }, [unfoldProgress]);
 
   useEffect(() => {
-    if (unfoldProgress <= 1.0) {
+    if (unfoldProgress <= 0.6) {
       setGlitchText(defaultText);
       return;
     }
@@ -1215,8 +1263,8 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
                 </div>
               );
             })()}
-            {unfoldProgress >= 2.4 && unfoldProgress < 2.5 && (() => {
-              const p = (unfoldProgress - 2.4) / 0.1;
+            {unfoldProgress >= 2.0 && unfoldProgress < 2.1 && (() => {
+              const p = (unfoldProgress - 2.0) / 0.1;
               const easeOut = 1 - Math.pow(1 - p, 3);
               const radius = 15 + easeOut * 45;
               const opacity = 1 - p;
@@ -1287,8 +1335,8 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
                 </div>
               );
             })()}
-            {unfoldProgress >= 2.0 && unfoldProgress < 2.1 && (() => {
-              const p = (unfoldProgress - 2.0) / 0.1;
+            {unfoldProgress >= 1.6 && unfoldProgress < 1.7 && (() => {
+              const p = (unfoldProgress - 1.6) / 0.1;
               const easeOut = 1 - Math.pow(1 - p, 3);
               const radius = 15 + easeOut * 45;
               const opacity = 1 - p;
@@ -1367,14 +1415,14 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
       )}
 
       {/* HUD Modules Layer - Desktop Vertical Left Sidebar */}
-      {unfoldProgress > 1.0 && (
+      {unfoldProgress > 0.6 && (
         <div className="hidden md:flex absolute left-6 md:left-12 top-0 bottom-0 py-32 pointer-events-none z-20 flex-col justify-between font-pixel">
           
           {/* ARCHIVE / BLOG */}
           <div className="relative">
             {/* Firework effect for ARCHIVE */}
-            {unfoldProgress >= 1.0 && unfoldProgress < 1.2 && (() => {
-              const p = (unfoldProgress - 1.0) / 0.2;
+            {unfoldProgress >= 0.6 && unfoldProgress < 0.8 && (() => {
+              const p = (unfoldProgress - 0.6) / 0.2;
               const easeOutQuart = 1 - Math.pow(1 - p, 4);
               const cx = dimensions.width / 2;
               const cy = dimensions.height / 2;
@@ -1398,8 +1446,8 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
                 </div>
               );
             })()}
-            {unfoldProgress >= 1.2 && unfoldProgress < 1.3 && (() => {
-              const p = (unfoldProgress - 1.2) / 0.1;
+            {unfoldProgress >= 0.8 && unfoldProgress < 0.9 && (() => {
+              const p = (unfoldProgress - 0.8) / 0.1;
               const easeOut = 1 - Math.pow(1 - p, 3);
               const radius = 15 + easeOut * 45;
               const opacity = 1 - p;
@@ -1465,8 +1513,8 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
           {/* PROJECTS */}
           <div className="relative">
             {/* Firework effect for PROJECTS */}
-            {unfoldProgress >= 1.4 && unfoldProgress < 1.6 && (() => {
-              const p = (unfoldProgress - 1.4) / 0.2;
+            {unfoldProgress >= 1.0 && unfoldProgress < 1.2 && (() => {
+              const p = (unfoldProgress - 1.0) / 0.2;
               const easeOutQuart = 1 - Math.pow(1 - p, 4);
               const cx = dimensions.width / 2;
               const cy = dimensions.height / 2;
@@ -1490,8 +1538,8 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
                 </div>
               );
             })()}
-            {unfoldProgress >= 1.6 && unfoldProgress < 1.7 && (() => {
-              const p = (unfoldProgress - 1.6) / 0.1;
+            {unfoldProgress >= 1.2 && unfoldProgress < 1.3 && (() => {
+              const p = (unfoldProgress - 1.2) / 0.1;
               const easeOut = 1 - Math.pow(1 - p, 3);
               const radius = 15 + easeOut * 45;
               const opacity = 1 - p;
@@ -1564,8 +1612,8 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
           {/* SETTINGS */}
           <div className="relative">
             {/* Firework effect for SETTINGS */}
-            {unfoldProgress >= 1.8 && unfoldProgress < 2.0 && (() => {
-              const p = (unfoldProgress - 1.8) / 0.2;
+            {unfoldProgress >= 1.4 && unfoldProgress < 1.6 && (() => {
+              const p = (unfoldProgress - 1.4) / 0.2;
               const easeOutQuart = 1 - Math.pow(1 - p, 4);
               const cx = dimensions.width / 2;
               const cy = dimensions.height / 2;
@@ -1656,13 +1704,13 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
       )}
 
           {/* LINKS Module - Desktop Right Side */}
-      {unfoldProgress > 1.0 && (
+      {unfoldProgress > 0.6 && (
         <div className="hidden md:block absolute right-6 md:right-12 top-1/2 -translate-y-1/2 pointer-events-none z-20 font-pixel">
               
               <div className="relative">
                 {/* Firework effect for LINKS */}
-            {unfoldProgress >= 2.2 && unfoldProgress < 2.4 && (() => {
-              const p = (unfoldProgress - 2.2) / 0.2;
+            {unfoldProgress >= 1.8 && unfoldProgress < 2.0 && (() => {
+              const p = (unfoldProgress - 1.8) / 0.2;
               const easeOutQuart = 1 - Math.pow(1 - p, 4);
               const cx = dimensions.width / 2;
               const cy = dimensions.height / 2;
