@@ -680,7 +680,9 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
   };
   const hintColor = calculateHintColor();
 
-  const [glitchText, setGlitchText] = useState('向下滾動');
+  const isMobile = dimensions.width < 768;
+  const defaultText = isMobile ? '向上滑動' : '向下滾動';
+  const [glitchText, setGlitchText] = useState(defaultText);
   
   useEffect(() => {
     if (unfoldProgress >= 2.8 && typeof window !== 'undefined') {
@@ -690,20 +692,20 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
 
   useEffect(() => {
     if (unfoldProgress <= 1.0) {
-      setGlitchText('向下滾動');
+      setGlitchText(defaultText);
       return;
     }
     
     const interval = setInterval(() => {
       if (Math.random() > 0.8) {
-        const chars = '向滾動下!@#$%^&*()_+-=';
-        const glitched = '向下滾動'.split('').map(c => Math.random() > 0.7 ? chars[Math.floor(Math.random() * chars.length)] : c).join('');
+        const chars = isMobile ? '向上滑動!@#$%^&*()_+-=' : '向滾動下!@#$%^&*()_+-=';
+        const glitched = defaultText.split('').map(c => Math.random() > 0.7 ? chars[Math.floor(Math.random() * chars.length)] : c).join('');
         setGlitchText(glitched);
-        setTimeout(() => setGlitchText('向下滾動'), 100);
+        setTimeout(() => setGlitchText(defaultText), 100);
       }
     }, 500);
     return () => clearInterval(interval);
-  }, [unfoldProgress]);
+  }, [unfoldProgress, defaultText, isMobile]);
 
   // Opacities and progressions for HUD modules
   const getModuleProgress = (current: number, start: number, end: number) => {
@@ -775,19 +777,30 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
         }}
       >
         <div className="flex flex-col items-center gap-1 animate-bounce">
-          <svg width="24" height="36" viewBox="0 0 24 36" fill="none" xmlns="http://www.w3.org/2000/svg" className="opacity-80">
-            {/* Pixel Mouse Outline */}
-            <path d="M8 0H16V2H18V4H20V6H22V20H20V24H18V28H16V30H8V28H6V24H4V20H2V6H4V4H6V2H8V0Z" fill="currentColor" fillOpacity="0.2"/>
-            <path d="M8 2H16V4H18V6H20V20H18V24H16V26H8V24H6V20H4V6H6V4H8V2Z" fill="#030a07"/>
-            <path d="M10 0H14V2H10V0ZM6 2H10V4H6V2ZM14 2H18V4H14V2ZM4 4H6V6H4V4ZM18 4H20V6H18V4ZM2 6H4V20H2V6ZM20 6H22V20H20V6ZM4 20H6V24H4V20ZM18 20H20V24H18V20ZM6 24H8V28H6V24ZM16 24H18V28H16V24ZM8 28H16V30H8V28Z" fill="currentColor"/>
-            
-            {/* Pixel Scroll Wheel */}
-            <path d="M10 8H14V14H10V8Z" fill="currentColor" className="animate-pulse"/>
-            
-            {/* Inner Details */}
-            <path d="M11 20H13V22H11V20Z" fill="currentColor" fillOpacity="0.5"/>
-          </svg>
-          <div className="w-0.5 h-6 mt-1" style={{ background: `linear-gradient(to bottom, ${hintColor}, transparent)` }}></div>
+          {isMobile ? (
+            <svg width="24" height="36" viewBox="0 0 24 36" fill="none" xmlns="http://www.w3.org/2000/svg" className="opacity-80">
+              {/* Pixel Hand/Swipe Up Icon */}
+              <path d="M12 0H14V4H16V8H18V14H20V20H22V30H20V34H18V36H6V34H4V30H2V20H4V14H6V8H8V4H10V0H12Z" fill="currentColor" fillOpacity="0.2"/>
+              <path d="M12 2H14V4H16V8H18V14H20V20H22V30H20V32H18V34H6V32H4V30H2V20H4V14H6V8H8V4H10V2H12Z" fill="#030a07"/>
+              <path d="M12 0H14V2H12V0ZM10 2H12V4H10V2ZM14 4H16V8H14V4ZM8 4H10V8H8V4ZM16 8H18V14H16V8ZM6 8H8V14H6V8ZM18 14H20V20H18V14ZM4 14H6V20H4V14ZM20 20H22V30H20V20ZM2 20H4V30H2V20ZM20 30H18V34H20V30ZM4 30H6V34H4V30ZM18 34H6V36H18V34Z" fill="currentColor"/>
+              {/* Swipe Arrow Detail */}
+              <path d="M10 12H14V14H10V12ZM8 14H10V16H8V14ZM14 14H16V16H14V14ZM12 16H14V24H12V16ZM10 16H12V24H10V16Z" fill="currentColor" className="animate-pulse"/>
+            </svg>
+          ) : (
+            <svg width="24" height="36" viewBox="0 0 24 36" fill="none" xmlns="http://www.w3.org/2000/svg" className="opacity-80">
+              {/* Pixel Mouse Outline */}
+              <path d="M8 0H16V2H18V4H20V6H22V20H20V24H18V28H16V30H8V28H6V24H4V20H2V6H4V4H6V2H8V0Z" fill="currentColor" fillOpacity="0.2"/>
+              <path d="M8 2H16V4H18V6H20V20H18V24H16V26H8V24H6V20H4V6H6V4H8V2Z" fill="#030a07"/>
+              <path d="M10 0H14V2H10V0ZM6 2H10V4H6V2ZM14 2H18V4H14V2ZM4 4H6V6H4V4ZM18 4H20V6H18V4ZM2 6H4V20H2V6ZM20 6H22V20H20V6ZM4 20H6V24H4V20ZM18 20H20V24H18V20ZM6 24H8V28H6V24ZM16 24H18V28H16V24ZM8 28H16V30H8V28Z" fill="currentColor"/>
+              
+              {/* Pixel Scroll Wheel */}
+              <path d="M10 8H14V14H10V8Z" fill="currentColor" className="animate-pulse"/>
+              
+              {/* Inner Details */}
+              <path d="M11 20H13V22H11V20Z" fill="currentColor" fillOpacity="0.5"/>
+            </svg>
+          )}
+          <div className="w-0.5 h-6 mt-1" style={{ background: `linear-gradient(to ${isMobile ? 'top' : 'bottom'}, ${hintColor}, transparent)` }}></div>
         </div>
         <p className="font-bold mt-1 transition-colors duration-500">{glitchText}</p>
         
