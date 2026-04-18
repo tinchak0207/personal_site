@@ -577,73 +577,20 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
     sim.alpha(easeProgress < 0.1 ? 1 : 0.6).restart(); 
   }, [unfoldProgress, dimensions]);
 
-  const [targetProgress, setTargetProgress] = useState(0);
-
   useEffect(() => {
-    let animationFrameId: number;
-    let currentPrev = -1;
-    
-    const animate = () => {
-      setUnfoldProgress(prev => {
-        currentPrev = prev;
-        const diff = targetProgress - prev;
-        if (Math.abs(diff) < 0.005) return targetProgress;
-        return prev + diff * 0.15; // Smooth easing factor
-      });
-      
-      // Only continue the loop if we haven't reached the target
-      if (Math.abs(targetProgress - currentPrev) >= 0.005) {
-        animationFrameId = requestAnimationFrame(animate);
-      }
-    };
-    
-    animationFrameId = requestAnimationFrame(animate);
-    return () => cancelAnimationFrame(animationFrameId);
-  }, [targetProgress]);
-
-  useEffect(() => {
-    let wheelTimeout: NodeJS.Timeout | null = null;
-    let wheelAccumulator = 0;
-    
     const handleWheel = (e: WheelEvent) => {
-      // Prevent default scrolling to handle the "swipe/scroll 4 times" logic
-      e.preventDefault();
-      
-      wheelAccumulator += Math.abs(e.deltaY);
-      
-      // Threshold for a "swipe" or "scroll action"
-      if (wheelAccumulator > 50) {
-        if (wheelTimeout) clearTimeout(wheelTimeout);
-        
-        wheelTimeout = setTimeout(() => {
-          setTargetProgress(prev => {
-            if (e.deltaY > 0) {
-              if (prev < 0.6) return 0.6; // Unfolds graph
-              if (prev < 1.0) return 1.0; // Unlocks Archive
-              if (prev < 1.4) return 1.4; // Unlocks Projects
-              if (prev < 1.8) return 1.8; // Unlocks Links
-              if (prev < 2.2) return 2.2; // Unlocks Settings
-              return 2.2; // Max
-            } else {
-              if (prev > 1.8) return 1.8;
-              if (prev > 1.4) return 1.4;
-              if (prev > 1.0) return 1.0;
-              if (prev > 0.6) return 0.6;
-              return 0; // Min
-            }
-          });
-          wheelAccumulator = 0;
-        }, 100); // Debounce to group scroll events into a single "swipe"
-      }
+      setUnfoldProgress(prev => {
+        // Continuous scroll delta calculation
+        let delta = e.deltaY * (dimensions.width < 768 ? 0.0025 : 0.002);
+        return Math.max(0, Math.min(3.0, prev + delta));
+      });
     };
 
     let touchStartY = 0;
-    let touchAccumulator = 0;
 
     const handleTouchStart = (e: TouchEvent) => {
       if (draggingNodeIdRef.current) return;
       touchStartY = e.touches[0].clientY;
-      touchAccumulator = 0;
     };
 
     const handleTouchMove = (e: TouchEvent) => {
@@ -653,28 +600,13 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
       const deltaY = touchStartY - touchY;
       touchStartY = touchY;
       
-      touchAccumulator += deltaY;
-
-      // Threshold for a touch "swipe"
-      if (Math.abs(touchAccumulator) > 30) {
-        setTargetProgress(prev => {
-          if (touchAccumulator > 0) { // Swipe up (scroll down)
-            if (prev < 0.6) return 0.6;
-            if (prev < 1.0) return 1.0;
-            if (prev < 1.4) return 1.4;
-            if (prev < 1.8) return 1.8;
-            if (prev < 2.2) return 2.2;
-            return 2.2;
-          } else { // Swipe down (scroll up)
-            if (prev > 1.8) return 1.8;
-            if (prev > 1.4) return 1.4;
-            if (prev > 1.0) return 1.0;
-            if (prev > 0.6) return 0.6;
-            return 0;
-          }
-        });
-        touchAccumulator = 0; // Reset after snapping to stage
-      }
+      setUnfoldProgress(prev => {
+        // Continuous touch scroll delta calculation
+        // A full screen swipe of ~600px * 0.0035 ≈ 2.1 progress,
+        // so it takes roughly 2-3 comfortable swipes to unlock everything smoothly
+        let delta = deltaY * 0.0035;
+        return Math.max(0, Math.min(3.0, prev + delta));
+      });
     };
 
     window.addEventListener('wheel', handleWheel);
@@ -686,7 +618,7 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
       window.removeEventListener('touchstart', handleTouchStart);
       window.removeEventListener('touchmove', handleTouchMove);
     };
-  }, []);
+  }, [dimensions]);
 
   const handleDragStart = (e: React.MouseEvent | React.TouchEvent, node: NodeData) => {
     if (!simulationRef.current) return;
