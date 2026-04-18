@@ -249,6 +249,9 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
             radius: n.radius,
           }));
           setDynamicNodes(formattedNodes);
+        } else if (graphNodes && graphNodes.length === 0) {
+          console.warn('No nodes found in DB. Falling back to INITIAL_NODES.');
+          setDynamicNodes(INITIAL_NODES);
         }
 
         // Fetch Posts (Ramblings)
@@ -721,8 +724,14 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
             {links.map((link, i) => {
               const source = link.source as NodeData;
               const target = link.target as NodeData;
-              const isHovered = (hoveredNode === source.id || hoveredNode === target.id) && unfoldProgress >= 1;
+              const isHoveredNode = hoveredNode === source.id || hoveredNode === target.id;
+              const isAnyHovered = hoveredNode !== null;
               
+              // Obsidian style link highlighting
+              const linkOpacity = isAnyHovered ? (isHoveredNode ? 0.8 : 0.1) : 0.3;
+              const linkColor = isHoveredNode ? "#A5D6B7" : "#4a6b57";
+              const linkWidth = isHoveredNode ? 1.5 : 1;
+
               return (
                 <line
                   key={i}
@@ -730,9 +739,9 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
                   y1={source.y}
                   x2={target.x}
                   y2={target.y}
-                  stroke="#2F5A46"
-                  strokeWidth={isHovered ? 1.5 : 1}
-                  strokeDasharray="4 4"
+                  stroke={linkColor}
+                  strokeOpacity={linkOpacity}
+                  strokeWidth={linkWidth}
                   className="transition-all duration-300"
                 />
               );
@@ -745,11 +754,31 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
               const isHovered = hoveredNode === node.id && unfoldProgress >= 1;
               const isCenter = node.group === 'center';
               
+              // Determine if this node is a neighbor of the hovered node
+              const isNeighbor = hoveredNode && links.some(l => {
+                const s = l.source as NodeData;
+                const t = l.target as NodeData;
+                return (s.id === hoveredNode && t.id === node.id) || (t.id === hoveredNode && s.id === node.id);
+              });
+
+              const isAnyHovered = hoveredNode !== null;
+              const isHighlighted = isHovered || isNeighbor;
+              
+              // Obsidian style node opacity
+              const nodeOpacity = isAnyHovered ? (isHighlighted ? 1 : 0.15) : 1;
+              
+              // Obsidian style node colors
+              let nodeFill = "#8b949e"; // default gray
+              if (isCenter) nodeFill = "#4ADE80"; // center is green
+              if (isHovered) nodeFill = "#B39DDB"; // hovered is purple
+              else if (isNeighbor) nodeFill = "#A5D6B7"; // neighbor is light green
+
               return (
                 <g 
                   key={node.id} 
                   transform={`translate(${node.x || 0},${node.y || 0})`}
                   className={`pointer-events-auto ${unfoldProgress >= 1 ? 'cursor-grab active:cursor-grabbing' : ''}`}
+                  style={{ opacity: nodeOpacity, transition: 'opacity 0.3s ease' }}
                   onMouseEnter={() => {
                     if (unfoldProgress >= 1) {
                       setHoveredNode(node.id);
@@ -768,46 +797,35 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
                     }
                   }}
                 >
-                  {/* Invisible Hover Area to make hover detection looser */}
-                  <circle r={50} fill="transparent" />
-
-                  {/* Faint Outer Ring (Only show when not fully tangled) */}
-                  <circle
-                    r={node.radius * 2.5}
-                    fill="none"
-                    stroke="#4ADE80"
-                    strokeOpacity={isHovered ? 0.3 : (unfoldProgress > 0.1 ? 0.08 : 0)}
-                    strokeWidth={1}
-                    className="transition-all duration-500"
-                  />
+                  {/* Invisible Hover Area */}
+                  <circle r={25} fill="transparent" />
                   
-                  {/* Core Node */}
+                  {/* Core Node - Solid Circle like Obsidian */}
                   <circle
-                    r={node.radius}
-                    fill={isCenter ? "#C8E6C9" : (isHovered ? "rgba(200, 230, 201, 0.1)" : "none")}
-                    stroke="#C8E6C9"
-                    strokeWidth={1.5}
-                    className="node-glow transition-all duration-300"
+                    r={isHovered ? node.radius * 1.5 : node.radius}
+                    fill={nodeFill}
+                    className="transition-all duration-300"
                     style={{ opacity: isCenter || unfoldProgress > 0.05 ? 1 : 0 }}
                   />
                   
                   {/* Main Label */}
                   <text
                     textAnchor="middle"
-                    dy="2.5em"
-                    fill={isCenter ? "#E8F5E9" : (isHovered ? "#E8F5E9" : "#A5D6B7")}
-                    className="font-pixel tracking-[0.2em] text-sm transition-colors duration-300"
+                    dy="1.5em"
+                    fill={isHighlighted ? "#E8F5E9" : "#8b949e"}
+                    className="font-pixel tracking-widest text-xs transition-colors duration-300"
                     style={{ 
                       pointerEvents: 'none', 
                       userSelect: 'none',
-                      opacity: isCenter || unfoldProgress > 0.15 ? 1 : 0,
+                      opacity: isCenter || unfoldProgress > 0.15 ? (isAnyHovered && !isHighlighted ? 0.3 : 1) : 0,
                       transform: isCenter ? 'scale(1)' : `scale(${Math.min(1, unfoldProgress * 5)})`
                     }}
                   >
                     {node.label}
                   </text>
 
-                  {/* Hex Address */}
+                  {/* Hex Address - Removed for Obsidian style, but kept the code commented just in case */}
+                  {/*
                   <text
                     textAnchor="middle"
                     dy="4.5em"
@@ -821,6 +839,7 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
                   >
                     {node.address}
                   </text>
+                  */}
 
                   {/* Sub-nodes that pop out on hover */}
                   {isHovered && !isCenter && dynamicSubNodes[node.id]?.map((sub, idx, arr) => {
@@ -842,9 +861,9 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
                         onMouseDown={(e) => e.stopPropagation()}
                         onTouchStart={(e) => e.stopPropagation()}
                       >
-                        <line x1={0} y1={0} x2={sx} y2={sy} stroke="#4ADE80" strokeWidth={0.5} strokeDasharray="1 2" opacity={0.5} />
-                        <circle cx={sx} cy={sy} r={1.5} fill={sub.link ? "#4ADE80" : "#C8E6C9"} />
-                        <text x={sx} y={sy - 4} textAnchor="middle" fill={sub.link ? "#4ADE80" : "#A5D6B7"} className="font-pixel text-[5px]">{sub.label}</text>
+                        <line x1={0} y1={0} x2={sx} y2={sy} stroke="#30363d" strokeWidth={1} opacity={0.8} />
+                        <circle cx={sx} cy={sy} r={2} fill={sub.link ? "#58a6ff" : "#8b949e"} />
+                        <text x={sx} y={sy - 5} textAnchor="middle" fill={sub.link ? "#58a6ff" : "#8b949e"} className="font-sans text-[8px] tracking-wide">{sub.label}</text>
                       </g>
                     )
                   })}
@@ -1004,46 +1023,34 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
         </div>
       )}
       
-      {/* Hover Tooltip */}
+      {/* Hover Tooltip - Obsidian Style */}
       <AnimatePresence>
         {hoveredNode && unfoldProgress >= 1 && unfoldProgress <= 1.1 && (
           <motion.div
-            initial={{ opacity: 0, scale: 0.9, y: 5 }}
+            initial={{ opacity: 0, scale: 0.95, y: 5 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.9 }}
-            transition={{ duration: 0.15 }}
-            className="fixed z-50 pointer-events-none border border-[#4ADE80]/30 bg-[#030a07]/95 p-4 backdrop-blur-md shadow-[0_0_15px_rgba(74,222,128,0.15)] min-w-[150px] max-w-[250px]"
-            style={{ left: mousePos.x + 20, top: mousePos.y + 20 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            transition={{ duration: 0.1 }}
+            className="fixed z-50 pointer-events-none border border-[#30363d] bg-[#161b22] rounded-md p-3 shadow-lg min-w-[150px] max-w-[250px]"
+            style={{ left: mousePos.x + 15, top: mousePos.y + 15 }}
           >
-            <h3 className="font-pixel text-[#E8F5E9] text-sm mb-1">
+            <h3 className="font-sans font-semibold text-[#c9d1d9] text-sm mb-1">
               {nodes.find(n => n.id === hoveredNode)?.label}
             </h3>
-            <p className="font-pixel text-[#4a6b57] text-[10px] tracking-widest">
-              {nodes.find(n => n.id === hoveredNode)?.address}
-            </p>
-            <div className="w-full h-px bg-[#1B3B2B] my-2"></div>
             
             {/* Display Subnodes in Tooltip */}
             {dynamicSubNodes[hoveredNode] && dynamicSubNodes[hoveredNode].length > 0 && (
-              <div className="flex flex-col gap-2 mt-2">
+              <div className="flex flex-col gap-1.5 mt-2 pt-2 border-t border-[#30363d]">
                 {dynamicSubNodes[hoveredNode].map(sub => (
                   <div key={sub.id} className="flex flex-col">
-                    <span className="font-pixel text-[#A5D6B7] text-[10px]">• {sub.label}</span>
+                    <span className="font-sans text-[#8b949e] text-[11px]">• {sub.label}</span>
                     {sub.desc && (
-                      <span className="font-pixel text-[#4a6b57] text-[8px] ml-2 leading-relaxed">{sub.desc}</span>
-                    )}
-                    {sub.link && (
-                      <span className="font-pixel text-[#4ADE80] text-[8px] ml-2 mt-0.5 animate-pulse">
-                        [ LINK: {sub.link} ]
-                      </span>
+                      <span className="font-sans text-[#8b949e] text-[9px] ml-2 leading-relaxed opacity-70">{sub.desc}</span>
                     )}
                   </div>
                 ))}
-                <div className="w-full h-px bg-[#1B3B2B] my-1"></div>
               </div>
             )}
-            
-            <p className="font-pixel text-[#4ADE80] text-[10px] animate-pulse mt-1">STATUS: ACTIVE // NEURAL SYNC</p>
           </motion.div>
         )}
       </AnimatePresence>
