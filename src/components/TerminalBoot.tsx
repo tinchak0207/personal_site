@@ -32,16 +32,24 @@ export const TerminalBoot: React.FC<TerminalBootProps> = ({ onComplete, isReady 
     let currentCharIdx = 0;
     let isTyping = true;
     let typeInterval: NodeJS.Timeout;
+    let checkReadyInterval: NodeJS.Timeout;
+    let timeoutIds: NodeJS.Timeout[] = [];
+
+    const addTimeout = (callback: () => void, delay: number) => {
+      const id = setTimeout(callback, delay);
+      timeoutIds.push(id);
+      return id;
+    };
 
     const startTyping = () => {
       if (currentLineIdx >= BOOT_LOGS.length) {
         const finishBoot = () => {
           setIsDone(true);
-          setTimeout(onComplete, 400); // reduced from 1200
+          addTimeout(onComplete, 400); // reduced from 1200
         };
 
         if (isReadyRef.current) {
-          setTimeout(finishBoot, 500); // reduced from 1500
+          addTimeout(finishBoot, 500); // reduced from 1500
         } else {
           // Wait for Graph and Fonts to be ready
           let dotCount = 0;
@@ -53,15 +61,15 @@ export const TerminalBoot: React.FC<TerminalBootProps> = ({ onComplete, isReady 
             { time: timeStr, text: "等待核心模組同步", currentText: "等待核心模組同步" }
           ]);
 
-          const checkReady = setInterval(() => {
+          checkReadyInterval = setInterval(() => {
             if (isReadyRef.current) {
-              clearInterval(checkReady);
+              clearInterval(checkReadyInterval);
               setLines(prev => {
                 const newLines = [...prev];
                 newLines[newLines.length - 1].currentText = "核心模組同步完成。";
                 return newLines;
               });
-              setTimeout(finishBoot, 400);
+              addTimeout(finishBoot, 400);
             } else {
               dotCount = (dotCount + 1) % 4;
               setLines(prev => {
@@ -102,7 +110,7 @@ export const TerminalBoot: React.FC<TerminalBootProps> = ({ onComplete, isReady 
           currentLineIdx++;
           
           // Wait a bit before starting next line (shorter wait)
-          setTimeout(startTyping, 400);
+          addTimeout(startTyping, 400);
         }
       }, 40); // Slightly faster typing speed
     };
@@ -111,6 +119,8 @@ export const TerminalBoot: React.FC<TerminalBootProps> = ({ onComplete, isReady 
 
     return () => {
       if (typeInterval) clearInterval(typeInterval);
+      if (checkReadyInterval) clearInterval(checkReadyInterval);
+      timeoutIds.forEach(id => clearTimeout(id));
     };
   }, []);
 
