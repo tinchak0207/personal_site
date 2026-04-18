@@ -546,15 +546,21 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
     simulationRef.current.alphaTarget(0);
   };
 
-  // Calculate hint color interpolating from Green to Cyan smoothly
+  // Calculate hint color interpolating from Green to Cyan to Purple over the full 0-2.8 progress
   const calculateHintColor = () => {
-    // Before 0.3, stay solid green
-    if (unfoldProgress < 0.3) return '#4ADE80';
-    // Smoothly interpolate between 0.3 and 1.0
-    const ratio = Math.min(1, (unfoldProgress - 0.3) / 0.7);
-    const r = Math.round(74 + (129 - 74) * ratio);
-    const g = Math.round(222 + (212 - 222) * ratio);
-    const b = Math.round(128 + (250 - 128) * ratio);
+    const ratio = Math.min(1, Math.max(0, unfoldProgress / 2.8));
+    let r, g, b;
+    if (ratio < 0.5) {
+      const r1 = ratio * 2; // 0 to 1
+      r = Math.round(74 + (129 - 74) * r1);
+      g = Math.round(222 + (212 - 222) * r1);
+      b = Math.round(128 + (250 - 128) * r1);
+    } else {
+      const r2 = (ratio - 0.5) * 2; // 0 to 1
+      r = Math.round(129 + (179 - 129) * r2);
+      g = Math.round(212 + (157 - 212) * r2);
+      b = Math.round(250 + (219 - 250) * r2);
+    }
     return `rgb(${r}, ${g}, ${b})`;
   };
   const hintColor = calculateHintColor();
@@ -630,10 +636,10 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
     >
       {/* Scroll Hint */}
       <div 
-        className="absolute bottom-16 left-1/2 -translate-x-1/2 font-pixel text-sm opacity-80 tracking-[0.3em] pointer-events-none transition-all duration-700 flex flex-col items-center gap-3"
+        className={`absolute bottom-16 left-1/2 -translate-x-1/2 font-pixel text-sm opacity-80 tracking-[0.3em] pointer-events-none transition-all duration-700 flex flex-col items-center gap-3 ${unfoldProgress >= 2.8 ? 'opacity-0 translate-y-10' : ''}`}
         style={{ 
-          opacity: unfoldProgress < 0.8 ? 0.8 : (unfoldProgress > 1.2 ? 0 : 1), // Fade out after 1.2
-          transform: `translate(-50%, ${unfoldProgress > 0.8 && unfoldProgress <= 1.2 ? '20px' : '0'})`,
+          opacity: unfoldProgress >= 2.8 ? 0 : (unfoldProgress < 0.8 ? 0.8 : 1), // Fade out after 2.8
+          transform: `translate(-50%, ${unfoldProgress > 0.8 && unfoldProgress < 2.8 ? '20px' : (unfoldProgress >= 2.8 ? '40px' : '0')})`,
           textShadow: `0 0 10px ${hintColor}`,
           color: hintColor
         }}
@@ -655,18 +661,34 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
         </div>
         <p className="font-bold mt-1 transition-colors duration-500">{glitchText}</p>
         
-        {/* Charging Progress Bar */}
-        <div className="w-24 h-3 border-2 border-current mt-1 flex p-[1px]">
-          <div 
-            className="h-full bg-current transition-all duration-300 ease-out"
-            style={{ 
-              width: `${Math.min(100, Math.max(0, (unfoldProgress / 1.0) * 100))}%`,
-              boxShadow: `0 0 8px ${hintColor}`
-            }}
-          />
-        </div>
-        <div className="text-[10px] opacity-60">
-          {Math.round(Math.min(100, Math.max(0, (unfoldProgress / 1.0) * 100)))}%
+        {/* Pixel SVG Charging Progress Bar */}
+        <div className="flex flex-col items-center gap-1 mt-1" style={{ filter: `drop-shadow(0 0 5px ${hintColor})` }}>
+          <svg width="120" height="24" viewBox="0 0 120 24">
+            {/* Top and Bottom Borders */}
+            <rect x="4" y="2" width="100" height="2" fill="currentColor" opacity="0.8"/>
+            <rect x="4" y="20" width="100" height="2" fill="currentColor" opacity="0.8"/>
+            {/* Left and Right Borders */}
+            <rect x="2" y="4" width="2" height="16" fill="currentColor" opacity="0.8"/>
+            <rect x="104" y="4" width="2" height="16" fill="currentColor" opacity="0.8"/>
+            {/* Battery Terminal */}
+            <rect x="106" y="8" width="4" height="8" fill="currentColor" opacity="0.8"/>
+            
+            {/* Segmented Fill for pixel effect (20 segments) */}
+            <g>
+              {Array.from({ length: 20 }).map((_, i) => (
+                 <rect 
+                   key={i} 
+                   x={6 + i * 5} 
+                   y="6" 
+                   width="4" 
+                   height="12" 
+                   fill="currentColor" 
+                   opacity={(unfoldProgress / 2.8) > (i / 20) ? 1 : 0.15} 
+                   className="transition-opacity duration-300"
+                 />
+              ))}
+            </g>
+          </svg>
         </div>
       </div>
 
@@ -801,7 +823,7 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
                   </text>
 
                   {/* Sub-nodes that pop out on hover */}
-                  {isHovered && dynamicSubNodes[node.id]?.map((sub, idx, arr) => {
+                  {isHovered && !isCenter && dynamicSubNodes[node.id]?.map((sub, idx, arr) => {
                     const angle = (idx / arr.length) * Math.PI * 2 - Math.PI / 2; 
                     const dist = 35; 
                     const sx = Math.cos(angle) * dist;
