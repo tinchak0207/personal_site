@@ -773,7 +773,7 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
         <g style={{
           transformOrigin: zoomTarget ? `${zoomTarget.x}px ${zoomTarget.y}px` : '50% 50%',
           transform: typeof window !== 'undefined' 
-            ? `translate(${(mousePos.x - window.innerWidth / 2) * -0.05}px, ${(mousePos.y - window.innerHeight / 2) * -0.05}px) scale(${hoveredNode && unfoldProgress >= 1 ? 2.5 : 1})` 
+            ? `translate(${(mousePos.x - window.innerWidth / 2) * -0.05}px, ${(mousePos.y - window.innerHeight / 2) * -0.05}px) scale(${hoveredNode && hoveredNode !== 'ME' && unfoldProgress >= 1 ? 2.5 : 1})` 
             : 'translate(0, 0) scale(1)',
           opacity: 1, // Graph stays visible, never fades out
           pointerEvents: 'auto', // Graph always interactive
