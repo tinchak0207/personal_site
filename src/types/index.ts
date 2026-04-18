@@ -19,6 +19,7 @@ export interface Project {
   image_url?: string;
   published: boolean;
   tags: string[];
+  folder: string;
   created_at: string;
   updated_at: string;
 }
@@ -30,6 +31,7 @@ export interface ExternalLink {
   description?: string;
   published: boolean;
   tags: string[];
+  folder: string;
   created_at: string;
   updated_at: string;
 }
