@@ -158,19 +158,23 @@ export const Graph: React.FC = () => {
 
       // Calculate dynamic scale to ensure nodes never exceed screen
       const { width, height } = dimensionsRef.current;
+      const isMobile = width < 768;
+      
       let minX = width / 2;
       let maxX = width / 2;
       let minY = height / 2;
       let maxY = height / 2;
       
-      const margin = Math.min(width, height) * 0.15 + 50; // Dynamic margin for labels, hover effects, subnodes
+      // Increased margin for mobile to account for the bottom HUD
+      const margin = Math.min(width, height) * 0.15 + (isMobile ? 100 : 50); 
 
       currentNodes.forEach(node => {
         if (node.x !== undefined && node.y !== undefined) {
           minX = Math.min(minX, node.x - margin);
           maxX = Math.max(maxX, node.x + margin);
           minY = Math.min(minY, node.y - margin);
-          maxY = Math.max(maxY, node.y + margin);
+          // For mobile, subtract extra space from the bottom (maxY)
+          maxY = Math.max(maxY, node.y + margin + (isMobile ? 150 : 0));
         }
       });
 
@@ -434,7 +438,7 @@ export const Graph: React.FC = () => {
     >
       {/* Scroll Hint */}
       <div 
-        className="absolute bottom-16 left-1/2 -translate-x-1/2 font-pixel text-sm opacity-80 tracking-[0.3em] pointer-events-none transition-all duration-700 flex flex-col items-center gap-3"
+        className={`absolute left-1/2 -translate-x-1/2 font-pixel text-sm opacity-80 tracking-[0.3em] pointer-events-none transition-all duration-700 flex flex-col items-center gap-2 md:gap-3 ${dimensions.width < 768 ? 'bottom-28' : 'bottom-16'}`}
         style={{ 
           opacity: unfoldProgress < 0.8 ? 0.8 : 1, // Keep it visible after 0.8
           transform: `translate(-50%, ${unfoldProgress > 0.8 && unfoldProgress <= 1.0 ? '20px' : '0'})`,
@@ -443,21 +447,29 @@ export const Graph: React.FC = () => {
         }}
       >
         <div className="flex flex-col items-center gap-1 animate-bounce">
-          <svg width="24" height="36" viewBox="0 0 24 36" fill="none" xmlns="http://www.w3.org/2000/svg" className="opacity-80">
-            {/* Pixel Mouse Outline */}
-            <path d="M8 0H16V2H18V4H20V6H22V20H20V24H18V28H16V30H8V28H6V24H4V20H2V6H4V4H6V2H8V0Z" fill="currentColor" fillOpacity="0.2"/>
-            <path d="M8 2H16V4H18V6H20V20H18V24H16V26H8V24H6V20H4V6H6V4H8V2Z" fill="#030a07"/>
-            <path d="M10 0H14V2H10V0ZM6 2H10V4H6V2ZM14 2H18V4H14V2ZM4 4H6V6H4V4ZM18 4H20V6H18V4ZM2 6H4V20H2V6ZM20 6H22V20H20V6ZM4 20H6V24H4V20ZM18 20H20V24H18V20ZM6 24H8V28H6V24ZM16 24H18V28H16V24ZM8 28H16V30H8V28Z" fill="currentColor"/>
-            
-            {/* Pixel Scroll Wheel */}
-            <path d="M10 8H14V14H10V8Z" fill="currentColor" className="animate-pulse"/>
-            
-            {/* Inner Details */}
-            <path d="M11 20H13V22H11V20Z" fill="currentColor" fillOpacity="0.5"/>
-          </svg>
-          <div className="w-0.5 h-6 mt-1" style={{ background: `linear-gradient(to bottom, ${hintColor}, transparent)` }}></div>
+          {dimensions.width < 768 ? (
+            // Mobile Swipe Up Icon
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-80">
+              <path d="M12 20V4M5 11l7-7 7 7"/>
+            </svg>
+          ) : (
+            // Desktop Mouse Scroll Icon
+            <svg width="24" height="36" viewBox="0 0 24 36" fill="none" xmlns="http://www.w3.org/2000/svg" className="opacity-80">
+              {/* Pixel Mouse Outline */}
+              <path d="M8 0H16V2H18V4H20V6H22V20H20V24H18V28H16V30H8V28H6V24H4V20H2V6H4V4H6V2H8V0Z" fill="currentColor" fillOpacity="0.2"/>
+              <path d="M8 2H16V4H18V6H20V20H18V24H16V26H8V24H6V20H4V6H6V4H8V2Z" fill="#030a07"/>
+              <path d="M10 0H14V2H10V0ZM6 2H10V4H6V2ZM14 2H18V4H14V2ZM4 4H6V6H4V4ZM18 4H20V6H18V4ZM2 6H4V20H2V6ZM20 6H22V20H20V6ZM4 20H6V24H4V20ZM18 20H20V24H18V20ZM6 24H8V28H6V24ZM16 24H18V28H16V24ZM8 28H16V30H8V28Z" fill="currentColor"/>
+              
+              {/* Pixel Scroll Wheel */}
+              <path d="M10 8H14V14H10V8Z" fill="currentColor" className="animate-pulse"/>
+              
+              {/* Inner Details */}
+              <path d="M11 20H13V22H11V20Z" fill="currentColor" fillOpacity="0.5"/>
+            </svg>
+          )}
+          <div className="w-0.5 h-4 md:h-6 mt-1" style={{ background: `linear-gradient(to bottom, ${hintColor}, transparent)` }}></div>
         </div>
-        <p className="font-bold mt-1">{glitchText}</p>
+        <p className="font-bold mt-1 text-xs md:text-sm">{dimensions.width < 768 ? '向上滑動' : glitchText}</p>
       </div>
 
       <svg width="100%" height="100%" className="overflow-visible pointer-events-none absolute inset-0 z-0">
@@ -713,55 +725,56 @@ export const Graph: React.FC = () => {
         </g>
       </svg>
 
-      {/* HUD Modules Layer - Vertical Left Sidebar */}
+      {/* HUD Modules Layer - Vertical Left Sidebar (Desktop) / Horizontal Bottom (Mobile) */}
       {unfoldProgress > 1.0 && (
-        <div className="absolute left-6 md:left-12 top-0 bottom-0 py-32 pointer-events-none z-20 flex flex-col justify-between font-pixel">
+        <div className="absolute left-0 md:left-12 bottom-12 md:bottom-0 top-auto md:top-0 w-full md:w-auto px-4 md:px-0 py-4 md:py-32 pointer-events-none z-20 flex flex-row md:flex-col justify-around md:justify-between font-pixel">
           
           {/* ARCHIVE / BLOG */}
           <div 
-            className="pointer-events-auto flex items-center gap-4 cursor-pointer group"
+            className="pointer-events-auto flex flex-col md:flex-row items-center gap-2 md:gap-4 cursor-pointer group relative"
             style={{ 
               opacity: progArchive,
-              transform: `translateX(${(1 - progArchive) * -100}px)`,
+              transform: `translate${dimensions.width < 768 ? 'Y' : 'X'}(${(1 - progArchive) * (dimensions.width < 768 ? 50 : -100)}px)`,
               display: progArchive === 0 ? 'none' : 'flex'
             }}
             onClick={() => window.location.href = '/blog'}
           >
-            <div className="w-12 h-12 border border-[#4ADE80] flex items-center justify-center bg-[#0a140f]/90 group-hover:bg-[#1B3B2B] transition-colors relative z-10 shadow-[0_0_15px_rgba(74,222,128,0.2)]">
+            <div className="w-10 h-10 md:w-12 md:h-12 border border-[#4ADE80] flex items-center justify-center bg-[#0a140f]/90 group-hover:bg-[#1B3B2B] transition-colors relative z-10 shadow-[0_0_15px_rgba(74,222,128,0.2)]">
               <div className="absolute inset-0 noise"></div>
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#4ADE80" strokeWidth="1.5" className={progArchive === 1 ? "group-hover:animate-pulse" : ""}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#4ADE80" strokeWidth="1.5" className={`scale-75 md:scale-100 ${progArchive === 1 ? "group-hover:animate-pulse" : ""}`}>
                 <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
                 <polyline points="17 21 17 13 7 13 7 21"/>
                 <polyline points="7 3 7 8 15 8"/>
               </svg>
             </div>
             <div 
-              className="overflow-hidden"
+              className="overflow-hidden md:relative absolute -top-12 md:top-auto left-1/2 md:left-auto -translate-x-1/2 md:translate-x-0"
               style={{
-                maxWidth: `${progArchive * 200}px`,
+                maxWidth: dimensions.width < 768 ? 'none' : `${progArchive * 200}px`,
+                maxHeight: dimensions.width < 768 ? `${progArchive * 100}px` : 'none',
                 opacity: progArchive > 0.5 ? (progArchive - 0.5) * 2 : 0
               }}
             >
-              <div className="pl-2 whitespace-nowrap">
-                <h3 className="text-[#4ADE80] tracking-[0.3em] text-lg md:text-xl">碎碎念</h3>
-                <p className="text-[#4a6b57] text-xs tracking-widest mt-1">/logs</p>
+              <div className="pl-2 pr-2 py-1 whitespace-nowrap bg-[#030a07]/80 backdrop-blur-sm rounded border border-[#1B3B2B] md:border-none md:bg-transparent md:backdrop-blur-none text-center md:text-left">
+                <h3 className="text-[#4ADE80] tracking-[0.3em] text-sm md:text-xl">碎碎念</h3>
+                <p className="text-[#4a6b57] text-[8px] md:text-xs tracking-widest mt-0.5 md:mt-1">/logs</p>
               </div>
             </div>
           </div>
 
           {/* PROJECTS */}
           <div 
-            className="pointer-events-auto flex items-center gap-4 cursor-pointer group"
+            className="pointer-events-auto flex flex-col md:flex-row items-center gap-2 md:gap-4 cursor-pointer group relative"
             style={{ 
               opacity: progProjects,
-              transform: `translateX(${(1 - progProjects) * -100}px)`,
+              transform: `translate${dimensions.width < 768 ? 'Y' : 'X'}(${(1 - progProjects) * (dimensions.width < 768 ? 50 : -100)}px)`,
               display: progProjects === 0 ? 'none' : 'flex'
             }}
             onClick={() => window.location.href = '/blog'}
           >
-            <div className="w-12 h-12 border border-[#81D4FA] flex items-center justify-center bg-[#0a140f]/90 group-hover:bg-[#01579B]/30 transition-colors relative z-10 shadow-[0_0_15px_rgba(129,212,250,0.2)]">
+            <div className="w-10 h-10 md:w-12 md:h-12 border border-[#81D4FA] flex items-center justify-center bg-[#0a140f]/90 group-hover:bg-[#01579B]/30 transition-colors relative z-10 shadow-[0_0_15px_rgba(129,212,250,0.2)]">
               <div className="absolute inset-0 noise"></div>
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#81D4FA" strokeWidth="1.5" className={progProjects === 1 ? "group-hover:animate-pulse" : ""}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#81D4FA" strokeWidth="1.5" className={`scale-75 md:scale-100 ${progProjects === 1 ? "group-hover:animate-pulse" : ""}`}>
                 <rect x="4" y="4" width="16" height="16" rx="2" ry="2"/>
                 <rect x="9" y="9" width="6" height="6"/>
                 <line x1="9" y1="1" x2="9" y2="4"/>
@@ -775,87 +788,90 @@ export const Graph: React.FC = () => {
               </svg>
             </div>
             <div 
-              className="overflow-hidden"
+              className="overflow-hidden md:relative absolute -top-12 md:top-auto left-1/2 md:left-auto -translate-x-1/2 md:translate-x-0"
               style={{
-                maxWidth: `${progProjects * 200}px`,
+                maxWidth: dimensions.width < 768 ? 'none' : `${progProjects * 200}px`,
+                maxHeight: dimensions.width < 768 ? `${progProjects * 100}px` : 'none',
                 opacity: progProjects > 0.5 ? (progProjects - 0.5) * 2 : 0
               }}
             >
-              <div className="pl-2 whitespace-nowrap">
-                <h3 className="text-[#81D4FA] tracking-[0.3em] text-lg md:text-xl">個人項目</h3>
-                <p className="text-[#0277BD] text-xs tracking-widest mt-1">/projects</p>
+              <div className="pl-2 pr-2 py-1 whitespace-nowrap bg-[#030a07]/80 backdrop-blur-sm rounded border border-[#1B3B2B] md:border-none md:bg-transparent md:backdrop-blur-none text-center md:text-left">
+                <h3 className="text-[#81D4FA] tracking-[0.3em] text-sm md:text-xl">個人項目</h3>
+                <p className="text-[#0277BD] text-[8px] md:text-xs tracking-widest mt-0.5 md:mt-1">/projects</p>
               </div>
             </div>
           </div>
 
           {/* SETTINGS */}
           <div 
-            className="pointer-events-auto flex items-center gap-4 group"
+            className="pointer-events-auto flex flex-col md:flex-row items-center gap-2 md:gap-4 group relative"
             style={{ 
               opacity: progSettings,
-              transform: `translateX(${(1 - progSettings) * -100}px)`,
+              transform: `translate${dimensions.width < 768 ? 'Y' : 'X'}(${(1 - progSettings) * (dimensions.width < 768 ? 50 : -100)}px)`,
               display: progSettings === 0 ? 'none' : 'flex'
             }}
           >
-            <div className="w-12 h-12 border border-[#B39DDB] flex items-center justify-center bg-[#0a140f]/90 relative z-10 shadow-[0_0_15px_rgba(179,157,219,0.2)]">
+            <div className="w-10 h-10 md:w-12 md:h-12 border border-[#B39DDB] flex items-center justify-center bg-[#0a140f]/90 relative z-10 shadow-[0_0_15px_rgba(179,157,219,0.2)]">
               <div className="absolute inset-0 noise"></div>
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#B39DDB" strokeWidth="1.5" className={progSettings === 1 ? "animate-[spin_4s_linear_infinite]" : ""}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#B39DDB" strokeWidth="1.5" className={`scale-75 md:scale-100 ${progSettings === 1 ? "animate-[spin_4s_linear_infinite]" : ""}`}>
                 <circle cx="12" cy="12" r="3"/>
                 <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
               </svg>
             </div>
             <div 
-              className="overflow-hidden flex flex-col gap-2"
+              className="overflow-hidden flex flex-col gap-1 md:gap-2 md:relative absolute -top-16 md:top-auto left-1/2 md:left-auto -translate-x-1/2 md:translate-x-0"
               style={{
-                maxWidth: `${progSettings * 200}px`,
+                maxWidth: dimensions.width < 768 ? 'none' : `${progSettings * 200}px`,
+                maxHeight: dimensions.width < 768 ? `${progSettings * 100}px` : 'none',
                 opacity: progSettings > 0.5 ? (progSettings - 0.5) * 2 : 0
               }}
             >
-              <div className="pl-2 whitespace-nowrap">
-                <h3 className="text-[#B39DDB] tracking-[0.3em] text-lg md:text-xl">系統設定</h3>
-                <p className="text-[#7E57C2] text-xs tracking-widest mt-1">/sys_config</p>
-              </div>
-              <div className="pl-2 flex gap-2 text-[10px] whitespace-nowrap">
-                {['繁', '简', 'EN'].map(l => (
-                  <button 
-                    key={l}
-                    onClick={() => setLang(l)}
-                    className={`transition-colors ${lang === l ? 'text-[#B39DDB] font-bold' : 'text-[#7E57C2] hover:text-[#D1C4E9]'}`}
-                  >
-                    [{l}]
-                  </button>
-                ))}
+              <div className="pl-2 pr-2 py-1 whitespace-nowrap bg-[#030a07]/80 backdrop-blur-sm rounded border border-[#1B3B2B] md:border-none md:bg-transparent md:backdrop-blur-none text-center md:text-left flex flex-col items-center md:items-start">
+                <h3 className="text-[#B39DDB] tracking-[0.3em] text-sm md:text-xl">系統設定</h3>
+                <p className="text-[#7E57C2] text-[8px] md:text-xs tracking-widest mt-0.5 md:mt-1">/sys_config</p>
+                <div className="flex gap-2 text-[10px] whitespace-nowrap mt-1 justify-center md:justify-start">
+                  {['繁', '简', 'EN'].map(l => (
+                    <button 
+                      key={l}
+                      onClick={() => setLang(l)}
+                      className={`transition-colors ${lang === l ? 'text-[#B39DDB] font-bold' : 'text-[#7E57C2] hover:text-[#D1C4E9]'}`}
+                    >
+                      [{l}]
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
 
           {/* LINKS */}
           <div 
-            className="pointer-events-auto flex items-center gap-4 cursor-pointer group"
+            className="pointer-events-auto flex flex-col md:flex-row items-center gap-2 md:gap-4 cursor-pointer group relative"
             style={{ 
               opacity: progLinks,
-              transform: `translateX(${(1 - progLinks) * -100}px)`,
+              transform: `translate${dimensions.width < 768 ? 'Y' : 'X'}(${(1 - progLinks) * (dimensions.width < 768 ? 50 : -100)}px)`,
               display: progLinks === 0 ? 'none' : 'flex'
             }}
             onClick={() => window.open('https://github.com/tinchak0207', '_blank')}
           >
-            <div className="w-12 h-12 border border-[#FFCC80] flex items-center justify-center bg-[#0a140f]/90 group-hover:bg-[#E65100]/30 transition-colors relative z-10 shadow-[0_0_15px_rgba(255,204,128,0.2)]">
+            <div className="w-10 h-10 md:w-12 md:h-12 border border-[#FFCC80] flex items-center justify-center bg-[#0a140f]/90 group-hover:bg-[#E65100]/30 transition-colors relative z-10 shadow-[0_0_15px_rgba(255,204,128,0.2)]">
               <div className="absolute inset-0 noise"></div>
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#FFCC80" strokeWidth="1.5" className={progLinks === 1 ? "group-hover:animate-pulse" : ""}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#FFCC80" strokeWidth="1.5" className={`scale-75 md:scale-100 ${progLinks === 1 ? "group-hover:animate-pulse" : ""}`}>
                 <polyline points="4 17 10 11 4 5"/>
                 <line x1="12" y1="19" x2="20" y2="19"/>
               </svg>
             </div>
             <div 
-              className="overflow-hidden"
+              className="overflow-hidden md:relative absolute -top-12 md:top-auto left-1/2 md:left-auto -translate-x-1/2 md:translate-x-0"
               style={{
-                maxWidth: `${progLinks * 200}px`,
+                maxWidth: dimensions.width < 768 ? 'none' : `${progLinks * 200}px`,
+                maxHeight: dimensions.width < 768 ? `${progLinks * 100}px` : 'none',
                 opacity: progLinks > 0.5 ? (progLinks - 0.5) * 2 : 0
               }}
             >
-              <div className="pl-2 whitespace-nowrap">
-                <h3 className="text-[#FFCC80] tracking-[0.3em] text-lg md:text-xl">外部鏈接</h3>
-                <p className="text-[#EF6C00] text-xs tracking-widest mt-1">/external_uplinks</p>
+              <div className="pl-2 pr-2 py-1 whitespace-nowrap bg-[#030a07]/80 backdrop-blur-sm rounded border border-[#1B3B2B] md:border-none md:bg-transparent md:backdrop-blur-none text-center md:text-left">
+                <h3 className="text-[#FFCC80] tracking-[0.3em] text-sm md:text-xl">外部鏈接</h3>
+                <p className="text-[#EF6C00] text-[8px] md:text-xs tracking-widest mt-0.5 md:mt-1">/external_uplinks</p>
               </div>
             </div>
           </div>
