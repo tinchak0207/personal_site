@@ -877,7 +877,7 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
                     
                     {/* Core Node - Solid Circle like Obsidian */}
                     <circle
-                      r={isHovered ? node.radius * 1.5 : node.radius}
+                      r={isHovered && !isCenter ? node.radius * 1.5 : node.radius}
                       fill={nodeFill}
                       className="transition-all duration-300"
                       style={{ opacity: isCenter || unfoldProgress > 0.05 ? 1 : 0 }}
@@ -968,16 +968,17 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
               const fx = cx + (tx - cx) * easeOutQuart;
               const fy = cy + (ty - cy) * easeOutQuart;
               
-              const tailLength = 40;
+              const tailLength = 60;
               const angle = Math.atan2(ty - cy, tx - cx);
               const tailX = fx - Math.cos(angle) * tailLength * p;
               const tailY = fy - Math.sin(angle) * tailLength * p;
 
+              // Pixel art trail: dashed line + leading spark
               return (
                 <div className="fixed pointer-events-none z-50" style={{ left: 0, top: 0 }}>
                   <svg width={dimensions.width} height={dimensions.height}>
-                    <line x1={tailX} y1={tailY} x2={fx} y2={fy} stroke="#4ADE80" strokeWidth={3} opacity={0.8} filter="drop-shadow(0 0 5px #4ADE80)" />
-                    <circle cx={fx} cy={fy} r={3} fill="#FFF" filter="drop-shadow(0 0 6px #4ADE80)" />
+                    <line x1={tailX} y1={tailY} x2={fx} y2={fy} stroke="#FFB74D" strokeWidth={2} opacity={0.9} strokeDasharray="4 4" filter="drop-shadow(0 0 3px #F57C00)" />
+                    <rect x={fx - 2} y={fy - 2} width={4} height={4} fill="#FFE082" filter="drop-shadow(0 0 4px #FFB74D)" />
                   </svg>
                 </div>
               );
@@ -985,22 +986,29 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
             {unfoldProgress >= 1.2 && unfoldProgress < 1.3 && (() => {
               const p = (unfoldProgress - 1.2) / 0.1;
               const easeOut = 1 - Math.pow(1 - p, 3);
-              const radius = 10 + easeOut * 40;
+              const radius = 15 + easeOut * 45;
               const opacity = 1 - p;
               
+              // Pixel art explosion: jagged blocks flying out
               return (
                 <div className="absolute left-0 top-0 w-12 h-12 flex items-center justify-center pointer-events-none z-50">
-                  <svg width="100" height="100" className="absolute" style={{ overflow: 'visible' }}>
-                    <g transform="translate(50, 50)" opacity={opacity}>
-                      {Array.from({ length: 8 }).map((_, i) => {
-                        const angle = (i / 8) * Math.PI * 2;
-                        const px1 = Math.cos(angle) * (radius * 0.3);
-                        const py1 = Math.sin(angle) * (radius * 0.3);
-                        const px2 = Math.cos(angle) * radius;
-                        const py2 = Math.sin(angle) * radius;
-                        return <line key={i} x1={px1} y1={py1} x2={px2} y2={py2} stroke="#4ADE80" strokeWidth={2} />;
+                  <svg width="120" height="120" className="absolute" style={{ overflow: 'visible' }}>
+                    <g transform="translate(60, 60)" opacity={opacity}>
+                      {Array.from({ length: 12 }).map((_, i) => {
+                        const angle = (i / 12) * Math.PI * 2;
+                        const dist = radius * (i % 2 === 0 ? 1 : 0.6); // Alternating lengths
+                        const px = Math.cos(angle) * dist;
+                        const py = Math.sin(angle) * dist;
+                        const color = i % 3 === 0 ? "#FFE082" : (i % 2 === 0 ? "#FFB74D" : "#F57C00");
+                        const size = i % 2 === 0 ? 4 : 2;
+                        return (
+                          <g key={`fw-arch-${i}`}>
+                            <rect x={px - size/2} y={py - size/2} width={size} height={size} fill={color} />
+                            {p < 0.6 && <rect x={px*0.7 - 1} y={py*0.7 - 1} width={2} height={2} fill={color} opacity={0.5} />}
+                          </g>
+                        );
                       })}
-                      <circle r={radius * 0.5} fill="none" stroke="#FFF" strokeWidth={2} opacity={opacity * 0.8} />
+                      <rect x={-radius*0.4} y={-radius*0.4} width={radius*0.8} height={radius*0.8} fill="none" stroke="#FFB74D" strokeWidth={1} strokeDasharray="2 4" opacity={opacity * 0.7} />
                     </g>
                   </svg>
                 </div>
@@ -1052,16 +1060,17 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
               const fx = cx + (tx - cx) * easeOutQuart;
               const fy = cy + (ty - cy) * easeOutQuart;
               
-              const tailLength = 40;
+              const tailLength = 60;
               const angle = Math.atan2(ty - cy, tx - cx);
               const tailX = fx - Math.cos(angle) * tailLength * p;
               const tailY = fy - Math.sin(angle) * tailLength * p;
 
+              // Pixel art trail: dashed line + leading spark
               return (
                 <div className="fixed pointer-events-none z-50" style={{ left: 0, top: 0 }}>
                   <svg width={dimensions.width} height={dimensions.height}>
-                    <line x1={tailX} y1={tailY} x2={fx} y2={fy} stroke="#81D4FA" strokeWidth={3} opacity={0.8} filter="drop-shadow(0 0 5px #81D4FA)" />
-                    <circle cx={fx} cy={fy} r={3} fill="#FFF" filter="drop-shadow(0 0 6px #81D4FA)" />
+                    <line x1={tailX} y1={tailY} x2={fx} y2={fy} stroke="#FFB74D" strokeWidth={2} opacity={0.9} strokeDasharray="4 4" filter="drop-shadow(0 0 3px #F57C00)" />
+                    <rect x={fx - 2} y={fy - 2} width={4} height={4} fill="#FFE082" filter="drop-shadow(0 0 4px #FFB74D)" />
                   </svg>
                 </div>
               );
@@ -1069,22 +1078,29 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
             {unfoldProgress >= 1.6 && unfoldProgress < 1.7 && (() => {
               const p = (unfoldProgress - 1.6) / 0.1;
               const easeOut = 1 - Math.pow(1 - p, 3);
-              const radius = 10 + easeOut * 40;
+              const radius = 15 + easeOut * 45;
               const opacity = 1 - p;
               
+              // Pixel art explosion: jagged blocks flying out
               return (
                 <div className="absolute left-0 top-0 w-12 h-12 flex items-center justify-center pointer-events-none z-50">
-                  <svg width="100" height="100" className="absolute" style={{ overflow: 'visible' }}>
-                    <g transform="translate(50, 50)" opacity={opacity}>
-                      {Array.from({ length: 8 }).map((_, i) => {
-                        const angle = (i / 8) * Math.PI * 2;
-                        const px1 = Math.cos(angle) * (radius * 0.3);
-                        const py1 = Math.sin(angle) * (radius * 0.3);
-                        const px2 = Math.cos(angle) * radius;
-                        const py2 = Math.sin(angle) * radius;
-                        return <line key={i} x1={px1} y1={py1} x2={px2} y2={py2} stroke="#81D4FA" strokeWidth={2} />;
+                  <svg width="120" height="120" className="absolute" style={{ overflow: 'visible' }}>
+                    <g transform="translate(60, 60)" opacity={opacity}>
+                      {Array.from({ length: 12 }).map((_, i) => {
+                        const angle = (i / 12) * Math.PI * 2;
+                        const dist = radius * (i % 2 === 0 ? 1 : 0.6); // Alternating lengths
+                        const px = Math.cos(angle) * dist;
+                        const py = Math.sin(angle) * dist;
+                        const color = i % 3 === 0 ? "#FFE082" : (i % 2 === 0 ? "#FFB74D" : "#F57C00");
+                        const size = i % 2 === 0 ? 4 : 2;
+                        return (
+                          <g key={`fw-proj-${i}`}>
+                            <rect x={px - size/2} y={py - size/2} width={size} height={size} fill={color} />
+                            {p < 0.6 && <rect x={px*0.7 - 1} y={py*0.7 - 1} width={2} height={2} fill={color} opacity={0.5} />}
+                          </g>
+                        );
                       })}
-                      <circle r={radius * 0.5} fill="none" stroke="#FFF" strokeWidth={2} opacity={opacity * 0.8} />
+                      <rect x={-radius*0.4} y={-radius*0.4} width={radius*0.8} height={radius*0.8} fill="none" stroke="#FFB74D" strokeWidth={1} strokeDasharray="2 4" opacity={opacity * 0.7} />
                     </g>
                   </svg>
                 </div>
@@ -1143,16 +1159,17 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
               const fx = cx + (tx - cx) * easeOutQuart;
               const fy = cy + (ty - cy) * easeOutQuart;
               
-              const tailLength = 40;
+              const tailLength = 60;
               const angle = Math.atan2(ty - cy, tx - cx);
               const tailX = fx - Math.cos(angle) * tailLength * p;
               const tailY = fy - Math.sin(angle) * tailLength * p;
 
+              // Pixel art trail: dashed line + leading spark
               return (
                 <div className="fixed pointer-events-none z-50" style={{ left: 0, top: 0 }}>
                   <svg width={dimensions.width} height={dimensions.height}>
-                    <line x1={tailX} y1={tailY} x2={fx} y2={fy} stroke="#B39DDB" strokeWidth={3} opacity={0.8} filter="drop-shadow(0 0 5px #B39DDB)" />
-                    <circle cx={fx} cy={fy} r={3} fill="#FFF" filter="drop-shadow(0 0 6px #B39DDB)" />
+                    <line x1={tailX} y1={tailY} x2={fx} y2={fy} stroke="#FFB74D" strokeWidth={2} opacity={0.9} strokeDasharray="4 4" filter="drop-shadow(0 0 3px #F57C00)" />
+                    <rect x={fx - 2} y={fy - 2} width={4} height={4} fill="#FFE082" filter="drop-shadow(0 0 4px #FFB74D)" />
                   </svg>
                 </div>
               );
@@ -1160,22 +1177,29 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
             {unfoldProgress >= 2.0 && unfoldProgress < 2.1 && (() => {
               const p = (unfoldProgress - 2.0) / 0.1;
               const easeOut = 1 - Math.pow(1 - p, 3);
-              const radius = 10 + easeOut * 40;
+              const radius = 15 + easeOut * 45;
               const opacity = 1 - p;
               
+              // Pixel art explosion: jagged blocks flying out
               return (
                 <div className="absolute left-0 top-0 w-12 h-12 flex items-center justify-center pointer-events-none z-50">
-                  <svg width="100" height="100" className="absolute" style={{ overflow: 'visible' }}>
-                    <g transform="translate(50, 50)" opacity={opacity}>
-                      {Array.from({ length: 8 }).map((_, i) => {
-                        const angle = (i / 8) * Math.PI * 2;
-                        const px1 = Math.cos(angle) * (radius * 0.3);
-                        const py1 = Math.sin(angle) * (radius * 0.3);
-                        const px2 = Math.cos(angle) * radius;
-                        const py2 = Math.sin(angle) * radius;
-                        return <line key={i} x1={px1} y1={py1} x2={px2} y2={py2} stroke="#B39DDB" strokeWidth={2} />;
+                  <svg width="120" height="120" className="absolute" style={{ overflow: 'visible' }}>
+                    <g transform="translate(60, 60)" opacity={opacity}>
+                      {Array.from({ length: 12 }).map((_, i) => {
+                        const angle = (i / 12) * Math.PI * 2;
+                        const dist = radius * (i % 2 === 0 ? 1 : 0.6); // Alternating lengths
+                        const px = Math.cos(angle) * dist;
+                        const py = Math.sin(angle) * dist;
+                        const color = i % 3 === 0 ? "#FFE082" : (i % 2 === 0 ? "#FFB74D" : "#F57C00");
+                        const size = i % 2 === 0 ? 4 : 2;
+                        return (
+                          <g key={`fw-set-${i}`}>
+                            <rect x={px - size/2} y={py - size/2} width={size} height={size} fill={color} />
+                            {p < 0.6 && <rect x={px*0.7 - 1} y={py*0.7 - 1} width={2} height={2} fill={color} opacity={0.5} />}
+                          </g>
+                        );
                       })}
-                      <circle r={radius * 0.5} fill="none" stroke="#FFF" strokeWidth={2} opacity={opacity * 0.8} />
+                      <rect x={-radius*0.4} y={-radius*0.4} width={radius*0.8} height={radius*0.8} fill="none" stroke="#FFB74D" strokeWidth={1} strokeDasharray="2 4" opacity={opacity * 0.7} />
                     </g>
                   </svg>
                 </div>
@@ -1232,54 +1256,62 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
               
               <div className="relative">
                 {/* Firework effect for LINKS */}
-                {unfoldProgress >= 2.2 && unfoldProgress < 2.4 && (() => {
-                  const p = (unfoldProgress - 2.2) / 0.2;
-                  const easeOutQuart = 1 - Math.pow(1 - p, 4);
-                  const cx = dimensions.width / 2;
-                  const cy = dimensions.height / 2;
-                  const tx = dimensions.width - 48; // roughly right-12
-                  const ty = dimensions.height / 2;
-                  const fx = cx + (tx - cx) * easeOutQuart;
-                  const fy = cy + (ty - cy) * easeOutQuart;
-                  
-                  const tailLength = 40;
-                  const angle = Math.atan2(ty - cy, tx - cx);
-                  const tailX = fx - Math.cos(angle) * tailLength * p;
-                  const tailY = fy - Math.sin(angle) * tailLength * p;
-    
-                  return (
-                    <div className="fixed pointer-events-none z-50" style={{ left: 0, top: 0 }}>
-                      <svg width={dimensions.width} height={dimensions.height}>
-                        <line x1={tailX} y1={tailY} x2={fx} y2={fy} stroke="#FFCC80" strokeWidth={3} opacity={0.8} filter="drop-shadow(0 0 5px #FFCC80)" />
-                        <circle cx={fx} cy={fy} r={3} fill="#FFF" filter="drop-shadow(0 0 6px #FFCC80)" />
-                      </svg>
-                    </div>
-                  );
-                })()}
-                {unfoldProgress >= 2.4 && unfoldProgress < 2.5 && (() => {
-                  const p = (unfoldProgress - 2.4) / 0.1;
-                  const easeOut = 1 - Math.pow(1 - p, 3);
-                  const radius = 10 + easeOut * 40;
-                  const opacity = 1 - p;
-                  
-                  return (
-                    <div className="absolute right-0 top-0 w-12 h-12 flex items-center justify-center pointer-events-none z-50">
-                      <svg width="100" height="100" className="absolute" style={{ overflow: 'visible' }}>
-                        <g transform="translate(50, 50)" opacity={opacity}>
-                          {Array.from({ length: 8 }).map((_, i) => {
-                            const angle = (i / 8) * Math.PI * 2;
-                            const px1 = Math.cos(angle) * (radius * 0.3);
-                            const py1 = Math.sin(angle) * (radius * 0.3);
-                            const px2 = Math.cos(angle) * radius;
-                            const py2 = Math.sin(angle) * radius;
-                            return <line key={i} x1={px1} y1={py1} x2={px2} y2={py2} stroke="#FFCC80" strokeWidth={2} />;
-                          })}
-                          <circle r={radius * 0.5} fill="none" stroke="#FFF" strokeWidth={2} opacity={opacity * 0.8} />
-                        </g>
-                      </svg>
-                    </div>
-                  );
-                })()}
+            {unfoldProgress >= 2.2 && unfoldProgress < 2.4 && (() => {
+              const p = (unfoldProgress - 2.2) / 0.2;
+              const easeOutQuart = 1 - Math.pow(1 - p, 4);
+              const cx = dimensions.width / 2;
+              const cy = dimensions.height / 2;
+              const tx = dimensions.width - 48; // roughly right-12
+              const ty = dimensions.height / 2;
+              const fx = cx + (tx - cx) * easeOutQuart;
+              const fy = cy + (ty - cy) * easeOutQuart;
+              
+              const tailLength = 60;
+              const angle = Math.atan2(ty - cy, tx - cx);
+              const tailX = fx - Math.cos(angle) * tailLength * p;
+              const tailY = fy - Math.sin(angle) * tailLength * p;
+
+              // Pixel art trail: dashed line + leading spark
+              return (
+                <div className="fixed pointer-events-none z-50" style={{ left: 0, top: 0 }}>
+                  <svg width={dimensions.width} height={dimensions.height}>
+                    <line x1={tailX} y1={tailY} x2={fx} y2={fy} stroke="#FFB74D" strokeWidth={2} opacity={0.9} strokeDasharray="4 4" filter="drop-shadow(0 0 3px #F57C00)" />
+                    <rect x={fx - 2} y={fy - 2} width={4} height={4} fill="#FFE082" filter="drop-shadow(0 0 4px #FFB74D)" />
+                  </svg>
+                </div>
+              );
+            })()}
+            {unfoldProgress >= 2.4 && unfoldProgress < 2.5 && (() => {
+              const p = (unfoldProgress - 2.4) / 0.1;
+              const easeOut = 1 - Math.pow(1 - p, 3);
+              const radius = 15 + easeOut * 45;
+              const opacity = 1 - p;
+              
+              // Pixel art explosion: jagged blocks flying out
+              return (
+                <div className="absolute right-0 top-0 w-12 h-12 flex items-center justify-center pointer-events-none z-50">
+                  <svg width="120" height="120" className="absolute" style={{ overflow: 'visible' }}>
+                    <g transform="translate(60, 60)" opacity={opacity}>
+                      {Array.from({ length: 12 }).map((_, i) => {
+                        const angle = (i / 12) * Math.PI * 2;
+                        const dist = radius * (i % 2 === 0 ? 1 : 0.6); // Alternating lengths
+                        const px = Math.cos(angle) * dist;
+                        const py = Math.sin(angle) * dist;
+                        const color = i % 3 === 0 ? "#FFE082" : (i % 2 === 0 ? "#FFB74D" : "#F57C00");
+                        const size = i % 2 === 0 ? 4 : 2;
+                        return (
+                          <g key={`fw-link-${i}`}>
+                            <rect x={px - size/2} y={py - size/2} width={size} height={size} fill={color} />
+                            {p < 0.6 && <rect x={px*0.7 - 1} y={py*0.7 - 1} width={2} height={2} fill={color} opacity={0.5} />}
+                          </g>
+                        );
+                      })}
+                      <rect x={-radius*0.4} y={-radius*0.4} width={radius*0.8} height={radius*0.8} fill="none" stroke="#FFB74D" strokeWidth={1} strokeDasharray="2 4" opacity={opacity * 0.7} />
+                    </g>
+                  </svg>
+                </div>
+              );
+            })()}
     
                 <div 
                   className="pointer-events-auto flex items-center gap-4 flex-row-reverse cursor-pointer group"
