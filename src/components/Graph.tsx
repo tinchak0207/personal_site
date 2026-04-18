@@ -34,6 +34,8 @@ export interface SubNode {
   label: string;
   desc?: string;
   link?: string;
+  sx?: number;
+  sy?: number;
 }
 
 const SUB_NODES_MAP: Record<string, SubNode[]> = {
@@ -114,99 +116,96 @@ export interface GraphProps {
 }
 
 const Starfield = React.memo(({ 
-  mousePos, 
   unfoldProgress 
 }: { 
-  mousePos: { x: number, y: number }, 
   unfoldProgress: number 
 }) => {
+  // Pre-calculate all star data to prevent heavy math on every render tick
+  const starData = React.useMemo(() => {
+    const w = typeof window !== 'undefined' ? window.innerWidth : 1920;
+    const h = typeof window !== 'undefined' ? window.innerHeight : 1080;
+    
+    const baseStars = Array.from({ length: 400 }).map((_, i) => {
+      const x = ((Math.sin(i * 12.345) + 1) / 2) * (w + 800) - 400;
+      const y = ((Math.cos(i * 54.321) + 1) / 2) * (h + 800) - 400;
+      const size = ((Math.sin(i * 98.765) + 1) / 2) * 1 + 0.5;
+      const fill = i % 3 === 0 ? "#8FBC8F" : "#A5D6B7";
+      const isPulse = i % 10 === 0;
+      const opacityMult = (Math.sin(i) + 1) / 2 * 0.4 + 0.1;
+      return { id: `base-${i}`, x, y, size, fill, isPulse, opacityMult };
+    });
+
+    const mwStars = Array.from({ length: 800 }).map((_, i) => {
+      const t = ((Math.sin(i * 3.14159) + 1) / 2); 
+      const baseX = t * (w + 800) - 400;
+      const baseY = h - (t * (h + 800) - 400) + Math.sin(t * Math.PI * 3) * 150; 
+      const spread = (Math.pow(Math.sin(i * 7.777), 3)) * 250;
+      const x = baseX + Math.cos(i * 11.11) * spread;
+      const y = baseY + Math.sin(i * 11.11) * spread;
+      const distFromCenter = Math.abs(spread) / 250;
+      const size = distFromCenter < 0.2 ? 0.8 : (distFromCenter < 0.6 ? 1.2 : 1.5);
+      const baseOpacity = 1 - Math.pow(distFromCenter, 0.5);
+      const fill = distFromCenter < 0.15 ? "#E8F5E9" : (i % 4 === 0 ? "#7da38a" : "#366B4E");
+      const isPulse = i % 15 === 0;
+      return { id: `mw-${i}`, x, y, size, fill, isPulse, baseOpacity };
+    });
+
+    const crossStars = Array.from({ length: 15 }).map((_, i) => {
+      const x = ((Math.sin(i * 33.33) + 1) / 2) * w;
+      const y = ((Math.cos(i * 44.44) + 1) / 2) * h;
+      const isYellowish = i % 3 === 0;
+      const fill = isYellowish ? "#F5DEB3" : "#E8F5E9";
+      const animDuration = `${2 + i % 3}s`;
+      return { id: `cross-${i}`, x, y, fill, animDuration };
+    });
+
+    return { baseStars, mwStars, crossStars };
+  }, []); // Only recalculates on mount (or if we added dimensions dependency)
+
   return (
     <g style={{
-      transform: typeof window !== 'undefined' 
-        ? `translate(${(mousePos.x - window.innerWidth / 2) * -0.015}px, ${(mousePos.y - window.innerHeight / 2) * -0.015}px)` 
-        : 'translate(0, 0)',
-      transition: 'transform 0.5s ease-out'
+      transform: 'translate(calc(var(--mouse-x, 0px) * -0.015), calc(var(--mouse-y, 0px) * -0.015))',
+      transition: 'transform 0.1s ease-out'
     }}>
       {/* Base scattered tiny stars */}
-      {Array.from({ length: 400 }).map((_, i) => {
-        const x = ((Math.sin(i * 12.345) + 1) / 2) * (typeof window !== 'undefined' ? window.innerWidth + 800 : 2000) - 400;
-        const y = ((Math.cos(i * 54.321) + 1) / 2) * (typeof window !== 'undefined' ? window.innerHeight + 800 : 1500) - 400;
-        const size = ((Math.sin(i * 98.765) + 1) / 2) * 1 + 0.5; // Very small
-        
-        // Only start showing stars after 50% unfold progress, and ramp up quickly
-        const starOpacity = unfoldProgress < 0.5 ? 0 : Math.max(0, Math.min(1, Math.pow((unfoldProgress - 0.5) * 2, 3) * ((Math.sin(i) + 1) / 2 * 0.4 + 0.1)));
-        
+      {starData.baseStars.map((star) => {
+        const starOpacity = unfoldProgress < 0.5 ? 0 : Math.max(0, Math.min(1, Math.pow((unfoldProgress - 0.5) * 2, 3) * star.opacityMult));
         return (
           <rect 
-            key={`star-base-${i}`} x={x} y={y} width={size} height={size} 
-            fill={i % 3 === 0 ? "#8FBC8F" : "#A5D6B7"} 
+            key={star.id} x={star.x} y={star.y} width={star.size} height={star.size} 
+            fill={star.fill} 
             opacity={starOpacity}
-            className={i % 10 === 0 ? "animate-pulse" : ""}
+            className={star.isPulse ? "animate-pulse" : ""}
           />
         );
       })}
 
-      {/* Milky Way Band (Dense cluster along a diagonal curve) */}
-      {Array.from({ length: 800 }).map((_, i) => {
-        const w = typeof window !== 'undefined' ? window.innerWidth : 1920;
-        const h = typeof window !== 'undefined' ? window.innerHeight : 1080;
-        
-        // Progress along the diagonal (from bottom-left to top-right roughly)
-        const t = ((Math.sin(i * 3.14159) + 1) / 2); 
-        
-        // Base curve for the milky way
-        const baseX = t * (w + 800) - 400;
-        const baseY = h - (t * (h + 800) - 400) + Math.sin(t * Math.PI * 3) * 150; 
-        
-        // Gaussian-like spread from the center of the band
-        const spread = (Math.pow(Math.sin(i * 7.777), 3)) * 250;
-        const offsetX = Math.cos(i * 11.11) * spread;
-        const offsetY = Math.sin(i * 11.11) * spread;
-        
-        const x = baseX + offsetX;
-        const y = baseY + offsetY;
-        
-        // Size is smaller closer to the band center to create density
-        const distFromCenter = Math.abs(spread) / 250;
-        const size = distFromCenter < 0.2 ? 0.8 : (distFromCenter < 0.6 ? 1.2 : 1.5);
-        
-        // Opacity is higher in the center of the band
-        const baseOpacity = 1 - Math.pow(distFromCenter, 0.5);
-        // Only start showing stars after 50% unfold progress
-        const starOpacity = unfoldProgress < 0.5 ? 0 : Math.max(0, Math.min(1, Math.pow((unfoldProgress - 0.5) * 2, 4) * baseOpacity * 0.7));
-        
-        // Color variation: mostly blue/purple tint in the dense parts, some bright white
-        const color = distFromCenter < 0.15 ? "#E8F5E9" : (i % 4 === 0 ? "#7da38a" : "#366B4E");
-
+      {/* Milky Way Band */}
+      {starData.mwStars.map((star) => {
+        const starOpacity = unfoldProgress < 0.5 ? 0 : Math.max(0, Math.min(1, Math.pow((unfoldProgress - 0.5) * 2, 4) * star.baseOpacity * 0.7));
         return (
           <rect 
-            key={`star-mw-${i}`} x={x} y={y} width={size} height={size} 
-            fill={color} 
+            key={star.id} x={star.x} y={star.y} width={star.size} height={star.size} 
+            fill={star.fill} 
             opacity={starOpacity}
-            className={i % 15 === 0 ? "animate-pulse" : ""}
+            className={star.isPulse ? "animate-pulse" : ""}
           />
         );
       })}
 
-      {/* Large cross-shaped twinkling stars (Pixel art style) */}
-      {Array.from({ length: 15 }).map((_, i) => {
-        const x = ((Math.sin(i * 33.33) + 1) / 2) * (typeof window !== 'undefined' ? window.innerWidth : 1920);
-        const y = ((Math.cos(i * 44.44) + 1) / 2) * (typeof window !== 'undefined' ? window.innerHeight : 1080);
-        
+      {/* Large cross-shaped twinkling stars */}
+      {starData.crossStars.map((star) => {
         const starOpacity = unfoldProgress < 0.6 ? 0 : Math.max(0, Math.min(1, Math.pow((unfoldProgress - 0.6) * 2.5, 3) * 0.8));
-        const isYellowish = i % 3 === 0;
-        const color = isYellowish ? "#F5DEB3" : "#E8F5E9"; // Wheat / Bright Mint
-
         return (
           <g 
-            key={`star-cross-${i}`} 
-            transform={`translate(${x}, ${y})`} 
+            key={star.id} 
+            transform={`translate(${star.x}, ${star.y})`} 
             opacity={starOpacity}
             className="animate-pulse"
-            style={{ animationDuration: `${2 + i % 3}s` }}
+            style={{ animationDuration: star.animDuration }}
           >
-            <rect x="-1" y="-4" width="2" height="8" fill={color} />
-            <rect x="-4" y="-1" width="8" height="2" fill={color} />
+            <rect x="-1" y="-4" width="2" height="8" fill={star.fill} />
+            <rect x="-4" y="-1" width="8" height="2" fill={star.fill} />
             <rect x="-1" y="-1" width="2" height="2" fill="#FFF" />
           </g>
         );
@@ -221,7 +220,6 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
   const [links, setLinks] = useState<LinkData[]>([]);
   const [hoveredNode, setHoveredNode] = useState<string | null>(null);
   const [zoomTarget, setZoomTarget] = useState<{x: number, y: number} | null>(null);
-  const [mousePos, setMousePos] = useState({ x: typeof window !== 'undefined' ? window.innerWidth / 2 : 0, y: typeof window !== 'undefined' ? window.innerHeight / 2 : 0 });
   const simulationRef = useRef<d3.Simulation<NodeData, LinkData> | null>(null);
   const draggingNodeIdRef = useRef<string | null>(null);
   const [unfoldProgress, setUnfoldProgress] = useState(0);
@@ -230,14 +228,19 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
   const [lang, setLang] = useState('繁');
 
   const [dynamicNodes, setDynamicNodes] = useState<NodeData[]>(INITIAL_NODES);
+  const [dynamicLinks, setDynamicLinks] = useState<LinkData[]>(INITIAL_LINKS);
   const [dynamicSubNodes, setDynamicSubNodes] = useState<Record<string, SubNode[]>>(SUB_NODES_MAP);
 
   // Fetch data from Supabase
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Fetch Graph Nodes
-        const { data: graphNodes, error: graphNodesError } = await supabase.from('graph_nodes').select('*');
+        // Fetch Graph Nodes and Edges
+        const [{ data: graphNodes, error: graphNodesError }, { data: graphEdges, error: graphEdgesError }] = await Promise.all([
+          supabase.from('graph_nodes').select('*'),
+          supabase.from('graph_edges').select('*')
+        ]);
+        
         if (graphNodesError) {
           console.warn('Supabase graph_nodes table not found. Using default nodes:', graphNodesError.message);
         } else if (graphNodes && graphNodes.length > 0) {
@@ -252,6 +255,17 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
         } else if (graphNodes && graphNodes.length === 0) {
           console.warn('No nodes found in DB. Falling back to INITIAL_NODES.');
           setDynamicNodes(INITIAL_NODES);
+        }
+
+        // Handle dynamic edges
+        if (graphEdges && graphEdges.length > 0) {
+          const formattedEdges: LinkData[] = graphEdges.map(e => ({
+            source: e.source,
+            target: e.target
+          }));
+          setDynamicLinks(formattedEdges);
+        } else {
+          setDynamicLinks(INITIAL_LINKS);
         }
 
         // Fetch Posts (Ramblings)
@@ -378,11 +392,11 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
     // Generate links if they are not defined in DB yet? We just use INITIAL_LINKS for now
     let simLinks = INITIAL_LINKS.map(d => ({ ...d }));
     
-    // If we loaded custom nodes, try to find matching links from INITIAL_LINKS
+    // If we loaded custom nodes, try to find matching links from dynamicLinks
     // If none match, we will create a dynamic web instead of a boring star shape
     if (dynamicNodes !== INITIAL_NODES) {
-      // First, see if we have valid links from our INITIAL_LINKS that match the current DB nodes
-      const validInitialLinks = INITIAL_LINKS.filter(l => 
+      // First, see if we have valid links from our dynamicLinks that match the current DB nodes
+      const validInitialLinks = dynamicLinks.filter(l => 
         dynamicNodes.some(n => n.id === l.source) && dynamicNodes.some(n => n.id === l.target)
       );
 
@@ -461,7 +475,7 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
     return () => {
       simulation.stop();
     };
-  }, [dynamicNodes]);
+  }, [dynamicNodes, dynamicLinks]);
 
   useEffect(() => {
     if (!simulationRef.current) return;
@@ -674,7 +688,16 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
       ref={containerRef} 
       className="absolute inset-0 w-full h-full z-10"
       onMouseMove={(e) => {
-        setMousePos({ x: e.clientX, y: e.clientY });
+        const mx = e.clientX - window.innerWidth / 2;
+        const my = e.clientY - window.innerHeight / 2;
+        if (containerRef.current) {
+          containerRef.current.style.setProperty('--mouse-x', `${mx}px`);
+          containerRef.current.style.setProperty('--mouse-y', `${my}px`);
+          // Also set raw mouse coords for the tooltip
+          containerRef.current.style.setProperty('--raw-mouse-x', `${e.clientX}px`);
+          containerRef.current.style.setProperty('--raw-mouse-y', `${e.clientY}px`);
+        }
+
         if (draggingNodeIdRef.current) {
           const draggedNode = nodes.find(n => n.id === draggingNodeIdRef.current);
           if (draggedNode) {
@@ -767,14 +790,12 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
 
       <svg width="100%" height="100%" className="overflow-visible pointer-events-none absolute inset-0 z-0">
         {/* Starfield Background Layer (Dense Pixel Art Milky Way) */}
-        <Starfield mousePos={mousePos} unfoldProgress={unfoldProgress} />
+        <Starfield unfoldProgress={unfoldProgress} />
 
         {/* Foreground Graph Layer */}
         <g style={{
           transformOrigin: zoomTarget ? `${zoomTarget.x}px ${zoomTarget.y}px` : '50% 50%',
-          transform: typeof window !== 'undefined' 
-            ? `translate(${(mousePos.x - window.innerWidth / 2) * -0.05}px, ${(mousePos.y - window.innerHeight / 2) * -0.05}px) scale(${hoveredNode && unfoldProgress >= 1 ? 2.5 : 1})` 
-            : 'translate(0, 0) scale(1)',
+          transform: `translate(calc(var(--mouse-x, 0px) * -0.05), calc(var(--mouse-y, 0px) * -0.05)) scale(${hoveredNode && hoveredNode !== 'ME' && unfoldProgress >= 1 ? 2.5 : 1})`,
           opacity: 1, // Graph stays visible, never fades out
           pointerEvents: 'auto', // Graph always interactive
           transition: 'transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), transform-origin 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease'
@@ -849,55 +870,55 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
               else if (isNeighbor) nodeFill = "#A5D6B7"; // neighbor is light green
 
               return (
-                <g 
-                  key={node.id} 
-                  transform={`translate(${node.x || 0},${node.y || 0})`}
-                  className={`pointer-events-auto ${unfoldProgress >= 1 ? 'cursor-grab active:cursor-grabbing' : ''}`}
-                  style={{ opacity: nodeOpacity, transition: 'opacity 0.3s ease' }}
-                  onMouseEnter={() => {
-                    if (unfoldProgress >= 1) {
-                      setHoveredNode(node.id);
-                      setZoomTarget({ x: node.x || 0, y: node.y || 0 });
-                    }
-                  }}
-                  onMouseLeave={() => setHoveredNode(null)}
-                  onMouseDown={(e) => {
-                    if (unfoldProgress >= 1) {
-                      handleDragStart(e, node);
-                    }
-                  }}
-                  onTouchStart={(e) => {
-                    if (unfoldProgress >= 1) {
-                      handleDragStart(e, node);
-                    }
-                  }}
-                >
-                  {/* Invisible Hover Area */}
-                  <circle r={25} fill="transparent" />
-                  
-                  {/* Core Node - Solid Circle like Obsidian */}
-                  <circle
-                    r={isHovered ? node.radius * 1.5 : node.radius}
-                    fill={nodeFill}
-                    className="transition-all duration-300"
-                    style={{ opacity: isCenter || unfoldProgress > 0.05 ? 1 : 0 }}
-                  />
-                  
-                  {/* Main Label */}
-                  <text
-                    textAnchor="middle"
-                    dy="1.5em"
-                    fill={isHighlighted ? "#E8F5E9" : "#8b949e"}
-                    className="font-pixel tracking-widest text-xs transition-colors duration-300"
-                    style={{ 
-                      pointerEvents: 'none', 
-                      userSelect: 'none',
-                      opacity: isCenter || unfoldProgress > 0.15 ? (isAnyHovered && !isHighlighted ? 0.3 : 1) : 0,
-                      transform: isCenter ? 'scale(1)' : `scale(${Math.min(1, unfoldProgress * 5)})`
+                <React.Fragment key={node.id}>
+                  <g 
+                    transform={`translate(${node.x || 0},${node.y || 0})`}
+                    className={`pointer-events-auto ${unfoldProgress >= 1 ? 'cursor-grab active:cursor-grabbing' : ''}`}
+                    style={{ opacity: nodeOpacity, transition: 'opacity 0.3s ease' }}
+                    onMouseEnter={() => {
+                      if (unfoldProgress >= 1) {
+                        setHoveredNode(node.id);
+                        setZoomTarget({ x: node.x || 0, y: node.y || 0 });
+                      }
+                    }}
+                    onMouseLeave={() => setHoveredNode(null)}
+                    onMouseDown={(e) => {
+                      if (unfoldProgress >= 1) {
+                        handleDragStart(e, node);
+                      }
+                    }}
+                    onTouchStart={(e) => {
+                      if (unfoldProgress >= 1) {
+                        handleDragStart(e, node);
+                      }
                     }}
                   >
-                    {node.label}
-                  </text>
+                    {/* Invisible Hover Area */}
+                    <circle r={25} fill="transparent" />
+                    
+                    {/* Core Node - Solid Circle like Obsidian */}
+                    <circle
+                      r={isHovered && !isCenter ? node.radius * 1.5 : node.radius}
+                      fill={nodeFill}
+                      className="transition-all duration-300"
+                      style={{ opacity: isCenter || unfoldProgress > 0.05 ? 1 : 0 }}
+                    />
+                    
+                    {/* Main Label */}
+                    <text
+                      textAnchor="middle"
+                      dy="1.5em"
+                      fill={isHighlighted ? "#E8F5E9" : "#8b949e"}
+                      className="font-pixel tracking-widest text-xs transition-colors duration-300"
+                      style={{ 
+                        pointerEvents: 'none', 
+                        userSelect: 'none',
+                        opacity: isCenter || unfoldProgress > 0.15 ? (isAnyHovered && !isHighlighted ? 0.3 : 1) : 0,
+                        transform: isCenter ? 'scale(1)' : `scale(${Math.min(1, unfoldProgress * 5)})`
+                      }}
+                    >
+                      {node.label}
+                    </text>
 
                   {/* Hex Address - Removed for Obsidian style, but kept the code commented just in case */}
                   {/*
@@ -944,9 +965,10 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
                     )
                   })}
                 </g>
-              );
-            })}
-          </g>
+              </React.Fragment>
+            );
+          })}
+        </g>
         </g>
       </svg>
 
@@ -955,160 +977,410 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
         <div className="absolute left-6 md:left-12 top-0 bottom-0 py-32 pointer-events-none z-20 flex flex-col justify-between font-pixel">
           
           {/* ARCHIVE / BLOG */}
-          <div 
-            className="pointer-events-auto flex items-center gap-4 cursor-pointer group"
-            style={{ 
-              opacity: progArchive,
-              transform: `translateX(${(1 - progArchive) * -100}px)`,
-              display: progArchive === 0 ? 'none' : 'flex'
-            }}
-            onClick={() => window.location.href = '/blog'}
-          >
-            <div className="w-12 h-12 border border-[#4ADE80] flex items-center justify-center bg-[#0a140f]/90 group-hover:bg-[#1B3B2B] transition-colors relative z-10 shadow-[0_0_15px_rgba(74,222,128,0.2)]">
-              <div className="absolute inset-0 noise"></div>
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#4ADE80" strokeWidth="1.5" className={progArchive === 1 ? "group-hover:animate-pulse" : ""}>
-                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
-                <polyline points="17 21 17 13 7 13 7 21"/>
-                <polyline points="7 3 7 8 15 8"/>
-              </svg>
-            </div>
+          <div className="relative">
+            {/* Firework effect for ARCHIVE */}
+            {unfoldProgress >= 1.0 && unfoldProgress < 1.2 && (() => {
+              const p = (unfoldProgress - 1.0) / 0.2;
+              const easeOutQuart = 1 - Math.pow(1 - p, 4);
+              const cx = dimensions.width / 2;
+              const cy = dimensions.height / 2;
+              const tx = 48; // roughly left-12
+              const ty = 128; // roughly top padding
+              const fx = cx + (tx - cx) * easeOutQuart;
+              const fy = cy + (ty - cy) * easeOutQuart;
+              
+              const tailLength = 60;
+              const angle = Math.atan2(ty - cy, tx - cx);
+              const tailX = fx - Math.cos(angle) * tailLength * p;
+              const tailY = fy - Math.sin(angle) * tailLength * p;
+
+              // Pixel art trail: dashed line + leading spark
+              return (
+                <div className="fixed pointer-events-none z-50" style={{ left: 0, top: 0 }}>
+                  <svg width={dimensions.width} height={dimensions.height}>
+                    <line x1={tailX} y1={tailY} x2={fx} y2={fy} stroke="#FFB74D" strokeWidth={2} opacity={0.9} strokeDasharray="4 4" filter="drop-shadow(0 0 3px #F57C00)" />
+                    <rect x={fx - 2} y={fy - 2} width={4} height={4} fill="#FFE082" filter="drop-shadow(0 0 4px #FFB74D)" />
+                  </svg>
+                </div>
+              );
+            })()}
+            {unfoldProgress >= 1.2 && unfoldProgress < 1.3 && (() => {
+              const p = (unfoldProgress - 1.2) / 0.1;
+              const easeOut = 1 - Math.pow(1 - p, 3);
+              const radius = 15 + easeOut * 45;
+              const opacity = 1 - p;
+              
+              // Pixel art explosion: jagged blocks flying out
+              return (
+                <div className="absolute left-0 top-0 w-12 h-12 flex items-center justify-center pointer-events-none z-50">
+                  <svg width="120" height="120" className="absolute" style={{ overflow: 'visible' }}>
+                    <g transform="translate(60, 60)" opacity={opacity}>
+                      {Array.from({ length: 12 }).map((_, i) => {
+                        const angle = (i / 12) * Math.PI * 2;
+                        const dist = radius * (i % 2 === 0 ? 1 : 0.6); // Alternating lengths
+                        const px = Math.cos(angle) * dist;
+                        const py = Math.sin(angle) * dist;
+                        const color = i % 3 === 0 ? "#FFE082" : (i % 2 === 0 ? "#FFB74D" : "#F57C00");
+                        const size = i % 2 === 0 ? 4 : 2;
+                        return (
+                          <g key={`fw-arch-${i}`}>
+                            <rect x={px - size/2} y={py - size/2} width={size} height={size} fill={color} />
+                            {p < 0.6 && <rect x={px*0.7 - 1} y={py*0.7 - 1} width={2} height={2} fill={color} opacity={0.5} />}
+                          </g>
+                        );
+                      })}
+                      <rect x={-radius*0.4} y={-radius*0.4} width={radius*0.8} height={radius*0.8} fill="none" stroke="#FFB74D" strokeWidth={1} strokeDasharray="2 4" opacity={opacity * 0.7} />
+                    </g>
+                  </svg>
+                </div>
+              );
+            })()}
+            
             <div 
-              className="overflow-hidden"
-              style={{
-                maxWidth: `${progArchive * 200}px`,
-                opacity: progArchive > 0.5 ? (progArchive - 0.5) * 2 : 0
+              className="pointer-events-auto flex items-center gap-4 cursor-pointer group"
+              style={{ 
+                opacity: progArchive,
+                transform: `translateX(${(1 - progArchive) * -50}px)`,
+                display: progArchive === 0 ? 'none' : 'flex'
               }}
+              onClick={() => window.location.href = '/blog'}
             >
-              <div className="pl-2 whitespace-nowrap">
-                <h3 className="text-[#4ADE80] tracking-[0.3em] text-lg md:text-xl">碎碎念</h3>
-                <p className="text-[#4a6b57] text-xs tracking-widest mt-1">/logs</p>
+              <div className="w-12 h-12 border border-[#4ADE80] flex items-center justify-center bg-[#0a140f]/90 group-hover:bg-[#1B3B2B] transition-colors relative z-10 shadow-[0_0_15px_rgba(74,222,128,0.2)]">
+                <div className="absolute inset-0 noise"></div>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#4ADE80" strokeWidth="1.5" className={progArchive === 1 ? "group-hover:animate-pulse" : ""}>
+                  <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                  <polyline points="17 21 17 13 7 13 7 21"/>
+                  <polyline points="7 3 7 8 15 8"/>
+                </svg>
+              </div>
+              <div 
+                className="overflow-hidden"
+                style={{
+                  maxWidth: `${progArchive * 200}px`,
+                  opacity: progArchive > 0.5 ? (progArchive - 0.5) * 2 : 0
+                }}
+              >
+                <div className="pl-2 whitespace-nowrap">
+                  <h3 className="text-[#4ADE80] tracking-[0.3em] text-lg md:text-xl">碎碎念</h3>
+                  <p className="text-[#4a6b57] text-xs tracking-widest mt-1">/logs</p>
+                </div>
               </div>
             </div>
           </div>
 
           {/* PROJECTS */}
-          <div 
-            className="pointer-events-auto flex items-center gap-4 cursor-pointer group"
-            style={{ 
-              opacity: progProjects,
-              transform: `translateX(${(1 - progProjects) * -100}px)`,
-              display: progProjects === 0 ? 'none' : 'flex'
-            }}
-            onClick={() => window.location.href = '/blog'}
-          >
-            <div className="w-12 h-12 border border-[#81D4FA] flex items-center justify-center bg-[#0a140f]/90 group-hover:bg-[#01579B]/30 transition-colors relative z-10 shadow-[0_0_15px_rgba(129,212,250,0.2)]">
-              <div className="absolute inset-0 noise"></div>
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#81D4FA" strokeWidth="1.5" className={progProjects === 1 ? "group-hover:animate-pulse" : ""}>
-                <rect x="4" y="4" width="16" height="16" rx="2" ry="2"/>
-                <rect x="9" y="9" width="6" height="6"/>
-                <line x1="9" y1="1" x2="9" y2="4"/>
-                <line x1="15" y1="1" x2="15" y2="4"/>
-                <line x1="9" y1="20" x2="9" y2="23"/>
-                <line x1="15" y1="20" x2="15" y2="23"/>
-                <line x1="20" y1="9" x2="23" y2="9"/>
-                <line x1="20" y1="14" x2="23" y2="14"/>
-                <line x1="1" y1="9" x2="4" y2="9"/>
-                <line x1="1" y1="14" x2="4" y2="14"/>
-              </svg>
-            </div>
+          <div className="relative">
+            {/* Firework effect for PROJECTS */}
+            {unfoldProgress >= 1.4 && unfoldProgress < 1.6 && (() => {
+              const p = (unfoldProgress - 1.4) / 0.2;
+              const easeOutQuart = 1 - Math.pow(1 - p, 4);
+              const cx = dimensions.width / 2;
+              const cy = dimensions.height / 2;
+              const tx = 48;
+              const ty = dimensions.height / 2; // middle left
+              const fx = cx + (tx - cx) * easeOutQuart;
+              const fy = cy + (ty - cy) * easeOutQuart;
+              
+              const tailLength = 60;
+              const angle = Math.atan2(ty - cy, tx - cx);
+              const tailX = fx - Math.cos(angle) * tailLength * p;
+              const tailY = fy - Math.sin(angle) * tailLength * p;
+
+              // Pixel art trail: dashed line + leading spark
+              return (
+                <div className="fixed pointer-events-none z-50" style={{ left: 0, top: 0 }}>
+                  <svg width={dimensions.width} height={dimensions.height}>
+                    <line x1={tailX} y1={tailY} x2={fx} y2={fy} stroke="#FFB74D" strokeWidth={2} opacity={0.9} strokeDasharray="4 4" filter="drop-shadow(0 0 3px #F57C00)" />
+                    <rect x={fx - 2} y={fy - 2} width={4} height={4} fill="#FFE082" filter="drop-shadow(0 0 4px #FFB74D)" />
+                  </svg>
+                </div>
+              );
+            })()}
+            {unfoldProgress >= 1.6 && unfoldProgress < 1.7 && (() => {
+              const p = (unfoldProgress - 1.6) / 0.1;
+              const easeOut = 1 - Math.pow(1 - p, 3);
+              const radius = 15 + easeOut * 45;
+              const opacity = 1 - p;
+              
+              // Pixel art explosion: jagged blocks flying out
+              return (
+                <div className="absolute left-0 top-0 w-12 h-12 flex items-center justify-center pointer-events-none z-50">
+                  <svg width="120" height="120" className="absolute" style={{ overflow: 'visible' }}>
+                    <g transform="translate(60, 60)" opacity={opacity}>
+                      {Array.from({ length: 12 }).map((_, i) => {
+                        const angle = (i / 12) * Math.PI * 2;
+                        const dist = radius * (i % 2 === 0 ? 1 : 0.6); // Alternating lengths
+                        const px = Math.cos(angle) * dist;
+                        const py = Math.sin(angle) * dist;
+                        const color = i % 3 === 0 ? "#FFE082" : (i % 2 === 0 ? "#FFB74D" : "#F57C00");
+                        const size = i % 2 === 0 ? 4 : 2;
+                        return (
+                          <g key={`fw-proj-${i}`}>
+                            <rect x={px - size/2} y={py - size/2} width={size} height={size} fill={color} />
+                            {p < 0.6 && <rect x={px*0.7 - 1} y={py*0.7 - 1} width={2} height={2} fill={color} opacity={0.5} />}
+                          </g>
+                        );
+                      })}
+                      <rect x={-radius*0.4} y={-radius*0.4} width={radius*0.8} height={radius*0.8} fill="none" stroke="#FFB74D" strokeWidth={1} strokeDasharray="2 4" opacity={opacity * 0.7} />
+                    </g>
+                  </svg>
+                </div>
+              );
+            })()}
+
             <div 
-              className="overflow-hidden"
-              style={{
-                maxWidth: `${progProjects * 200}px`,
-                opacity: progProjects > 0.5 ? (progProjects - 0.5) * 2 : 0
+              className="pointer-events-auto flex items-center gap-4 cursor-pointer group"
+              style={{ 
+                opacity: progProjects,
+                transform: `translateX(${(1 - progProjects) * -50}px)`,
+                display: progProjects === 0 ? 'none' : 'flex'
               }}
+              onClick={() => window.location.href = '/blog'}
             >
-              <div className="pl-2 whitespace-nowrap">
-                <h3 className="text-[#81D4FA] tracking-[0.3em] text-lg md:text-xl">個人項目</h3>
-                <p className="text-[#0277BD] text-xs tracking-widest mt-1">/projects</p>
+              <div className="w-12 h-12 border border-[#81D4FA] flex items-center justify-center bg-[#0a140f]/90 group-hover:bg-[#01579B]/30 transition-colors relative z-10 shadow-[0_0_15px_rgba(129,212,250,0.2)]">
+                <div className="absolute inset-0 noise"></div>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#81D4FA" strokeWidth="1.5" className={progProjects === 1 ? "group-hover:animate-pulse" : ""}>
+                  <rect x="4" y="4" width="16" height="16" rx="2" ry="2"/>
+                  <rect x="9" y="9" width="6" height="6"/>
+                  <line x1="9" y1="1" x2="9" y2="4"/>
+                  <line x1="15" y1="1" x2="15" y2="4"/>
+                  <line x1="9" y1="20" x2="9" y2="23"/>
+                  <line x1="15" y1="20" x2="15" y2="23"/>
+                  <line x1="20" y1="9" x2="23" y2="9"/>
+                  <line x1="20" y1="14" x2="23" y2="14"/>
+                  <line x1="1" y1="9" x2="4" y2="9"/>
+                  <line x1="1" y1="14" x2="4" y2="14"/>
+                </svg>
+              </div>
+              <div 
+                className="overflow-hidden"
+                style={{
+                  maxWidth: `${progProjects * 200}px`,
+                  opacity: progProjects > 0.5 ? (progProjects - 0.5) * 2 : 0
+                }}
+              >
+                <div className="pl-2 whitespace-nowrap">
+                  <h3 className="text-[#81D4FA] tracking-[0.3em] text-lg md:text-xl">個人項目</h3>
+                  <p className="text-[#0277BD] text-xs tracking-widest mt-1">/projects</p>
+                </div>
               </div>
             </div>
           </div>
-
+          
           {/* SETTINGS */}
-          <div 
-            className="pointer-events-auto flex items-center gap-4 group"
-            style={{ 
-              opacity: progSettings,
-              transform: `translateX(${(1 - progSettings) * -100}px)`,
-              display: progSettings === 0 ? 'none' : 'flex'
-            }}
-          >
-            <div className="w-12 h-12 border border-[#B39DDB] flex items-center justify-center bg-[#0a140f]/90 relative z-10 shadow-[0_0_15px_rgba(179,157,219,0.2)]">
-              <div className="absolute inset-0 noise"></div>
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#B39DDB" strokeWidth="1.5" className={progSettings === 1 ? "animate-[spin_4s_linear_infinite]" : ""}>
-                <circle cx="12" cy="12" r="3"/>
-                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-              </svg>
-            </div>
+          <div className="relative">
+            {/* Firework effect for SETTINGS */}
+            {unfoldProgress >= 1.8 && unfoldProgress < 2.0 && (() => {
+              const p = (unfoldProgress - 1.8) / 0.2;
+              const easeOutQuart = 1 - Math.pow(1 - p, 4);
+              const cx = dimensions.width / 2;
+              const cy = dimensions.height / 2;
+              const tx = 48;
+              const ty = dimensions.height - 128; // roughly bottom padding
+              const fx = cx + (tx - cx) * easeOutQuart;
+              const fy = cy + (ty - cy) * easeOutQuart;
+              
+              const tailLength = 60;
+              const angle = Math.atan2(ty - cy, tx - cx);
+              const tailX = fx - Math.cos(angle) * tailLength * p;
+              const tailY = fy - Math.sin(angle) * tailLength * p;
+
+              // Pixel art trail: dashed line + leading spark
+              return (
+                <div className="fixed pointer-events-none z-50" style={{ left: 0, top: 0 }}>
+                  <svg width={dimensions.width} height={dimensions.height}>
+                    <line x1={tailX} y1={tailY} x2={fx} y2={fy} stroke="#FFB74D" strokeWidth={2} opacity={0.9} strokeDasharray="4 4" filter="drop-shadow(0 0 3px #F57C00)" />
+                    <rect x={fx - 2} y={fy - 2} width={4} height={4} fill="#FFE082" filter="drop-shadow(0 0 4px #FFB74D)" />
+                  </svg>
+                </div>
+              );
+            })()}
+            {unfoldProgress >= 2.0 && unfoldProgress < 2.1 && (() => {
+              const p = (unfoldProgress - 2.0) / 0.1;
+              const easeOut = 1 - Math.pow(1 - p, 3);
+              const radius = 15 + easeOut * 45;
+              const opacity = 1 - p;
+              
+              // Pixel art explosion: jagged blocks flying out
+              return (
+                <div className="absolute left-0 top-0 w-12 h-12 flex items-center justify-center pointer-events-none z-50">
+                  <svg width="120" height="120" className="absolute" style={{ overflow: 'visible' }}>
+                    <g transform="translate(60, 60)" opacity={opacity}>
+                      {Array.from({ length: 12 }).map((_, i) => {
+                        const angle = (i / 12) * Math.PI * 2;
+                        const dist = radius * (i % 2 === 0 ? 1 : 0.6); // Alternating lengths
+                        const px = Math.cos(angle) * dist;
+                        const py = Math.sin(angle) * dist;
+                        const color = i % 3 === 0 ? "#FFE082" : (i % 2 === 0 ? "#FFB74D" : "#F57C00");
+                        const size = i % 2 === 0 ? 4 : 2;
+                        return (
+                          <g key={`fw-set-${i}`}>
+                            <rect x={px - size/2} y={py - size/2} width={size} height={size} fill={color} />
+                            {p < 0.6 && <rect x={px*0.7 - 1} y={py*0.7 - 1} width={2} height={2} fill={color} opacity={0.5} />}
+                          </g>
+                        );
+                      })}
+                      <rect x={-radius*0.4} y={-radius*0.4} width={radius*0.8} height={radius*0.8} fill="none" stroke="#FFB74D" strokeWidth={1} strokeDasharray="2 4" opacity={opacity * 0.7} />
+                    </g>
+                  </svg>
+                </div>
+              );
+            })()}
+
             <div 
-              className="overflow-hidden flex flex-col gap-2"
-              style={{
-                maxWidth: `${progSettings * 200}px`,
-                opacity: progSettings > 0.5 ? (progSettings - 0.5) * 2 : 0
+              className="pointer-events-auto flex items-center gap-4 group"
+              style={{ 
+                opacity: progSettings,
+                transform: `translateX(${(1 - progSettings) * -50}px)`,
+                display: progSettings === 0 ? 'none' : 'flex'
               }}
             >
-              <div className="pl-2 whitespace-nowrap">
-                <h3 className="text-[#B39DDB] tracking-[0.3em] text-lg md:text-xl">系統設定</h3>
-                <p className="text-[#7E57C2] text-xs tracking-widest mt-1">/sys_config</p>
+              <div className="w-12 h-12 border border-[#B39DDB] flex items-center justify-center bg-[#0a140f]/90 relative z-10 shadow-[0_0_15px_rgba(179,157,219,0.2)]">
+                <div className="absolute inset-0 noise"></div>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#B39DDB" strokeWidth="1.5" className={progSettings === 1 ? "animate-[spin_4s_linear_infinite]" : ""}>
+                  <circle cx="12" cy="12" r="3"/>
+                  <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                </svg>
               </div>
-              <div className="pl-2 flex gap-2 text-[10px] whitespace-nowrap">
-                {['繁', '简', 'EN'].map(l => (
-                  <button 
-                    key={l}
-                    onClick={() => setLang(l)}
-                    className={`transition-colors ${lang === l ? 'text-[#B39DDB] font-bold' : 'text-[#7E57C2] hover:text-[#D1C4E9]'}`}
-                  >
-                    [{l}]
-                  </button>
-                ))}
+              <div 
+                className="overflow-hidden flex flex-col gap-2"
+                style={{
+                  maxWidth: `${progSettings * 200}px`,
+                  opacity: progSettings > 0.5 ? (progSettings - 0.5) * 2 : 0
+                }}
+              >
+                <div className="pl-2 whitespace-nowrap">
+                  <h3 className="text-[#B39DDB] tracking-[0.3em] text-lg md:text-xl">系統設定</h3>
+                  <p className="text-[#7E57C2] text-xs tracking-widest mt-1">/sys_config</p>
+                </div>
+                <div className="pl-2 flex gap-2 text-[10px] whitespace-nowrap">
+                  {['繁', '简', 'EN'].map(l => (
+                    <button 
+                      key={l}
+                      onClick={() => setLang(l)}
+                      className={`transition-colors ${lang === l ? 'text-[#B39DDB] font-bold' : 'text-[#7E57C2] hover:text-[#D1C4E9]'}`}
+                    >
+                      [{l}]
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
 
-          {/* LINKS */}
-          <div 
-            className="pointer-events-auto flex items-center gap-4 cursor-pointer group"
-            style={{ 
-              opacity: progLinks,
-              transform: `translateX(${(1 - progLinks) * -100}px)`,
-              display: progLinks === 0 ? 'none' : 'flex'
-            }}
-            onClick={() => window.open('https://github.com/tinchak0207', '_blank')}
-          >
-            <div className="w-12 h-12 border border-[#FFCC80] flex items-center justify-center bg-[#0a140f]/90 group-hover:bg-[#E65100]/30 transition-colors relative z-10 shadow-[0_0_15px_rgba(255,204,128,0.2)]">
-              <div className="absolute inset-0 noise"></div>
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#FFCC80" strokeWidth="1.5" className={progLinks === 1 ? "group-hover:animate-pulse" : ""}>
-                <polyline points="4 17 10 11 4 5"/>
-                <line x1="12" y1="19" x2="20" y2="19"/>
-              </svg>
-            </div>
-            <div 
-              className="overflow-hidden"
-              style={{
-                maxWidth: `${progLinks * 200}px`,
-                opacity: progLinks > 0.5 ? (progLinks - 0.5) * 2 : 0
-              }}
-            >
-              <div className="pl-2 whitespace-nowrap">
-                <h3 className="text-[#FFCC80] tracking-[0.3em] text-lg md:text-xl">外部鏈接</h3>
-                <p className="text-[#EF6C00] text-xs tracking-widest mt-1">/external_uplinks</p>
-              </div>
-            </div>
-          </div>
         </div>
       )}
+
+          {/* LINKS Module - Right Side */}
+          {unfoldProgress > 1.0 && (
+            <div className="absolute right-6 md:right-12 top-1/2 -translate-y-1/2 pointer-events-none z-20 font-pixel">
+              
+              <div className="relative">
+                {/* Firework effect for LINKS */}
+            {unfoldProgress >= 2.2 && unfoldProgress < 2.4 && (() => {
+              const p = (unfoldProgress - 2.2) / 0.2;
+              const easeOutQuart = 1 - Math.pow(1 - p, 4);
+              const cx = dimensions.width / 2;
+              const cy = dimensions.height / 2;
+              const tx = dimensions.width - 48; // roughly right-12
+              const ty = dimensions.height / 2;
+              const fx = cx + (tx - cx) * easeOutQuart;
+              const fy = cy + (ty - cy) * easeOutQuart;
+              
+              const tailLength = 60;
+              const angle = Math.atan2(ty - cy, tx - cx);
+              const tailX = fx - Math.cos(angle) * tailLength * p;
+              const tailY = fy - Math.sin(angle) * tailLength * p;
+
+              // Pixel art trail: dashed line + leading spark
+              return (
+                <div className="fixed pointer-events-none z-50" style={{ left: 0, top: 0 }}>
+                  <svg width={dimensions.width} height={dimensions.height}>
+                    <line x1={tailX} y1={tailY} x2={fx} y2={fy} stroke="#FFB74D" strokeWidth={2} opacity={0.9} strokeDasharray="4 4" filter="drop-shadow(0 0 3px #F57C00)" />
+                    <rect x={fx - 2} y={fy - 2} width={4} height={4} fill="#FFE082" filter="drop-shadow(0 0 4px #FFB74D)" />
+                  </svg>
+                </div>
+              );
+            })()}
+            {unfoldProgress >= 2.4 && unfoldProgress < 2.5 && (() => {
+              const p = (unfoldProgress - 2.4) / 0.1;
+              const easeOut = 1 - Math.pow(1 - p, 3);
+              const radius = 15 + easeOut * 45;
+              const opacity = 1 - p;
+              
+              // Pixel art explosion: jagged blocks flying out
+              return (
+                <div className="absolute right-0 top-0 w-12 h-12 flex items-center justify-center pointer-events-none z-50">
+                  <svg width="120" height="120" className="absolute" style={{ overflow: 'visible' }}>
+                    <g transform="translate(60, 60)" opacity={opacity}>
+                      {Array.from({ length: 12 }).map((_, i) => {
+                        const angle = (i / 12) * Math.PI * 2;
+                        const dist = radius * (i % 2 === 0 ? 1 : 0.6); // Alternating lengths
+                        const px = Math.cos(angle) * dist;
+                        const py = Math.sin(angle) * dist;
+                        const color = i % 3 === 0 ? "#FFE082" : (i % 2 === 0 ? "#FFB74D" : "#F57C00");
+                        const size = i % 2 === 0 ? 4 : 2;
+                        return (
+                          <g key={`fw-link-${i}`}>
+                            <rect x={px - size/2} y={py - size/2} width={size} height={size} fill={color} />
+                            {p < 0.6 && <rect x={px*0.7 - 1} y={py*0.7 - 1} width={2} height={2} fill={color} opacity={0.5} />}
+                          </g>
+                        );
+                      })}
+                      <rect x={-radius*0.4} y={-radius*0.4} width={radius*0.8} height={radius*0.8} fill="none" stroke="#FFB74D" strokeWidth={1} strokeDasharray="2 4" opacity={opacity * 0.7} />
+                    </g>
+                  </svg>
+                </div>
+              );
+            })()}
+    
+                <div 
+                  className="pointer-events-auto flex items-center gap-4 flex-row-reverse cursor-pointer group"
+                  style={{ 
+                    opacity: progLinks,
+                    transform: `translateX(${(1 - progLinks) * 50}px)`,
+                    display: progLinks === 0 ? 'none' : 'flex'
+                  }}
+                  onClick={() => window.open('https://github.com/tinchak0207', '_blank')}
+                >
+                  <div className="w-12 h-12 border border-[#FFCC80] flex items-center justify-center bg-[#0a140f]/90 group-hover:bg-[#E65100]/30 transition-colors relative z-10 shadow-[0_0_15px_rgba(255,204,128,0.2)]">
+                    <div className="absolute inset-0 noise"></div>
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#FFCC80" strokeWidth="1.5" className={progLinks === 1 ? "group-hover:animate-pulse" : ""}>
+                      <polyline points="4 17 10 11 4 5"/>
+                      <line x1="12" y1="19" x2="20" y2="19"/>
+                    </svg>
+                  </div>
+                  <div 
+                    className="overflow-hidden text-right"
+                    style={{
+                      maxWidth: `${progLinks * 200}px`,
+                      opacity: progLinks > 0.5 ? (progLinks - 0.5) * 2 : 0
+                    }}
+                  >
+                    <div className="pr-2 whitespace-nowrap">
+                      <h3 className="text-[#FFCC80] tracking-[0.3em] text-lg md:text-xl">外部鏈接</h3>
+                      <p className="text-[#EF6C00] text-xs tracking-widest mt-1">/external_uplinks</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+    
+            </div>
+          )}
       
       {/* Hover Tooltip - Obsidian Style (Pixel variation) */}
       <AnimatePresence>
-        {hoveredNode && unfoldProgress >= 1 && unfoldProgress <= 1.1 && (
+        {hoveredNode && hoveredNode !== 'ME' && unfoldProgress >= 1 && unfoldProgress <= 1.1 && (
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 5 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95 }}
             transition={{ duration: 0.1 }}
             className="fixed z-50 pointer-events-none border-2 border-[#30363d] bg-[#161b22] p-3 shadow-lg min-w-[150px] max-w-[250px]"
-            style={{ left: mousePos.x + 15, top: mousePos.y + 15 }}
+            style={{ 
+              left: 'calc(var(--raw-mouse-x, 0px) + 15px)', 
+              top: 'calc(var(--raw-mouse-y, 0px) + 15px)' 
+            }}
           >
             <h3 className="font-pixel text-[#c9d1d9] text-sm mb-1 tracking-wide">
               {nodes.find(n => n.id === hoveredNode)?.label}
