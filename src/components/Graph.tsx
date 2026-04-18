@@ -797,10 +797,17 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
               const isHoveredNode = hoveredNode === source.id || hoveredNode === target.id;
               const isAnyHovered = hoveredNode !== null;
               
-              // Only show center links after unfoldProgress starts
-              // When unfoldProgress <= 0.1 (booting just finished), center links should be invisible
-              const isCenterLink = source.group === 'center' || target.group === 'center';
-              const baseOpacity = isCenterLink && unfoldProgress <= 0.1 ? 0 : 0.3;
+              // Firework logic indices for staggered reveal
+              const getRevealProgress = (n: NodeData) => {
+                if (n.group === 'center') return 0;
+                const idx = nodes.filter(nn => nn.group !== 'center').findIndex(nn => nn.id === n.id);
+                return 0.05 + (idx * 0.03) + 0.08; // fireworkEnd
+              };
+              
+              const isTargetRevealed = unfoldProgress >= getRevealProgress(target);
+              const isSourceRevealed = unfoldProgress >= getRevealProgress(source);
+              
+              const baseOpacity = (!isTargetRevealed || !isSourceRevealed) ? 0 : 0.3;
               
               // Obsidian style link highlighting
               const linkOpacity = isAnyHovered ? (isHoveredNode ? 0.8 : 0.1) : baseOpacity;
@@ -829,6 +836,21 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
               const isHovered = hoveredNode === node.id && unfoldProgress >= 1;
               const isCenter = node.group === 'center';
               
+              // Firework Animation Logic
+              const nodeIndex = nodes.filter(n => n.group !== 'center').findIndex(n => n.id === node.id);
+              const fireworkStart = 0.05 + (nodeIndex * 0.03);
+              const fireworkEnd = fireworkStart + 0.08;
+              const explosionEnd = fireworkEnd + 0.05;
+              
+              const isFiring = !isCenter && unfoldProgress >= fireworkStart && unfoldProgress < fireworkEnd;
+              const isExploding = !isCenter && unfoldProgress >= fireworkEnd && unfoldProgress < explosionEnd;
+              const isRevealed = isCenter || unfoldProgress >= fireworkEnd;
+              
+              // Center node position for fireworks
+              const centerNode = nodes.find(n => n.group === 'center');
+              const cx = centerNode?.x || dimensions.width / 2;
+              const cy = centerNode?.y || dimensions.height / 2;
+              
               // Determine if this node is a neighbor of the hovered node
               const isNeighbor = hoveredNode && links.some(l => {
                 const s = l.source as NodeData;
@@ -849,55 +871,101 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
               else if (isNeighbor) nodeFill = "#A5D6B7"; // neighbor is light green
 
               return (
-                <g 
-                  key={node.id} 
-                  transform={`translate(${node.x || 0},${node.y || 0})`}
-                  className={`pointer-events-auto ${unfoldProgress >= 1 ? 'cursor-grab active:cursor-grabbing' : ''}`}
-                  style={{ opacity: nodeOpacity, transition: 'opacity 0.3s ease' }}
-                  onMouseEnter={() => {
-                    if (unfoldProgress >= 1) {
-                      setHoveredNode(node.id);
-                      setZoomTarget({ x: node.x || 0, y: node.y || 0 });
-                    }
-                  }}
-                  onMouseLeave={() => setHoveredNode(null)}
-                  onMouseDown={(e) => {
-                    if (unfoldProgress >= 1) {
-                      handleDragStart(e, node);
-                    }
-                  }}
-                  onTouchStart={(e) => {
-                    if (unfoldProgress >= 1) {
-                      handleDragStart(e, node);
-                    }
-                  }}
-                >
-                  {/* Invisible Hover Area */}
-                  <circle r={25} fill="transparent" />
-                  
-                  {/* Core Node - Solid Circle like Obsidian */}
-                  <circle
-                    r={isHovered ? node.radius * 1.5 : node.radius}
-                    fill={nodeFill}
-                    className="transition-all duration-300"
-                    style={{ opacity: isCenter || unfoldProgress > 0.05 ? 1 : 0 }}
-                  />
-                  
-                  {/* Main Label */}
-                  <text
-                    textAnchor="middle"
-                    dy="1.5em"
-                    fill={isHighlighted ? "#E8F5E9" : "#8b949e"}
-                    className="font-pixel tracking-widest text-xs transition-colors duration-300"
-                    style={{ 
-                      pointerEvents: 'none', 
-                      userSelect: 'none',
-                      opacity: isCenter || unfoldProgress > 0.15 ? (isAnyHovered && !isHighlighted ? 0.3 : 1) : 0,
-                      transform: isCenter ? 'scale(1)' : `scale(${Math.min(1, unfoldProgress * 5)})`
+                <React.Fragment key={node.id}>
+                  {/* Firework and Explosion */}
+                  {!isCenter && (isFiring || isExploding) && (
+                    <g>
+                      {isFiring && (() => {
+                        const p = (unfoldProgress - fireworkStart) / (fireworkEnd - fireworkStart);
+                        const easeOutQuart = 1 - Math.pow(1 - p, 4);
+                        const fx = cx + ((node.x || 0) - cx) * easeOutQuart;
+                        const fy = cy + ((node.y || 0) - cy) * easeOutQuart;
+                        
+                        const tailLength = 25;
+                        const angle = Math.atan2((node.y || 0) - cy, (node.x || 0) - cx);
+                        const tx = fx - Math.cos(angle) * tailLength * p;
+                        const ty = fy - Math.sin(angle) * tailLength * p;
+
+                        return (
+                          <g>
+                            <line x1={tx} y1={ty} x2={fx} y2={fy} stroke="#A5D6B7" strokeWidth={2} opacity={0.8} />
+                            <circle cx={fx} cy={fy} r={2} fill="#FFF" filter="drop-shadow(0 0 4px #4ADE80)" />
+                          </g>
+                        );
+                      })()}
+                      {isExploding && (() => {
+                        const p = (unfoldProgress - fireworkEnd) / (explosionEnd - fireworkEnd);
+                        const easeOut = 1 - Math.pow(1 - p, 3);
+                        const radius = 5 + easeOut * 20;
+                        const opacity = 1 - p;
+                        
+                        return (
+                          <g transform={`translate(${node.x || 0},${node.y || 0})`} opacity={opacity}>
+                            {Array.from({ length: 6 }).map((_, i) => {
+                              const angle = (i / 6) * Math.PI * 2;
+                              const px1 = Math.cos(angle) * (radius * 0.3);
+                              const py1 = Math.sin(angle) * (radius * 0.3);
+                              const px2 = Math.cos(angle) * radius;
+                              const py2 = Math.sin(angle) * radius;
+                              return (
+                                <line key={`line-${i}`} x1={px1} y1={py1} x2={px2} y2={py2} stroke="#4ADE80" strokeWidth={1.5} />
+                              );
+                            })}
+                            <circle r={radius * 0.4} fill="none" stroke="#FFF" strokeWidth={1} opacity={opacity * 0.6} />
+                          </g>
+                        );
+                      })()}
+                    </g>
+                  )}
+
+                  <g 
+                    transform={`translate(${node.x || 0},${node.y || 0})`}
+                    className={`pointer-events-auto ${unfoldProgress >= 1 ? 'cursor-grab active:cursor-grabbing' : ''}`}
+                    style={{ opacity: nodeOpacity, transition: 'opacity 0.3s ease' }}
+                    onMouseEnter={() => {
+                      if (unfoldProgress >= 1) {
+                        setHoveredNode(node.id);
+                        setZoomTarget({ x: node.x || 0, y: node.y || 0 });
+                      }
+                    }}
+                    onMouseLeave={() => setHoveredNode(null)}
+                    onMouseDown={(e) => {
+                      if (unfoldProgress >= 1) {
+                        handleDragStart(e, node);
+                      }
+                    }}
+                    onTouchStart={(e) => {
+                      if (unfoldProgress >= 1) {
+                        handleDragStart(e, node);
+                      }
                     }}
                   >
-                    {node.label}
-                  </text>
+                    {/* Invisible Hover Area */}
+                    <circle r={25} fill="transparent" />
+                    
+                    {/* Core Node - Solid Circle like Obsidian */}
+                    <circle
+                      r={isHovered ? node.radius * 1.5 : node.radius}
+                      fill={nodeFill}
+                      className="transition-all duration-300"
+                      style={{ opacity: isRevealed ? 1 : 0 }}
+                    />
+                    
+                    {/* Main Label */}
+                    <text
+                      textAnchor="middle"
+                      dy="1.5em"
+                      fill={isHighlighted ? "#E8F5E9" : "#8b949e"}
+                      className="font-pixel tracking-widest text-xs transition-colors duration-300"
+                      style={{ 
+                        pointerEvents: 'none', 
+                        userSelect: 'none',
+                        opacity: isRevealed ? (isAnyHovered && !isHighlighted ? 0.3 : 1) : 0,
+                        transform: isCenter ? 'scale(1)' : `scale(${Math.min(1, Math.max(0, (unfoldProgress - fireworkEnd) * 10))})`
+                      }}
+                    >
+                      {node.label}
+                    </text>
 
                   {/* Hex Address - Removed for Obsidian style, but kept the code commented just in case */}
                   {/*
@@ -944,9 +1012,10 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
                     )
                   })}
                 </g>
-              );
-            })}
-          </g>
+              </React.Fragment>
+            );
+          })}
+        </g>
         </g>
       </svg>
 
