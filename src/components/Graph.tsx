@@ -282,11 +282,14 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
         }
 
         // Fetch Posts (Ramblings)
-        const { data: posts } = await supabase.from('posts').select('id, title, slug, tags').eq('published', true);
+        const { data: posts, error: postsError } = await supabase.from('posts').select('id, title, slug, tags').eq('published', true);
+        if (postsError) console.error('Error fetching posts:', postsError);
         // Fetch Projects
-        const { data: projects } = await supabase.from('projects').select('id, title, description, url, tags').eq('published', true);
+        const { data: projects, error: projectsError } = await supabase.from('projects').select('id, title, description, url, tags').eq('published', true);
+        if (projectsError) console.error('Error fetching projects:', projectsError);
         // Fetch Links
-        const { data: links } = await supabase.from('external_links').select('id, title, url, tags').eq('published', true);
+        const { data: links, error: linksError } = await supabase.from('external_links').select('id, title, url, tags').eq('published', true);
+        if (linksError) console.error('Error fetching links:', linksError);
 
         // Fetch DB SubNodes
         const { data: dbSubNodes } = await supabase.from('graph_subnodes').select('*');
@@ -384,24 +387,12 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
       if (subNodesData.length > 0) {
         newComputedSubNodes[node.id] = subNodesData.map((sub, idx, arr) => {
           const angle = (idx / arr.length) * Math.PI * 2;
-          const dist = 120; // 統一擴展距離
+          const dist = 140; // 統一擴展距離
+
           let sx = Math.cos(angle) * dist;
           let sy = Math.sin(angle) * dist;
-          
-          // Calculate absolute screen position to check boundaries
-          const absoluteX = (node.x || 0) + sx;
-          const absoluteY = (node.y || 0) + sy;
-          
-          // Screen padding
-          const padding = 20;
-          
-          // Adjust local offsets (sx, sy) if the absolute position goes out of bounds
-          if (absoluteX < padding) sx += (padding - absoluteX);
-          if (absoluteX > dimensions.width - padding) sx -= (absoluteX - (dimensions.width - padding));
-          if (absoluteY < padding) sy += (padding - absoluteY);
-          if (absoluteY > dimensions.height - padding) sy -= (absoluteY - (dimensions.height - padding));
 
-          return { ...sub, sx, sy }; // Store pre-calculated, boundary-safe local offsets
+          return { ...sub, sx, sy }; // Store pre-calculated local offsets
         });
       }
     });

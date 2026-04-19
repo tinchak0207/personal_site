@@ -33,9 +33,18 @@ export default function Projects() {
             <h1 className="text-4xl font-pixel text-[#81D4FA] tracking-widest">個人項目</h1>
             <p className="text-[#0277BD] text-sm tracking-widest mt-2">/projects</p>
           </div>
-          <Link to="/" className="text-[#4a6b57] hover:text-[#4ADE80] transition-colors font-pixel tracking-widest text-sm">
-            [RETURN TO CORE]
-          </Link>
+          <div className="flex items-center gap-6">
+            <Link to="/timeline" className="text-[#81D4FA] hover:text-[#E8F5E9] font-pixel text-xs border border-[#81D4FA] px-3 py-2 hover:bg-[#81D4FA]/20 transition-colors flex items-center gap-2">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <polyline points="12 6 12 12 16 14"></polyline>
+              </svg>
+              TIMELINE
+            </Link>
+            <Link to="/" className="text-[#4a6b57] hover:text-[#4ADE80] transition-colors font-pixel tracking-widest text-sm">
+              [RETURN TO CORE]
+            </Link>
+          </div>
         </div>
 
         {loading ? (

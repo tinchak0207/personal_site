@@ -27,6 +27,7 @@ const Blog = lazyWithRetry(() => import('./pages/Blog').then(module => ({ defaul
 const BlogPost = lazyWithRetry(() => import('./pages/BlogPost').then(module => ({ default: module.BlogPost })));
 const Admin = lazyWithRetry(() => import('./pages/Admin').then(module => ({ default: module.Admin })));
 const Projects = lazyWithRetry(() => import('./pages/Projects'));
+const Timeline = lazyWithRetry(() => import('./pages/Timeline'));
 const Links = lazyWithRetry(() => import('./pages/Links'));
 const Settings = lazyWithRetry(() => import('./pages/Settings'));
 
@@ -40,6 +41,7 @@ function App() {
           <Route path="/blog/:slug" element={<BlogPost />} />
           <Route path="/admin" element={<Admin />} />
           <Route path="/projects" element={<Projects />} />
+          <Route path="/timeline" element={<Timeline />} />
           <Route path="/links" element={<Links />} />
           <Route path="/settings" element={<Settings />} />
         </Routes>
