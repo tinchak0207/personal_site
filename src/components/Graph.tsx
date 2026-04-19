@@ -133,7 +133,14 @@ const Starfield = React.memo(({
       const fill = i % 3 === 0 ? "#8FBC8F" : "#A5D6B7";
       const isPulse = i % 10 === 0;
       const opacityMult = (Math.sin(i) + 1) / 2 * 0.4 + 0.1;
-      return { id: `base-${i}`, x, y, size, fill, isPulse, opacityMult };
+      return (
+        <rect 
+          key={`base-${i}`} x={x} y={y} width={size} height={size} 
+          fill={fill} 
+          opacity={opacityMult}
+          className={isPulse ? "animate-pulse" : ""}
+        />
+      );
     });
 
     const mwStars = Array.from({ length: 800 }).map((_, i) => {
@@ -145,10 +152,17 @@ const Starfield = React.memo(({
       const y = baseY + Math.sin(i * 11.11) * spread;
       const distFromCenter = Math.abs(spread) / 250;
       const size = distFromCenter < 0.2 ? 0.8 : (distFromCenter < 0.6 ? 1.2 : 1.5);
-      const baseOpacity = 1 - Math.pow(distFromCenter, 0.5);
+      const baseOpacity = (1 - Math.pow(distFromCenter, 0.5)) * 0.7;
       const fill = distFromCenter < 0.15 ? "#E8F5E9" : (i % 4 === 0 ? "#7da38a" : "#366B4E");
       const isPulse = i % 15 === 0;
-      return { id: `mw-${i}`, x, y, size, fill, isPulse, baseOpacity };
+      return (
+        <rect 
+          key={`mw-${i}`} x={x} y={y} width={size} height={size} 
+          fill={fill} 
+          opacity={baseOpacity}
+          className={isPulse ? "animate-pulse" : ""}
+        />
+      );
     });
 
     const crossStars = Array.from({ length: 15 }).map((_, i) => {
@@ -157,60 +171,47 @@ const Starfield = React.memo(({
       const isYellowish = i % 3 === 0;
       const fill = isYellowish ? "#F5DEB3" : "#E8F5E9";
       const animDuration = `${2 + i % 3}s`;
-      return { id: `cross-${i}`, x, y, fill, animDuration };
+      return (
+        <g 
+          key={`cross-${i}`} 
+          transform={`translate(${x}, ${y})`} 
+          className="animate-pulse"
+          style={{ animationDuration: animDuration }}
+        >
+          <rect x="-1" y="-4" width="2" height="8" fill={fill} />
+          <rect x="-4" y="-1" width="8" height="2" fill={fill} />
+          <rect x="-1" y="-1" width="2" height="2" fill="#FFF" />
+        </g>
+      );
     });
 
     return { baseStars, mwStars, crossStars };
-  }, []); // Only recalculates on mount (or if we added dimensions dependency)
+  }, []); // Only recalculates on mount
+
+  const baseOpacityScale = unfoldProgress < 0.5 ? 0 : Math.max(0, Math.min(1, Math.pow((unfoldProgress - 0.5) * 2, 3)));
+  const mwOpacityScale = unfoldProgress < 0.5 ? 0 : Math.max(0, Math.min(1, Math.pow((unfoldProgress - 0.5) * 2, 4)));
+  const crossOpacityScale = unfoldProgress < 0.6 ? 0 : Math.max(0, Math.min(1, Math.pow((unfoldProgress - 0.6) * 2.5, 3) * 0.8));
 
   return (
     <g style={{
       transform: 'translate(calc(var(--mouse-x, 0px) * -0.015), calc(var(--mouse-y, 0px) * -0.015))',
-      transition: 'transform 0.1s ease-out'
+      transition: 'transform 0.1s ease-out',
+      willChange: 'transform'
     }}>
       {/* Base scattered tiny stars */}
-      {starData.baseStars.map((star) => {
-        const starOpacity = unfoldProgress < 0.5 ? 0 : Math.max(0, Math.min(1, Math.pow((unfoldProgress - 0.5) * 2, 3) * star.opacityMult));
-        return (
-          <rect 
-            key={star.id} x={star.x} y={star.y} width={star.size} height={star.size} 
-            fill={star.fill} 
-            opacity={starOpacity}
-            className={star.isPulse ? "animate-pulse" : ""}
-          />
-        );
-      })}
+      <g opacity={baseOpacityScale}>
+        {starData.baseStars}
+      </g>
 
       {/* Milky Way Band */}
-      {starData.mwStars.map((star) => {
-        const starOpacity = unfoldProgress < 0.5 ? 0 : Math.max(0, Math.min(1, Math.pow((unfoldProgress - 0.5) * 2, 4) * star.baseOpacity * 0.7));
-        return (
-          <rect 
-            key={star.id} x={star.x} y={star.y} width={star.size} height={star.size} 
-            fill={star.fill} 
-            opacity={starOpacity}
-            className={star.isPulse ? "animate-pulse" : ""}
-          />
-        );
-      })}
+      <g opacity={mwOpacityScale}>
+        {starData.mwStars}
+      </g>
 
       {/* Large cross-shaped twinkling stars */}
-      {starData.crossStars.map((star) => {
-        const starOpacity = unfoldProgress < 0.6 ? 0 : Math.max(0, Math.min(1, Math.pow((unfoldProgress - 0.6) * 2.5, 3) * 0.8));
-        return (
-          <g 
-            key={star.id} 
-            transform={`translate(${star.x}, ${star.y})`} 
-            opacity={starOpacity}
-            className="animate-pulse"
-            style={{ animationDuration: star.animDuration }}
-          >
-            <rect x="-1" y="-4" width="2" height="8" fill={star.fill} />
-            <rect x="-4" y="-1" width="8" height="2" fill={star.fill} />
-            <rect x="-1" y="-1" width="2" height="2" fill="#FFF" />
-          </g>
-        );
-      })}
+      <g opacity={crossOpacityScale}>
+        {starData.crossStars}
+      </g>
     </g>
   );
 });
@@ -238,6 +239,10 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
   const [dynamicNodes, setDynamicNodes] = useState<NodeData[]>(INITIAL_NODES);
   const [dynamicLinks, setDynamicLinks] = useState<LinkData[]>(INITIAL_LINKS);
   const [dynamicSubNodes, setDynamicSubNodes] = useState<Record<string, SubNode[]>>(SUB_NODES_MAP);
+
+  // Refs for direct DOM manipulation to bypass React render cycle on every tick
+  const nodeRefs = useRef<{ [key: string]: SVGGElement | null }>({});
+  const linkRefs = useRef<{ [key: number]: SVGLineElement | null }>({});
 
   // Fetch data from Supabase
   useEffect(() => {
@@ -480,8 +485,25 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
     simulation.on('tick', () => {
       // If we are booting, skip the expensive React re-renders to save CPU for the terminal typing animation.
       if (!isBootingRef.current) {
-        setNodes([...simulation.nodes()]);
-        setLinks([...simLinks]);
+        // Bypass React state updates completely to eliminate massive re-renders
+        simulation.nodes().forEach((node) => {
+          const el = nodeRefs.current[node.id];
+          if (el) {
+            el.setAttribute('transform', `translate(${node.x || 0},${node.y || 0})`);
+          }
+        });
+
+        simLinks.forEach((link, i) => {
+          const el = linkRefs.current[i];
+          if (el) {
+            const source = link.source as NodeData;
+            const target = link.target as NodeData;
+            el.setAttribute('x1', String(source.x || 0));
+            el.setAttribute('y1', String(source.y || 0));
+            el.setAttribute('x2', String(target.x || 0));
+            el.setAttribute('y2', String(target.y || 0));
+          }
+        });
       }
     });
 
@@ -861,7 +883,8 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
           transform: `translate(calc(var(--mouse-x, 0px) * -0.05), calc(var(--mouse-y, 0px) * -0.05)) scale(${hoveredNode && hoveredNode !== 'ME' && unfoldProgress >= 1 ? 2.5 : 1})`,
           opacity: 1, // Graph stays visible, never fades out
           pointerEvents: 'auto', // Graph always interactive
-          transition: 'transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), transform-origin 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease'
+          transition: 'transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), transform-origin 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease',
+          willChange: 'transform'
         }}>
           {/* Subtle background grid for parallax reference */}
           <g stroke="#1B3B2B" strokeOpacity={0.15} strokeWidth={1} strokeDasharray="2 10">
@@ -894,10 +917,11 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
               return (
                 <line
                   key={i}
-                  x1={source.x}
-                  y1={source.y}
-                  x2={target.x}
-                  y2={target.y}
+                  ref={(el) => { linkRefs.current[i] = el; }}
+                  x1={source.x || 0}
+                  y1={source.y || 0}
+                  x2={target.x || 0}
+                  y2={target.y || 0}
                   stroke={linkColor}
                   strokeOpacity={linkOpacity}
                   strokeWidth={linkWidth}
@@ -935,6 +959,7 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
               return (
                 <React.Fragment key={node.id}>
                   <g 
+                    ref={(el) => { nodeRefs.current[node.id] = el; }}
                     transform={`translate(${node.x || 0},${node.y || 0})`}
                     className={`pointer-events-auto ${unfoldProgress >= 1 ? 'cursor-grab active:cursor-grabbing' : ''}`}
                     style={{ opacity: nodeOpacity, transition: 'opacity 0.3s ease' }}
@@ -1094,14 +1119,15 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
               );
             })()}
             <div 
-              className="pointer-events-auto flex items-center justify-center cursor-pointer group"
-              style={{ 
-                opacity: progArchive,
-                transform: `translateY(${(1 - progArchive) * -20}px)`,
-                display: progArchive === 0 ? 'none' : 'flex'
-              }}
-              onClick={() => navigate('/blog')}
-            >
+                className="pointer-events-auto flex items-center justify-center cursor-pointer group"
+                style={{ 
+                  opacity: progArchive,
+                  transform: `translateY(${(1 - progArchive) * -20}px)`,
+                  display: progArchive === 0 ? 'none' : 'flex',
+                  willChange: 'transform, opacity'
+                }}
+                onClick={() => navigate('/blog')}
+              >
               <div className="w-10 h-10 border border-[#4ADE80] flex items-center justify-center bg-[#0a140f]/90 active:bg-[#1B3B2B] transition-colors relative z-10 shadow-[0_0_10px_rgba(74,222,128,0.2)]">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4ADE80" strokeWidth="1.5">
                   <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
@@ -1167,14 +1193,15 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
               );
             })()}
             <div 
-              className="pointer-events-auto flex items-center justify-center cursor-pointer group"
-              style={{ 
-                opacity: progProjects,
-                transform: `translateY(${(1 - progProjects) * -20}px)`,
-                display: progProjects === 0 ? 'none' : 'flex'
-              }}
-              onClick={() => navigate('/projects')}
-            >
+                className="pointer-events-auto flex items-center justify-center cursor-pointer group"
+                style={{ 
+                  opacity: progProjects,
+                  transform: `translateY(${(1 - progProjects) * -20}px)`,
+                  display: progProjects === 0 ? 'none' : 'flex',
+                  willChange: 'transform, opacity'
+                }}
+                onClick={() => navigate('/projects')}
+              >
               <div className="w-10 h-10 border border-[#81D4FA] flex items-center justify-center bg-[#0a140f]/90 active:bg-[#01579B]/30 transition-colors relative z-10 shadow-[0_0_10px_rgba(129,212,250,0.2)]">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#81D4FA" strokeWidth="1.5">
                   <rect x="4" y="4" width="16" height="16" rx="2" ry="2"/>
@@ -1247,14 +1274,15 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
               );
             })()}
             <div 
-              className="pointer-events-auto flex items-center justify-center cursor-pointer group"
-              style={{ 
-                opacity: progSettings,
-                transform: `translateY(${(1 - progSettings) * -20}px)`,
-                display: progSettings === 0 ? 'none' : 'flex'
-              }}
-              onClick={() => navigate('/settings')}
-            >
+                className="pointer-events-auto flex items-center justify-center cursor-pointer group"
+                style={{ 
+                  opacity: progSettings,
+                  transform: `translateY(${(1 - progSettings) * -20}px)`,
+                  display: progSettings === 0 ? 'none' : 'flex',
+                  willChange: 'transform, opacity'
+                }}
+                onClick={() => navigate('/settings')}
+              >
               <div className="w-10 h-10 border border-[#B39DDB] flex items-center justify-center bg-[#0a140f]/90 active:bg-[#4527A0]/30 transition-colors relative z-10 shadow-[0_0_10px_rgba(179,157,219,0.2)]">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#B39DDB" strokeWidth="1.5">
                   <circle cx="12" cy="12" r="3"/>
@@ -1319,14 +1347,15 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
               );
             })()}
             <div 
-              className="pointer-events-auto flex items-center justify-center cursor-pointer group"
-              style={{ 
-                opacity: progLinks,
-                transform: `translateY(${(1 - progLinks) * -20}px)`,
-                display: progLinks === 0 ? 'none' : 'flex'
-              }}
-              onClick={() => navigate('/links')}
-            >
+                className="pointer-events-auto flex items-center justify-center cursor-pointer group"
+                style={{ 
+                  opacity: progLinks,
+                  transform: `translateY(${(1 - progLinks) * -20}px)`,
+                  display: progLinks === 0 ? 'none' : 'flex',
+                  willChange: 'transform, opacity'
+                }}
+                onClick={() => navigate('/links')}
+              >
               <div className="w-10 h-10 border border-[#FFCC80] flex items-center justify-center bg-[#0a140f]/90 active:bg-[#E65100]/30 transition-colors relative z-10 shadow-[0_0_10px_rgba(255,204,128,0.2)]">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFCC80" strokeWidth="1.5">
                   <polyline points="4 17 10 11 4 5"/>
@@ -1437,7 +1466,8 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
               style={{ 
                 opacity: progArchive,
                 transform: `translateX(${(1 - progArchive) * -50}px)`,
-                display: progArchive === 0 ? 'none' : 'flex'
+                display: progArchive === 0 ? 'none' : 'flex',
+                willChange: 'transform, opacity'
               }}
               onClick={() => navigate('/blog')}
             >
@@ -1529,7 +1559,8 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
               style={{ 
                 opacity: progProjects,
                 transform: `translateX(${(1 - progProjects) * -50}px)`,
-                display: progProjects === 0 ? 'none' : 'flex'
+                display: progProjects === 0 ? 'none' : 'flex',
+                willChange: 'transform, opacity'
               }}
               onClick={() => navigate('/projects')}
             >
@@ -1725,7 +1756,8 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
                   style={{ 
                     opacity: progLinks,
                     transform: `translateX(${(1 - progLinks) * 50}px)`,
-                    display: progLinks === 0 ? 'none' : 'flex'
+                    display: progLinks === 0 ? 'none' : 'flex',
+                    willChange: 'transform, opacity'
                   }}
                   onClick={() => navigate('/links')}
                 >
