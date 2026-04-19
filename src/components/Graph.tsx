@@ -371,18 +371,20 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
   }, []);
 
   // Update dynamicSubNodes when window resizes or dimensions change
+  const [computedSubNodes, setComputedSubNodes] = useState<Record<string, any[]>>({});
+
   useEffect(() => {
     // Generate sub-nodes dynamically based on DB sub_nodes or fallback to SUB_NODES_MAP
-    const newDynamicSubNodes: Record<string, any[]> = {};
+    const newComputedSubNodes: Record<string, any[]> = {};
     
     nodes.forEach(node => {
       if (node.group === 'center') return;
-      
-      const subNodesData = SUB_NODES_MAP[node.id] || [];
+
+      const subNodesData = dynamicSubNodes[node.id] || SUB_NODES_MAP[node.id] || [];
       if (subNodesData.length > 0) {
-        newDynamicSubNodes[node.id] = subNodesData.map((sub, idx, arr) => {
-          const angle = (idx / arr.length) * Math.PI * 2 - Math.PI / 2;
-          const dist = 35; // Initial intended distance
+        newComputedSubNodes[node.id] = subNodesData.map((sub, idx, arr) => {
+          const angle = (idx / arr.length) * Math.PI * 2;
+          const dist = 120; // 統一擴展距離
           let sx = Math.cos(angle) * dist;
           let sy = Math.sin(angle) * dist;
           
@@ -404,8 +406,8 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
       }
     });
     
-    setDynamicSubNodes(newDynamicSubNodes);
-  }, [nodes, dimensions]); // Recalculate when nodes or screen size change
+    setComputedSubNodes(newComputedSubNodes);
+  }, [nodes, dimensions, dynamicSubNodes]); // Recalculate when nodes, screen size or raw dynamicSubNodes change
 
   const isBootingRef = useRef(isBooting);
   useEffect(() => {
@@ -1026,7 +1028,7 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
                   */}
 
                   {/* Sub-nodes that pop out on hover */}
-                  {isHovered && !isCenter && dynamicSubNodes[node.id]?.map((sub, idx, arr) => {
+                  {isHovered && !isCenter && computedSubNodes[node.id]?.map((sub, idx, arr) => {
                     const sx = sub.sx || 0;
                     const sy = sub.sy || 0;
                     return (
