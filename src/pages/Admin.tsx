@@ -6,8 +6,9 @@ import { RamblingsManager } from '../components/admin/RamblingsManager';
 import { ProjectsManager } from '../components/admin/ProjectsManager';
 import { ExternalLinksManager } from '../components/admin/ExternalLinksManager';
 import { GraphNodesManager } from '../components/admin/GraphNodesManager';
+import { TimelineManager } from '../components/admin/TimelineManager';
 
-type AdminTab = 'ramblings' | 'projects' | 'links' | 'nodes';
+type AdminTab = 'ramblings' | 'projects' | 'timeline' | 'links' | 'nodes';
 
 export function Admin() {
   const [session, setSession] = useState<Session | null>(null);
@@ -135,13 +136,19 @@ export function Admin() {
           >
             1. 碎碎念 (RAMBLINGS)
           </button>
-          <button 
+          <button
             onClick={() => setActiveTab('projects')}
             className={`px-4 py-2 border transition-colors ${activeTab === 'projects' ? 'border-[#4ADE80] text-[#4ADE80] bg-[#0a140f]' : 'border-[#1B3B2B] text-[#4a6b57] hover:border-[#4a6b57]'}`}
           >
             2. 個人項目 (PROJECTS)
           </button>
-          <button 
+          <button
+            onClick={() => setActiveTab('timeline')}
+            className={`px-4 py-2 border transition-colors ${activeTab === 'timeline' ? 'border-[#4ADE80] text-[#4ADE80] bg-[#0a140f]' : 'border-[#1B3B2B] text-[#4a6b57] hover:border-[#4a6b57]'}`}
+          >
+            3. 時間線 (TIMELINE)
+          </button>
+          <button
             onClick={() => setActiveTab('links')}
             className={`px-4 py-2 border transition-colors ${activeTab === 'links' ? 'border-[#4ADE80] text-[#4ADE80] bg-[#0a140f]' : 'border-[#1B3B2B] text-[#4a6b57] hover:border-[#4a6b57]'}`}
           >
@@ -168,6 +175,9 @@ export function Admin() {
           )}
           {activeTab === 'projects' && (
             <ProjectsManager setLoading={setLoading} setErrorMsg={setErrorMsg} />
+          )}
+          {activeTab === 'timeline' && (
+            <TimelineManager setLoading={setLoading} setErrorMsg={setErrorMsg} />
           )}
           {activeTab === 'links' && (
             <ExternalLinksManager setLoading={setLoading} setErrorMsg={setErrorMsg} />

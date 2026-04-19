@@ -52,6 +52,22 @@ export interface GraphLink {
   created_at: string;
 }
 
+export interface TimelineEvent {
+  id: string;
+  title: string;
+  description?: string;
+  date: string;
+  image_url?: string;
+  link?: string;
+  folder: string;
+  tags: string[];
+  published: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export type NewTimelineEvent = Omit<TimelineEvent, 'id' | 'created_at' | 'updated_at'>;
+
 export type NewPost = Omit<Post, 'id' | 'created_at' | 'updated_at'>;
 export type NewProject = Omit<Project, 'id' | 'created_at' | 'updated_at'>;
 export type NewExternalLink = Omit<ExternalLink, 'id' | 'created_at' | 'updated_at'>;
