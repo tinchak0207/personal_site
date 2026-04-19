@@ -34,13 +34,6 @@ export default function Projects() {
             <p className="text-[#0277BD] text-sm tracking-widest mt-2">/projects</p>
           </div>
           <div className="flex items-center gap-6">
-            <Link to="/timeline" className="text-[#81D4FA] hover:text-[#E8F5E9] font-pixel text-xs border border-[#81D4FA] px-3 py-2 hover:bg-[#81D4FA]/20 transition-colors flex items-center gap-2">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="12" cy="12" r="10"></circle>
-                <polyline points="12 6 12 12 16 14"></polyline>
-              </svg>
-              TIMELINE
-            </Link>
             <Link to="/" className="text-[#4a6b57] hover:text-[#4ADE80] transition-colors font-pixel tracking-widest text-sm">
               [RETURN TO CORE]
             </Link>
@@ -106,6 +99,20 @@ export default function Projects() {
           </div>
         )}
       </div>
+
+      {/* Floating Timeline Button */}
+      <Link 
+        to="/timeline" 
+        className="fixed bottom-8 right-8 z-50 flex items-center justify-center gap-3 bg-[#0a140f]/90 backdrop-blur-sm border-2 border-[#81D4FA] text-[#81D4FA] hover:text-[#030a07] hover:bg-[#81D4FA] px-6 py-4 font-pixel tracking-widest transition-all hover:scale-105 shadow-[0_0_20px_rgba(129,212,250,0.3)] hover:shadow-[0_0_30px_rgba(129,212,250,0.6)] group rounded-sm"
+        title="View Timeline"
+      >
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="animate-pulse">
+          <circle cx="12" cy="12" r="10"></circle>
+          <polyline points="12 6 12 12 16 14"></polyline>
+        </svg>
+        <span className="text-lg">TIMELINE_</span>
+      </Link>
+
       <CRTFilter />
     </div>
   );
