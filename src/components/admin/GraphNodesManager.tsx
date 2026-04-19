@@ -2,6 +2,9 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { GraphNode } from '../../types';
 
+import { NodeSubNodesPanel } from './NodeSubNodesPanel';
+import { NodeEdgesPanel } from './NodeEdgesPanel';
+
 const INITIAL_NODES = [
   { id: 'ME', label: 'tinchak0207', address: 'ADDR_ME', group_type: 'center', radius: 8 },
   { id: 'INFP', label: 'INFP', address: 'ADDR_INFP', group_type: 'node', radius: 5 },
@@ -127,77 +130,101 @@ export function GraphNodesManager({ setLoading, setErrorMsg }: { setLoading: (l:
   };
 
   if (editingNode) {
+    const isExistingNode = !!nodes.find(n => n.id === editingNode.id);
+
     return (
-      <form onSubmit={handleSaveNode} className="flex flex-col gap-6">
+      <div className="flex flex-col gap-6">
         <div className="flex justify-between items-center border-b border-[#1B3B2B] pb-4">
           <h2 className="text-xl font-pixel text-[#A5D6B7]">
-            {nodes.find(n => n.id === editingNode.id) ? 'EDIT NODE' : 'NEW NODE'}
+            {isExistingNode ? 'EDIT NODE' : 'NEW NODE'}
           </h2>
           <div className="flex gap-4">
-            <button type="button" onClick={() => setEditingNode(null)} className="text-[#4a6b57] hover:text-[#A5D6B7] font-pixel text-sm transition-colors">CANCEL</button>
-            <button type="submit" className="text-[#030a07] bg-[#4ADE80] px-4 py-1 font-pixel text-sm hover:bg-[#E8F5E9] transition-colors">COMMIT</button>
+            <button type="button" onClick={() => setEditingNode(null)} className="text-[#4a6b57] hover:text-[#A5D6B7] font-pixel text-sm transition-colors">BACK (返回列表)</button>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <label className="block font-pixel text-xs text-[#4a6b57] mb-2">ID (Unique Identifier, e.g. "AI", "INFP")</label>
-            <input 
-              type="text" 
-              value={editingNode.id || ''}
-              onChange={(e) => setEditingNode({...editingNode, id: e.target.value.replace(/[^a-zA-Z0-9_-]/g, '')})}
-              className="w-full bg-[#0a140f] border border-[#1B3B2B] focus:border-[#4ADE80] text-[#E8F5E9] p-3 outline-none placeholder-[#4a6b57]/50"
-              placeholder="Unique ID"
-              disabled={!!nodes.find(n => n.id === editingNode.id)} // disable if editing existing
-              required
+        <form onSubmit={handleSaveNode} className="border border-[#1B3B2B] p-4 bg-[#0a140f]/30">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="font-pixel text-[#A5D6B7]">BASIC INFO (基本屬性)</h3>
+            <button type="submit" className="text-[#030a07] bg-[#4ADE80] px-4 py-1 font-pixel text-xs hover:bg-[#E8F5E9] transition-colors">SAVE BASIC INFO</button>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="block font-pixel text-xs text-[#4a6b57] mb-2">ID (Unique Identifier, e.g. "AI", "INFP")</label>
+              <input 
+                type="text" 
+                value={editingNode.id || ''}
+                onChange={(e) => setEditingNode({...editingNode, id: e.target.value.replace(/[^a-zA-Z0-9_-]/g, '')})}
+                className="w-full bg-[#0a140f] border border-[#1B3B2B] focus:border-[#4ADE80] text-[#E8F5E9] p-3 outline-none placeholder-[#4a6b57]/50"
+                placeholder="Unique ID"
+                disabled={isExistingNode} // disable if editing existing
+                required
+              />
+            </div>
+            <div>
+              <label className="block font-pixel text-xs text-[#4a6b57] mb-2">LABEL (Display Text, e.g. "AI NATIVE")</label>
+              <input 
+                type="text" 
+                value={editingNode.label || ''}
+                onChange={(e) => setEditingNode({...editingNode, label: e.target.value})}
+                className="w-full bg-[#0a140f] border border-[#1B3B2B] focus:border-[#4ADE80] text-[#E8F5E9] p-3 outline-none placeholder-[#4a6b57]/50"
+                placeholder="Display Name"
+                required
+              />
+            </div>
+            <div>
+              <label className="block font-pixel text-xs text-[#4a6b57] mb-2">HEX ADDRESS (e.g. "ADDR_AI_NAT")</label>
+              <input 
+                type="text" 
+                value={editingNode.address || ''}
+                onChange={(e) => setEditingNode({...editingNode, address: e.target.value})}
+                className="w-full bg-[#0a140f] border border-[#1B3B2B] focus:border-[#4ADE80] text-[#E8F5E9] p-3 outline-none placeholder-[#4a6b57]/50"
+                placeholder="Hex Address"
+                required
+              />
+            </div>
+            <div>
+              <label className="block font-pixel text-xs text-[#4a6b57] mb-2">GROUP TYPE</label>
+              <select 
+                value={editingNode.group_type || 'node'}
+                onChange={(e) => setEditingNode({...editingNode, group_type: e.target.value as 'center' | 'node'})}
+                className="w-full bg-[#0a140f] border border-[#1B3B2B] focus:border-[#4ADE80] text-[#E8F5E9] p-3 outline-none"
+              >
+                <option value="node">NODE (Normal)</option>
+                <option value="center">CENTER (Core)</option>
+              </select>
+            </div>
+            <div>
+              <label className="block font-pixel text-xs text-[#4a6b57] mb-2">RADIUS (Size)</label>
+              <input 
+                type="number" 
+                value={editingNode.radius || 5}
+                onChange={(e) => setEditingNode({...editingNode, radius: parseInt(e.target.value)})}
+                className="w-full bg-[#0a140f] border border-[#1B3B2B] focus:border-[#4ADE80] text-[#E8F5E9] p-3 outline-none placeholder-[#4a6b57]/50"
+                min="1" max="20"
+                required
+              />
+            </div>
+          </div>
+        </form>
+
+        {isExistingNode && editingNode.id && (
+          <>
+            <NodeSubNodesPanel 
+              parentNodeId={editingNode.id} 
+              setLoading={setLoading} 
+              setErrorMsg={setErrorMsg} 
             />
-          </div>
-          <div>
-            <label className="block font-pixel text-xs text-[#4a6b57] mb-2">LABEL (Display Text, e.g. "AI NATIVE")</label>
-            <input 
-              type="text" 
-              value={editingNode.label || ''}
-              onChange={(e) => setEditingNode({...editingNode, label: e.target.value})}
-              className="w-full bg-[#0a140f] border border-[#1B3B2B] focus:border-[#4ADE80] text-[#E8F5E9] p-3 outline-none placeholder-[#4a6b57]/50"
-              placeholder="Display Name"
-              required
+            <NodeEdgesPanel 
+              focusNodeId={editingNode.id} 
+              nodes={nodes} 
+              setLoading={setLoading} 
+              setErrorMsg={setErrorMsg} 
             />
-          </div>
-          <div>
-            <label className="block font-pixel text-xs text-[#4a6b57] mb-2">HEX ADDRESS (e.g. "ADDR_AI_NAT")</label>
-            <input 
-              type="text" 
-              value={editingNode.address || ''}
-              onChange={(e) => setEditingNode({...editingNode, address: e.target.value})}
-              className="w-full bg-[#0a140f] border border-[#1B3B2B] focus:border-[#4ADE80] text-[#E8F5E9] p-3 outline-none placeholder-[#4a6b57]/50"
-              placeholder="Hex Address"
-              required
-            />
-          </div>
-          <div>
-            <label className="block font-pixel text-xs text-[#4a6b57] mb-2">GROUP TYPE</label>
-            <select 
-              value={editingNode.group_type || 'node'}
-              onChange={(e) => setEditingNode({...editingNode, group_type: e.target.value as 'center' | 'node'})}
-              className="w-full bg-[#0a140f] border border-[#1B3B2B] focus:border-[#4ADE80] text-[#E8F5E9] p-3 outline-none"
-            >
-              <option value="node">NODE (Normal)</option>
-              <option value="center">CENTER (Core)</option>
-            </select>
-          </div>
-          <div>
-            <label className="block font-pixel text-xs text-[#4a6b57] mb-2">RADIUS (Size)</label>
-            <input 
-              type="number" 
-              value={editingNode.radius || 5}
-              onChange={(e) => setEditingNode({...editingNode, radius: parseInt(e.target.value)})}
-              className="w-full bg-[#0a140f] border border-[#1B3B2B] focus:border-[#4ADE80] text-[#E8F5E9] p-3 outline-none placeholder-[#4a6b57]/50"
-              min="1" max="20"
-              required
-            />
-          </div>
-        </div>
-      </form>
+          </>
+        )}
+      </div>
     );
   }
 
