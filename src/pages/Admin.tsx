@@ -6,10 +6,8 @@ import { RamblingsManager } from '../components/admin/RamblingsManager';
 import { ProjectsManager } from '../components/admin/ProjectsManager';
 import { ExternalLinksManager } from '../components/admin/ExternalLinksManager';
 import { GraphNodesManager } from '../components/admin/GraphNodesManager';
-import { GraphEdgesManager } from '../components/admin/GraphEdgesManager';
-import { GraphSubNodesManager } from '../components/admin/GraphSubNodesManager';
 
-type AdminTab = 'ramblings' | 'projects' | 'links' | 'nodes' | 'subnodes' | 'edges';
+type AdminTab = 'ramblings' | 'projects' | 'links' | 'nodes';
 
 export function Admin() {
   const [session, setSession] = useState<Session | null>(null);
@@ -155,18 +153,6 @@ export function Admin() {
           >
             5. 節點管理 (NODES)
           </button>
-          <button 
-            onClick={() => setActiveTab('subnodes')}
-            className={`px-4 py-2 border transition-colors ${activeTab === 'subnodes' ? 'border-[#4ADE80] text-[#4ADE80] bg-[#0a140f]' : 'border-[#1B3B2B] text-[#4a6b57] hover:border-[#4a6b57]'}`}
-          >
-            [ SUB-NODES ]
-          </button>
-          <button 
-            onClick={() => setActiveTab('edges')}
-            className={`px-4 py-2 border transition-colors ${activeTab === 'edges' ? 'border-[#4ADE80] text-[#4ADE80] bg-[#0a140f]' : 'border-[#1B3B2B] text-[#4a6b57] hover:border-[#4a6b57]'}`}
-          >
-            6. 連線管理 (EDGES)
-          </button>
         </div>
 
         {errorMsg && (
@@ -188,12 +174,6 @@ export function Admin() {
           )}
           {activeTab === 'nodes' && (
             <GraphNodesManager setLoading={setLoading} setErrorMsg={setErrorMsg} />
-          )}
-          {activeTab === 'subnodes' && (
-            <GraphSubNodesManager setLoading={setLoading} setErrorMsg={setErrorMsg} />
-          )}
-          {activeTab === 'edges' && (
-            <GraphEdgesManager setLoading={setLoading} setErrorMsg={setErrorMsg} />
           )}
         </div>
       </div>
