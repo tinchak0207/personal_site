@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Project } from '../../types';
 import { NodeSelector } from './NodeSelector';
+import { MarkdownEditor } from './MarkdownEditor';
 
 export function ProjectsManager({ setLoading, setErrorMsg }: { setLoading: (l: boolean) => void, setErrorMsg: (m: string) => void }) {
   const [projects, setProjects] = useState<Project[]>([]);
@@ -47,24 +48,6 @@ export function ProjectsManager({ setLoading, setErrorMsg }: { setLoading: (l: b
         tags: (editingProject.tags || []).filter((tag: string) => tag !== tagToRemove)
       });
     }
-  };
-
-  const insertMarkdown = (prefix: string, suffix: string = '') => {
-    const textarea = document.getElementById('project-description-editor') as HTMLTextAreaElement;
-    if (!textarea || !editingProject) return;
-
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const text = editingProject.description || '';
-    const selectedText = text.substring(start, end);
-
-    const newText = text.substring(0, start) + prefix + selectedText + suffix + text.substring(end);
-    setEditingProject({ ...editingProject, description: newText });
-
-    setTimeout(() => {
-      textarea.focus();
-      textarea.setSelectionRange(start + prefix.length, end + prefix.length);
-    }, 0);
   };
 
   const handleSaveProject = async (e?: React.FormEvent, isAutoSave = false) => {
@@ -307,20 +290,14 @@ export function ProjectsManager({ setLoading, setErrorMsg }: { setLoading: (l: b
                     />
                   </div>
                 </div>
-                <div className="flex gap-1 p-2 bg-[#0a140f] border-b border-[#1B3B2B] shrink-0">
-                  <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => insertMarkdown('**', '**')} className="px-2 py-1 text-[#A5D6B7] font-mono text-xs hover:bg-[#1B3B2B] hover:text-[#4ADE80] transition-colors rounded" title="Bold">B</button>
-                  <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => insertMarkdown('*', '*')} className="px-2 py-1 text-[#A5D6B7] font-mono text-xs hover:bg-[#1B3B2B] hover:text-[#4ADE80] transition-colors italic rounded" title="Italic">I</button>
-                  <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => insertMarkdown('### ', '')} className="px-2 py-1 text-[#A5D6B7] font-mono text-xs hover:bg-[#1B3B2B] hover:text-[#4ADE80] transition-colors font-bold rounded" title="Heading">H</button>
-                  <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => insertMarkdown('[', '](url)')} className="px-2 py-1 text-[#A5D6B7] font-mono text-xs hover:bg-[#1B3B2B] hover:text-[#4ADE80] transition-colors rounded" title="Link">L</button>
-                  <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => insertMarkdown('```\n', '\n```')} className="px-2 py-1 text-[#A5D6B7] font-mono text-xs hover:bg-[#1B3B2B] hover:text-[#4ADE80] transition-colors rounded" title="Code Block">{'<>'}</button>
-                </div>
-                <textarea 
+                <MarkdownEditor
                   id="project-description-editor"
                   value={editingProject.description || ''}
-                  onChange={(e) => setEditingProject({...editingProject, description: e.target.value})}
-                  className="flex-1 w-full bg-transparent border-none text-[#A5D6B7] p-6 font-mono outline-none resize-none placeholder-[#4a6b57]/30 custom-scrollbar leading-relaxed"
+                  onChange={(val) => setEditingProject({...editingProject, description: val})}
+                  setLoading={setLoading}
+                  setErrorMsg={setErrorMsg}
                   placeholder="Project description (Markdown supported)..."
-                  required
+                  required={true}
                 />
               </div>
 

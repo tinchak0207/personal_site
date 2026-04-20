@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
 import { supabase } from '../lib/supabase';
 import { CRTFilter } from '../components/CRTFilter';
+import { ExpandableSection } from '../components/ExpandableSection';
 
 interface PostDetail {
   title: string;
@@ -81,9 +82,10 @@ export function BlogPost() {
         </header>
 
         {!loading && post && (
-          <article className="font-mono">
-            <ReactMarkdown
-              components={{
+          <ExpandableSection maxHeight={420} gradientFrom="from-[#030a07]">
+            <article className="font-mono">
+              <ReactMarkdown
+                components={{
                 h1: ({node, ...props}) => <h1 className="font-pixel text-3xl text-[#E8F5E9] tracking-wider mt-12 mb-6" {...props} />,
                 h2: ({node, ...props}) => <h2 className="font-pixel text-2xl text-[#A5D6B7] tracking-wider mt-10 mb-4" {...props} />,
                 h3: ({node, ...props}) => <h3 className="font-pixel text-xl text-[#8FBC8F] tracking-wide mt-8 mb-4" {...props} />,
@@ -103,6 +105,7 @@ export function BlogPost() {
               {post.content}
             </ReactMarkdown>
           </article>
+        </ExpandableSection>
         )}
       </div>
       

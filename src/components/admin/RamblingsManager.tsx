@@ -2,13 +2,13 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Post } from '../../types';
 import { NodeSelector } from './NodeSelector';
+import { MarkdownEditor } from './MarkdownEditor';
 
 export function RamblingsManager({ setLoading, setErrorMsg }: { setLoading: (l: boolean) => void, setErrorMsg: (m: string) => void }) {
   const [posts, setPosts] = useState<Post[]>([]);
   const [editingPost, setEditingPost] = useState<Partial<Post> | null>(null);
   const [expandedFolders, setExpandedFolders] = useState<string[]>(['/']);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetchPosts();
@@ -46,79 +46,6 @@ export function RamblingsManager({ setLoading, setErrorMsg }: { setLoading: (l: 
         ...editingPost,
         tags: (editingPost.tags || []).filter((tag: string) => tag !== tagToRemove)
       });
-    }
-  };
-
-  const insertMarkdown = (prefix: string, suffix: string = '') => {
-    const textarea = document.getElementById('markdown-editor') as HTMLTextAreaElement;
-    if (!textarea || !editingPost) return;
-
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const text = editingPost.content || '';
-    const selectedText = text.substring(start, end);
-
-    const newText = text.substring(0, start) + prefix + selectedText + suffix + text.substring(end);
-    setEditingPost({ ...editingPost, content: newText });
-
-    setTimeout(() => {
-      textarea.focus();
-      textarea.setSelectionRange(start + prefix.length, end + prefix.length);
-    }, 0);
-  };
-
-  // Image Upload Logic
-  const handleImageUpload = async (file: File) => {
-    if (!file.type.startsWith('image/')) {
-      setErrorMsg('Please upload an image file.');
-      return;
-    }
-    
-    setLoading(true);
-    try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt}`;
-      const filePath = `markdown/${fileName}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from('images')
-        .upload(filePath, file);
-
-      if (uploadError) throw uploadError;
-
-      const { data } = supabase.storage.from('images').getPublicUrl(filePath);
-      
-      if (data?.publicUrl) {
-        insertMarkdown(`![${file.name}](${data.publicUrl})`, '');
-      }
-    } catch (err: any) {
-      setErrorMsg(err.message || 'Image upload failed');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
-    const items = e.clipboardData?.items;
-    if (!items) return;
-
-    for (let i = 0; i < items.length; i++) {
-      if (items[i].type.indexOf('image') !== -1) {
-        const file = items[i].getAsFile();
-        if (file) {
-          e.preventDefault();
-          handleImageUpload(file);
-          break;
-        }
-      }
-    }
-  };
-
-  const handleDrop = (e: React.DragEvent<HTMLTextAreaElement>) => {
-    e.preventDefault();
-    const file = e.dataTransfer.files?.[0];
-    if (file && file.type.startsWith('image/')) {
-      handleImageUpload(file);
     }
   };
 
@@ -332,30 +259,14 @@ export function RamblingsManager({ setLoading, setErrorMsg }: { setLoading: (l: 
             <div className="flex flex-1 min-h-0 relative">
               {/* Markdown Editor */}
               <div className="flex-1 flex flex-col min-w-0">
-                <div className="flex gap-1 p-2 bg-[#0a140f] border-b border-[#1B3B2B] shrink-0">
-                  <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => insertMarkdown('**', '**')} className="px-2 py-1 text-[#A5D6B7] font-mono text-xs hover:bg-[#1B3B2B] hover:text-[#4ADE80] transition-colors rounded" title="Bold">B</button>
-                  <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => insertMarkdown('*', '*')} className="px-2 py-1 text-[#A5D6B7] font-mono text-xs hover:bg-[#1B3B2B] hover:text-[#4ADE80] transition-colors italic rounded" title="Italic">I</button>
-                  <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => insertMarkdown('### ', '')} className="px-2 py-1 text-[#A5D6B7] font-mono text-xs hover:bg-[#1B3B2B] hover:text-[#4ADE80] transition-colors font-bold rounded" title="Heading">H</button>
-                  <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => insertMarkdown('[', '](url)')} className="px-2 py-1 text-[#A5D6B7] font-mono text-xs hover:bg-[#1B3B2B] hover:text-[#4ADE80] transition-colors rounded" title="Link">L</button>
-                  
-                  {/* Image Upload Button */}
-                  <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={(e) => e.target.files?.[0] && handleImageUpload(e.target.files[0])} />
-                  <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => fileInputRef.current?.click()} className="px-2 py-1 text-[#A5D6B7] font-mono text-xs hover:bg-[#1B3B2B] hover:text-[#4ADE80] transition-colors rounded flex items-center gap-1" title="Upload Image">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
-                    IMG
-                  </button>
-                  
-                  <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => insertMarkdown('```\n', '\n```')} className="px-2 py-1 text-[#A5D6B7] font-mono text-xs hover:bg-[#1B3B2B] hover:text-[#4ADE80] transition-colors rounded" title="Code Block">{'<>'}</button>
-                </div>
-                <textarea 
+                <MarkdownEditor
                   id="markdown-editor"
                   value={editingPost.content || ''}
-                  onChange={(e) => setEditingPost({...editingPost, content: e.target.value})}
-                  onPaste={handlePaste}
-                  onDrop={handleDrop}
-                  onDragOver={(e) => e.preventDefault()}
-                  className="flex-1 w-full bg-transparent border-none text-[#A5D6B7] p-6 font-mono outline-none resize-none placeholder-[#4a6b57]/30 custom-scrollbar leading-relaxed"
+                  onChange={(val) => setEditingPost({...editingPost, content: val})}
+                  setLoading={setLoading}
+                  setErrorMsg={setErrorMsg}
                   placeholder="Start typing... (Paste or drag images to upload)"
+                  required={true}
                 />
               </div>
 

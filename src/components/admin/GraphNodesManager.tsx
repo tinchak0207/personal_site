@@ -3,6 +3,7 @@ import { supabase } from '../../lib/supabase';
 import { GraphNode } from '../../types';
 
 import { NodeSubNodesPanel } from './NodeSubNodesPanel';
+import { MarkdownEditor } from './MarkdownEditor';
 import { NodeEdgesPanel } from './NodeEdgesPanel';
 
 const INITIAL_NODES = [

@@ -391,7 +391,7 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
       if (subNodesData.length > 0) {
         newComputedSubNodes[node.id] = subNodesData.map((sub, idx, arr) => {
           const angle = (idx / arr.length) * Math.PI * 2;
-          const dist = 140; // 統一擴展距離
+          const dist = 70; // 統一擴展距離
 
           let sx = Math.cos(angle) * dist;
           let sy = Math.sin(angle) * dist;
