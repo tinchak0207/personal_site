@@ -223,6 +223,10 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
   const [links, setLinks] = useState<LinkData[]>([]);
   const [hoveredNode, setHoveredNode] = useState<string | null>(null);
   const [zoomTarget, setZoomTarget] = useState<{x: number, y: number} | null>(null);
+  const [isZoomMode, setIsZoomMode] = useState(false);
+  const [zoomTransform, setZoomTransform] = useState({ x: 0, y: 0, k: 1 });
+  const [isPanning, setIsPanning] = useState(false);
+  const panStartRef = useRef({ x: 0, y: 0 });
   const simulationRef = useRef<d3.Simulation<NodeData, LinkData> | null>(null);
   const draggingNodeIdRef = useRef<string | null>(null);
   const [unfoldProgress, setUnfoldProgress] = useState(() => {
@@ -592,8 +596,32 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
     sim.alpha(easeProgress < 0.1 ? 1 : 0.6).restart(); 
   }, [unfoldProgress, dimensions]);
 
+  const isZoomModeRef = useRef(isZoomMode);
+  useEffect(() => {
+    isZoomModeRef.current = isZoomMode;
+  }, [isZoomMode]);
+
+  const zoomTransformRef = useRef(zoomTransform);
+  useEffect(() => {
+    zoomTransformRef.current = zoomTransform;
+  }, [zoomTransform]);
+
   useEffect(() => {
     const handleWheel = (e: WheelEvent) => {
+      if (isZoomModeRef.current) {
+        e.preventDefault();
+        const zoomDelta = e.deltaY > 0 ? 0.9 : 1.1;
+        const currentTransform = zoomTransformRef.current;
+        const mouseX = e.clientX;
+        const mouseY = e.clientY;
+        let newK = currentTransform.k * zoomDelta;
+        newK = Math.max(0.5, Math.min(newK, 10));
+        const newX = mouseX - (mouseX - currentTransform.x) * (newK / currentTransform.k);
+        const newY = mouseY - (mouseY - currentTransform.y) * (newK / currentTransform.k);
+        setZoomTransform({ x: newX, y: newY, k: newK });
+        return;
+      }
+
       setUnfoldProgress(prev => {
         // Continuous scroll delta calculation
         let delta = e.deltaY * (dimensions.width < 768 ? 0.0025 : 0.002);
@@ -604,11 +632,13 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
     let touchStartY = 0;
 
     const handleTouchStart = (e: TouchEvent) => {
+      if (isZoomModeRef.current) return;
       if (draggingNodeIdRef.current) return;
       touchStartY = e.touches[0].clientY;
     };
 
     const handleTouchMove = (e: TouchEvent) => {
+      if (isZoomModeRef.current) return;
       if (draggingNodeIdRef.current) return; // Prevent scrolling when dragging a node
       
       const touchY = e.touches[0].clientY;
@@ -617,14 +647,12 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
       
       setUnfoldProgress(prev => {
         // Continuous touch scroll delta calculation
-        // A full screen swipe of ~600px * 0.0012 ≈ 0.72 progress,
-        // which forces the user to swipe around 4 full times to reach 3.0
         let delta = deltaY * 0.0012;
         return Math.max(0, Math.min(3.0, prev + delta));
       });
     };
 
-    window.addEventListener('wheel', handleWheel);
+    window.addEventListener('wheel', handleWheel, { passive: false });
     window.addEventListener('touchstart', handleTouchStart);
     window.addEventListener('touchmove', handleTouchMove);
     
@@ -637,6 +665,7 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
 
   const handleDragStart = (e: React.MouseEvent | React.TouchEvent, node: NodeData) => {
     if (!simulationRef.current) return;
+    if (isZoomMode) return;
     const sim = simulationRef.current;
     
     draggingNodeIdRef.current = node.id;
@@ -744,18 +773,32 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
     <div 
       ref={containerRef} 
       className="absolute inset-0 w-full h-full z-10"
+      onMouseDown={(e) => {
+        if (isZoomMode) {
+          setIsPanning(true);
+          panStartRef.current = { x: e.clientX, y: e.clientY };
+        }
+      }}
       onMouseMove={(e) => {
         const mx = e.clientX - window.innerWidth / 2;
         const my = e.clientY - window.innerHeight / 2;
         if (containerRef.current) {
           containerRef.current.style.setProperty('--mouse-x', `${mx}px`);
           containerRef.current.style.setProperty('--mouse-y', `${my}px`);
-          // Also set raw mouse coords for the tooltip
           containerRef.current.style.setProperty('--raw-mouse-x', `${e.clientX}px`);
           containerRef.current.style.setProperty('--raw-mouse-y', `${e.clientY}px`);
         }
 
-        if (draggingNodeIdRef.current) {
+        if (isZoomMode && isPanning) {
+          const dx = e.clientX - panStartRef.current.x;
+          const dy = e.clientY - panStartRef.current.y;
+          setZoomTransform(prev => ({
+            ...prev,
+            x: prev.x + dx,
+            y: prev.y + dy
+          }));
+          panStartRef.current = { x: e.clientX, y: e.clientY };
+        } else if (draggingNodeIdRef.current && !isZoomMode) {
           const draggedNode = nodes.find(n => n.id === draggingNodeIdRef.current);
           if (draggedNode) {
             handleDrag(e, draggedNode);
@@ -763,15 +806,40 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
         }
       }}
       onMouseUp={(e) => {
-        if (draggingNodeIdRef.current) {
+        if (isZoomMode) {
+          setIsPanning(false);
+        }
+        if (draggingNodeIdRef.current && !isZoomMode) {
           const draggedNode = nodes.find(n => n.id === draggingNodeIdRef.current);
           if (draggedNode) {
             handleDragEnd(e, draggedNode);
           }
         }
       }}
+      onMouseLeave={(e) => {
+        if (isZoomMode) {
+          setIsPanning(false);
+        }
+      }}
+      onTouchStart={(e) => {
+        if (isZoomMode) {
+          setIsPanning(true);
+          panStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        }
+      }}
       onTouchMove={(e) => {
-        if (draggingNodeIdRef.current) {
+        if (isZoomMode && isPanning) {
+          const touchX = e.touches[0].clientX;
+          const touchY = e.touches[0].clientY;
+          const dx = touchX - panStartRef.current.x;
+          const dy = touchY - panStartRef.current.y;
+          setZoomTransform(prev => ({
+            ...prev,
+            x: prev.x + dx,
+            y: prev.y + dy
+          }));
+          panStartRef.current = { x: touchX, y: touchY };
+        } else if (draggingNodeIdRef.current && !isZoomMode) {
           const draggedNode = nodes.find(n => n.id === draggingNodeIdRef.current);
           if (draggedNode) {
             handleDrag(e, draggedNode);
@@ -779,7 +847,10 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
         }
       }}
       onTouchEnd={(e) => {
-        if (draggingNodeIdRef.current) {
+        if (isZoomMode) {
+          setIsPanning(false);
+        }
+        if (draggingNodeIdRef.current && !isZoomMode) {
           const draggedNode = nodes.find(n => n.id === draggingNodeIdRef.current);
           if (draggedNode) {
             handleDragEnd(e, draggedNode);
@@ -872,11 +943,13 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
 
         {/* Foreground Graph Layer */}
         <g style={{
-          transformOrigin: zoomTarget ? `${zoomTarget.x}px ${zoomTarget.y}px` : '50% 50%',
-          transform: `translate(calc(var(--mouse-x, 0px) * -0.05), calc(var(--mouse-y, 0px) * -0.05)) scale(${hoveredNode && hoveredNode !== 'ME' && unfoldProgress >= 1 ? 2.5 : 1})`,
+          transformOrigin: isZoomMode ? '0 0' : (zoomTarget ? `${zoomTarget.x}px ${zoomTarget.y}px` : '50% 50%'),
+          transform: isZoomMode 
+            ? `translate(${zoomTransform.x}px, ${zoomTransform.y}px) scale(${zoomTransform.k})`
+            : `translate(calc(var(--mouse-x, 0px) * -0.05), calc(var(--mouse-y, 0px) * -0.05)) scale(${hoveredNode && hoveredNode !== 'ME' && unfoldProgress >= 1 ? 2.5 : 1})`,
           opacity: 1, // Graph stays visible, never fades out
           pointerEvents: 'auto', // Graph always interactive
-          transition: 'transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), transform-origin 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease',
+          transition: (isZoomMode && isPanning) ? 'none' : 'transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), transform-origin 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease',
           willChange: 'transform'
         }}>
           {/* Subtle background grid for parallax reference */}
@@ -964,13 +1037,25 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
                     }}
                     onMouseLeave={() => setHoveredNode(null)}
                     onMouseDown={(e) => {
-                      if (unfoldProgress >= 1) {
+                      if (unfoldProgress >= 1 && !isZoomMode) {
                         handleDragStart(e, node);
                       }
                     }}
                     onTouchStart={(e) => {
-                      if (unfoldProgress >= 1) {
+                      if (unfoldProgress >= 1 && !isZoomMode) {
                         handleDragStart(e, node);
+                      }
+                    }}
+                    onClick={(e) => {
+                      if (unfoldProgress >= 1 && !isZoomMode && node.group !== 'center') {
+                        e.stopPropagation();
+                        setIsZoomMode(true);
+                        const k = 2.5;
+                        setZoomTransform({
+                          x: (node.x || 0) * (1 - k),
+                          y: (node.y || 0) * (1 - k),
+                          k: k
+                        });
                       }
                     }}
                   >
@@ -1052,6 +1137,32 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
         </g>
         </g>
       </svg>
+
+      {/* Zoom Mode Exit Button */}
+      <AnimatePresence>
+        {isZoomMode && (
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.8 }}
+            className="absolute top-6 right-6 z-50 cursor-pointer group"
+            onClick={() => {
+              setIsZoomMode(false);
+              setHoveredNode(null);
+            }}
+          >
+            <div className="w-12 h-12 border-2 border-[#EF4444] bg-[#0a140f]/90 group-hover:bg-[#EF4444]/20 flex items-center justify-center transition-colors shadow-[0_0_15px_rgba(239,68,68,0.4)]">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="3" strokeLinecap="square" strokeLinejoin="miter" className="group-hover:scale-110 transition-transform">
+                <line x1="6" y1="6" x2="18" y2="18" />
+                <line x1="6" y1="18" x2="18" y2="6" />
+              </svg>
+            </div>
+            <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 font-pixel text-[#EF4444] text-[10px] tracking-widest opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+              EXIT_ZOOM
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* HUD Modules Layer - Mobile Top Bar */}
       {unfoldProgress > 1.0 && (
