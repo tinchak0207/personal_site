@@ -4,7 +4,7 @@ interface ExpandableSectionProps {
   children: ReactNode;
   maxHeight?: number;
   className?: string;
-  gradientFrom?: string; // e.g. 'from-[#0a140f]'
+  gradientFrom?: string;
 }
 
 export function ExpandableSection({ 
@@ -26,7 +26,6 @@ export function ExpandableSection({
 
     checkOverflow();
     
-    // Using ResizeObserver to catch layout changes
     const resizeObserver = new ResizeObserver(() => {
       checkOverflow();
     });
@@ -49,7 +48,6 @@ export function ExpandableSection({
       >
         {children}
         
-        {/* Gradient overlay when collapsed */}
         {!isExpanded && isOverflowing && (
           <div className={`absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t ${gradientFrom} to-transparent pointer-events-none`} />
         )}
