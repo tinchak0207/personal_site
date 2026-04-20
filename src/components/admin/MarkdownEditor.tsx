@@ -84,9 +84,12 @@ export function MarkdownEditor({
 
     const start = textarea.selectionStart;
     const end = textarea.selectionEnd;
-    const selectedText = value.substring(start, end);
+    
+    // Always use the latest value from the DOM to avoid stale closures
+    const currentValue = textarea.value;
+    const selectedText = currentValue.substring(start, end);
 
-    const newText = value.substring(0, start) + prefix + selectedText + suffix + value.substring(end);
+    const newText = currentValue.substring(0, start) + prefix + selectedText + suffix + currentValue.substring(end);
     onChange(newText);
 
     setTimeout(() => {
