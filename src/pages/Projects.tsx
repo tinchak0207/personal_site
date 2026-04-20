@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { Project } from '../types';
 import { CRTFilter } from '../components/CRTFilter';
+import { ExpandableSection } from '../components/ExpandableSection';
 
 export default function Projects() {
   const [projects, setProjects] = useState<Project[]>([]);
@@ -59,12 +60,14 @@ export default function Projects() {
                   {project.title}
                 </h2>
                 
-                <div className="prose prose-invert prose-p:text-[#8FBC8F] prose-a:text-[#81D4FA] prose-a:no-underline hover:prose-a:underline mb-6 max-w-none">
-                  {/* Basic markdown rendering for now, could integrate react-markdown later */}
-                  {project.description.split('\n').map((line, i) => (
-                    <p key={i} className="mb-2">{line}</p>
-                  ))}
-                </div>
+                <ExpandableSection maxHeight={220} gradientFrom="from-[#0a140f]">
+                  <div className="prose prose-invert prose-p:text-[#8FBC8F] prose-a:text-[#81D4FA] prose-a:no-underline hover:prose-a:underline mb-6 max-w-none">
+                    {/* Basic markdown rendering for now, could integrate react-markdown later */}
+                    {project.description.split('\n').map((line, i) => (
+                      <p key={i} className="mb-2">{line}</p>
+                    ))}
+                  </div>
+                </ExpandableSection>
                 
                 <div className="flex flex-wrap gap-4 items-center mt-6 pt-6 border-t border-[#1B3B2B]/50">
                   {project.url && (

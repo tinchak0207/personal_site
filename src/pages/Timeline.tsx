@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { CRTFilter } from '../components/CRTFilter';
+import { ExpandableSection } from '../components/ExpandableSection';
 import { TimelineEvent } from '../types';
 import ReactMarkdown from 'react-markdown';
 
@@ -144,9 +145,11 @@ export default function Timeline() {
                         )}
 
                         {event.description && (
-                          <div className="prose prose-invert prose-p:text-[#A5D6B7] prose-a:text-[#4ADE80] prose-a:no-underline hover:prose-a:underline prose-code:text-[#81D4FA] prose-code:bg-[#030a07] prose-code:px-1 prose-code:border prose-code:border-[#1B3B2B] prose-headings:text-[#E8F5E9] prose-headings:font-pixel text-sm">
-                            <ReactMarkdown>{event.description}</ReactMarkdown>
-                          </div>
+                          <ExpandableSection maxHeight={220} gradientFrom="from-[#0a140f]">
+                            <div className="prose prose-invert prose-p:text-[#A5D6B7] prose-a:text-[#4ADE80] prose-a:no-underline hover:prose-a:underline prose-code:text-[#81D4FA] prose-code:bg-[#030a07] prose-code:px-1 prose-code:border prose-code:border-[#1B3B2B] prose-headings:text-[#E8F5E9] prose-headings:font-pixel text-sm">
+                              <ReactMarkdown>{event.description}</ReactMarkdown>
+                            </div>
+                          </ExpandableSection>
                         )}
 
                         {event.tags && event.tags.length > 0 && (
