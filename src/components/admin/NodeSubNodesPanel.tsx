@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
+import { MarkdownEditor } from './MarkdownEditor';
 
 interface SubNodeData {
   id: string;
@@ -114,10 +115,14 @@ export function NodeSubNodesPanel({ parentNodeId, setLoading, setErrorMsg }: Nod
             </div>
             <div>
               <label className="block font-pixel text-xs text-[#4a6b57] mb-2">DESCRIPTION</label>
-              <textarea 
+              <MarkdownEditor
+                id="subnode-description-editor"
                 value={editingSubNode.description || ''}
-                onChange={e => setEditingSubNode({...editingSubNode, description: e.target.value})}
-                className="w-full bg-[#030a07] border border-[#1B3B2B] focus:border-[#4ADE80] text-[#E8F5E9] p-2 outline-none font-mono text-sm h-20"
+                onChange={(val) => setEditingSubNode({...editingSubNode, description: val})}
+                setLoading={setLoading}
+                setErrorMsg={setErrorMsg}
+                placeholder="Subnode description (Markdown supported)..."
+                className="h-64 border border-[#1B3B2B] focus-within:border-[#4ADE80]"
               />
             </div>
             <div>

@@ -1,0 +1,11 @@
+# Codebase Standards
+
+## Admin UI and Markdown
+- Any new or existing feature in the Admin panel that requires rich text input MUST use the `MarkdownEditor` component (`src/components/admin/MarkdownEditor.tsx`) instead of standard `<textarea>`.
+- The `MarkdownEditor` encapsulates standard Markdown formatting buttons and **built-in image upload** (via drag-and-drop, paste, and file input), uploading directly to the Supabase `images` bucket and generating Markdown image links `![name](url)`.
+- Never create standard textareas for descriptions or content fields in the Admin UI; always import and use `MarkdownEditor`.
+
+## Styling
+- Maintain the established Matrix/Terminal theme.
+- Colors: `bg-[#030a07]`, `text-[#4ADE80]`, `text-[#A5D6B7]`, `border-[#1B3B2B]`.
+- Fonts: `font-mono` for general text, `font-pixel` for headers and buttons.

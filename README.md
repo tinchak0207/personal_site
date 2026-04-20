@@ -19,3 +19,6 @@ Designed by: tinchak0207
 Composed by: Gemini 3.1 Pro (In Trae Solo Preview Web)
 
 建站日期:2026/04/19
+
+## Codebase Standards
+- **Admin UI & Text Editing**: All admin textareas for content/descriptions MUST use the `MarkdownEditor` component (`src/components/admin/MarkdownEditor.tsx`). It provides standard formatting tools and **built-in image upload** (via drag-and-drop, paste, and manual upload to the Supabase `images` bucket). Do not use standard `<textarea>` elements for rich text content.
