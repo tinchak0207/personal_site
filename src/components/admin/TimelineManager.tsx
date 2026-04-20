@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
 import { TimelineEvent } from '../../types';
 import { NodeSelector } from './NodeSelector';
@@ -8,6 +8,8 @@ export function TimelineManager({ setLoading, setErrorMsg }: { setLoading: (l: b
   const [editingTimelineEvent, setEditingTimelineEvent] = useState<Partial<TimelineEvent> | null>(null);
   const [expandedFolders, setExpandedFolders] = useState<string[]>(['/']);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const markdownFileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetchTimelineEvents();
@@ -20,10 +22,68 @@ export function TimelineManager({ setLoading, setErrorMsg }: { setLoading: (l: b
       .select('*')
       .order('created_at', { ascending: false })
       .limit(100);
-    
+
     if (error) setErrorMsg(error.message);
     else if (data) setTimelineEvents(data);
     setLoading(false);
+  };
+
+  const handleImageUpload = async (file: File, isMarkdown: boolean = false) => {
+    if (!file.type.startsWith('image/')) {
+      setErrorMsg('Please upload an image file.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt}`;
+      const filePath = `timeline/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('images')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data } = supabase.storage.from('images').getPublicUrl(filePath);
+
+      if (data?.publicUrl) {
+        if (isMarkdown) {
+          insertMarkdown(`![${file.name}](${data.publicUrl})`, '');
+        } else {
+          setEditingTimelineEvent(prev => prev ? { ...prev, image_url: data.publicUrl } : null);
+        }
+      }
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Image upload failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.indexOf('image') !== -1) {
+        e.preventDefault();
+        const file = items[i].getAsFile();
+        if (file) {
+          handleImageUpload(file, true);
+          break;
+        }
+      }
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLTextAreaElement>) => {
+    e.preventDefault();
+    const file = e.dataTransfer.files?.[0];
+    if (file && file.type.startsWith('image/')) {
+      handleImageUpload(file, true);
+    }
   };
 
   const handleTagInput = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -298,13 +358,19 @@ export function TimelineManager({ setLoading, setErrorMsg }: { setLoading: (l: b
                   </div>
                   <div>
                     <label className="block font-pixel text-[10px] tracking-widest text-[#4a6b57] mb-2">IMAGE URL (Optional)</label>
-                    <input
-                      type="text"
-                      value={editingTimelineEvent.image_url || ''}
-                      onChange={(e) => setEditingTimelineEvent({...editingTimelineEvent, image_url: e.target.value})}
-                      className="w-full bg-[#030a07] border border-[#1B3B2B] focus:border-[#4ADE80] text-[#A5D6B7] p-2 outline-none font-mono text-sm placeholder-[#4a6b57]/50 transition-colors"
-                      placeholder="https://..."
-                    />
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={editingTimelineEvent.image_url || ''}
+                        onChange={(e) => setEditingTimelineEvent({...editingTimelineEvent, image_url: e.target.value})}
+                        className="flex-1 bg-[#030a07] border border-[#1B3B2B] focus:border-[#4ADE80] text-[#A5D6B7] p-2 outline-none font-mono text-sm placeholder-[#4a6b57]/50 transition-colors min-w-0"
+                        placeholder="https://..."
+                      />
+                      <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={(e) => e.target.files?.[0] && handleImageUpload(e.target.files[0], false)} />
+                      <button type="button" onClick={() => fileInputRef.current?.click()} className="px-3 py-2 bg-[#1B3B2B] text-[#A5D6B7] hover:bg-[#4ADE80] hover:text-[#030a07] font-pixel text-xs transition-colors shrink-0">
+                        UPLOAD
+                      </button>
+                    </div>
                   </div>
                 </div>
                 <div className="flex gap-1 p-2 bg-[#0a140f] border-b border-[#1B3B2B] shrink-0">
@@ -312,14 +378,24 @@ export function TimelineManager({ setLoading, setErrorMsg }: { setLoading: (l: b
                   <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => insertMarkdown('*', '*')} className="px-2 py-1 text-[#A5D6B7] font-mono text-xs hover:bg-[#1B3B2B] hover:text-[#4ADE80] transition-colors italic rounded" title="Italic">I</button>
                   <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => insertMarkdown('### ', '')} className="px-2 py-1 text-[#A5D6B7] font-mono text-xs hover:bg-[#1B3B2B] hover:text-[#4ADE80] transition-colors font-bold rounded" title="Heading">H</button>
                   <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => insertMarkdown('[', '](url)')} className="px-2 py-1 text-[#A5D6B7] font-mono text-xs hover:bg-[#1B3B2B] hover:text-[#4ADE80] transition-colors rounded" title="Link">L</button>
+                  
+                  <input type="file" ref={markdownFileInputRef} className="hidden" accept="image/*" onChange={(e) => e.target.files?.[0] && handleImageUpload(e.target.files[0], true)} />
+                  <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => markdownFileInputRef.current?.click()} className="px-2 py-1 text-[#A5D6B7] font-mono text-xs hover:bg-[#1B3B2B] hover:text-[#4ADE80] transition-colors rounded flex items-center gap-1" title="Upload Image">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+                    IMG
+                  </button>
+
                   <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => insertMarkdown('```\n', '\n```')} className="px-2 py-1 text-[#A5D6B7] font-mono text-xs hover:bg-[#1B3B2B] hover:text-[#4ADE80] transition-colors rounded" title="Code Block">{'<>'}</button>
                 </div>
-                <textarea 
+                <textarea
                   id="event-description-editor"
                   value={editingTimelineEvent.description || ''}
                   onChange={(e) => setEditingTimelineEvent({...editingTimelineEvent, description: e.target.value})}
+                  onPaste={handlePaste}
+                  onDrop={handleDrop}
+                  onDragOver={(e) => e.preventDefault()}
                   className="flex-1 w-full bg-transparent border-none text-[#A5D6B7] p-6 font-mono outline-none resize-none placeholder-[#4a6b57]/30 custom-scrollbar leading-relaxed"
-                  placeholder="TimelineEvent description (Markdown supported)..."
+                  placeholder="TimelineEvent description (Markdown supported)... You can also drag & drop or paste images here."
                   required
                 />
               </div>
