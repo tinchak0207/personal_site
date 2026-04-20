@@ -1,21 +1,57 @@
-**tinchak0207的個人網站**
+# React + TypeScript + Vite
 
-唯一也是最重要的特色：(**MaaS**) **Mindmap** as a Service
+This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
-你不會在世界上任何其他一個人的個人網站上看到
+Currently, two official plugins are available:
 
-**去中心化**的網站架構，所有内容、履歷、個人愛好等都在一張大型**思維導圖**裏面
+- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
+- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
 
-至於維護，後端和DB在admin管理系統裏面用**Supabase**寄存，可以人工增刪改查節點，子節點和邊。
+## Expanding the ESLint configuration
 
-至於怎麽想到的？不知道啊，洗澡的時候會自動冒出這種畫面...也許是OI題刷多了
+If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
 
-硬要説的話，人一生的經歷不能被分類，而且會不斷的改變和增加，
+```js
+export default tseslint.config({
+  extends: [
+    // Remove ...tseslint.configs.recommended and replace with this
+    ...tseslint.configs.recommendedTypeChecked,
+    // Alternatively, use this for stricter rules
+    ...tseslint.configs.strictTypeChecked,
+    // Optionally, add this for stylistic rules
+    ...tseslint.configs.stylisticTypeChecked,
+  ],
+  languageOptions: {
+    // other options...
+    parserOptions: {
+      project: ['./tsconfig.node.json', './tsconfig.app.json'],
+      tsconfigRootDir: import.meta.dirname,
+    },
+  },
+})
+```
 
-做成這樣也可以鼓勵自己永不停息，不斷追求！
+You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
 
-Designed by: tinchak0207
+```js
+// eslint.config.js
+import reactX from 'eslint-plugin-react-x'
+import reactDom from 'eslint-plugin-react-dom'
 
-Composed by: Gemini 3.1 Pro (In Trae Solo Preview Web)
-
-建站日期:2026/04/19
+export default tseslint.config({
+  extends: [
+    // other configs...
+    // Enable lint rules for React
+    reactX.configs['recommended-typescript'],
+    // Enable lint rules for React DOM
+    reactDom.configs.recommended,
+  ],
+  languageOptions: {
+    // other options...
+    parserOptions: {
+      project: ['./tsconfig.node.json', './tsconfig.app.json'],
+      tsconfigRootDir: import.meta.dirname,
+    },
+  },
+})
+```
