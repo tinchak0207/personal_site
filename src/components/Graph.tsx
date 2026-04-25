@@ -233,6 +233,8 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
     if (typeof window !== 'undefined') {
       const saved = sessionStorage.getItem('unfolded');
       if (saved === 'true') return 3;
+      const savedProgress = sessionStorage.getItem('unfoldProgress');
+      if (savedProgress) return parseFloat(savedProgress);
     }
     return 0;
   });
@@ -243,6 +245,7 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
   const [dynamicNodes, setDynamicNodes] = useState<NodeData[]>(INITIAL_NODES);
   const [dynamicLinks, setDynamicLinks] = useState<LinkData[]>(INITIAL_LINKS);
   const [dynamicSubNodes, setDynamicSubNodes] = useState<Record<string, SubNode[]>>(SUB_NODES_MAP);
+  const [activeSubNode, setActiveSubNode] = useState<SubNode | null>(null);
 
   // Refs for direct DOM manipulation to bypass React render cycle on every tick
   const nodeRefs = useRef<{ [key: string]: SVGGElement | null }>({});
@@ -395,6 +398,17 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
 
           let sx = Math.cos(angle) * dist;
           let sy = Math.sin(angle) * dist;
+
+          // 自動偵測邊界並修正 (Auto boundary detection and correction)
+          const padding = 60; // Padding for sub-nodes
+          const globalX = (node.x || 0) + sx;
+          const globalY = (node.y || 0) + sy;
+
+          if (globalX < padding) sx += (padding - globalX);
+          if (globalX > dimensions.width - padding) sx -= (globalX - (dimensions.width - padding));
+          
+          if (globalY < padding) sy += (padding - globalY);
+          if (globalY > dimensions.height - padding) sy -= (globalY - (dimensions.height - padding));
 
           return { ...sub, sx, sy }; // Store pre-calculated local offsets
         });
@@ -733,8 +747,11 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
   const [glitchText, setGlitchText] = useState(defaultText);
   
   useEffect(() => {
-    if (unfoldProgress >= 2.8 && typeof window !== 'undefined') {
-      sessionStorage.setItem('unfolded', 'true');
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('unfoldProgress', unfoldProgress.toString());
+      if (unfoldProgress >= 2.8) {
+        sessionStorage.setItem('unfolded', 'true');
+      }
     }
   }, [unfoldProgress]);
 
@@ -1110,23 +1127,31 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
                     return (
                       <g 
                         key={`sub-${sub.id}`} 
-                        className={`transition-all duration-300 ${sub.link ? 'cursor-pointer hover:opacity-80' : ''}`} 
+                        className={`transition-all duration-300 ${sub.link || sub.desc ? 'cursor-pointer hover:opacity-80' : ''}`} 
                         style={{ animation: 'zoomIn 0.2s cubic-bezier(0.16, 1, 0.3, 1)' }}
                         onClick={(e) => {
+                          e.stopPropagation();
                           if (sub.link) {
-                            e.stopPropagation();
-                            navigate(sub.link);
+                            if (sub.link.startsWith('http')) {
+                              window.open(sub.link, '_blank');
+                            } else {
+                              navigate(sub.link);
+                            }
+                          } else if (sub.desc) {
+                            setActiveSubNode(sub);
                           }
                         }}
                         onMouseDown={(e) => e.stopPropagation()}
                         onTouchStart={(e) => e.stopPropagation()}
                       >
+                        {/* Hidden larger hit area for easier clicking */}
+                        <circle cx={sx} cy={sy} r={20} fill="transparent" />
                         {/* Sub-node connection line - Pixel style */}
                         <line x1={0} y1={0} x2={sx} y2={sy} stroke="#30363d" strokeWidth={1} opacity={0.8} strokeDasharray="2 2" />
                         {/* Sub-node dot - Pixel style (square instead of circle) */}
-                        <rect x={sx - 1.5} y={sy - 1.5} width={3} height={3} fill={sub.link ? "#58a6ff" : "#8b949e"} />
+                        <rect x={sx - 1.5} y={sy - 1.5} width={3} height={3} fill={sub.link || sub.desc ? "#58a6ff" : "#8b949e"} />
                         {/* Sub-node label - Pixel style */}
-                        <text x={sx} y={sy - 5} textAnchor="middle" fill={sub.link ? "#58a6ff" : "#8b949e"} className="font-pixel text-[8px] tracking-wide">{sub.label}</text>
+                        <text x={sx} y={sy - 5} textAnchor="middle" fill={sub.link || sub.desc ? "#58a6ff" : "#8b949e"} className="font-pixel text-[8px] tracking-wide">{sub.label}</text>
                       </g>
                     )
                   })}
@@ -1137,6 +1162,53 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
         </g>
         </g>
       </svg>
+
+      {/* Sub-Node Side Panel */}
+      <AnimatePresence>
+        {activeSubNode && (
+          <motion.div
+            initial={{ x: '100%', opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            exit={{ x: '100%', opacity: 0 }}
+            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+            className="absolute top-0 right-0 h-full w-80 max-w-full bg-[#0a140f]/95 border-l border-[#1B3B2B] p-6 shadow-[-10px_0_30px_rgba(3,10,7,0.8)] z-50 overflow-y-auto"
+          >
+            <div className="flex justify-between items-center mb-8 border-b border-[#1B3B2B] pb-4">
+              <h2 className="font-pixel text-[#E8F5E9] tracking-wider text-xl">{activeSubNode.label}</h2>
+              <button 
+                onClick={() => setActiveSubNode(null)}
+                className="text-[#A5D6B7] hover:text-[#EF4444] transition-colors"
+              >
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+              </button>
+            </div>
+            
+            {activeSubNode.desc && (
+              <div className="font-mono text-[#8FBC8F] leading-relaxed opacity-90 text-sm whitespace-pre-wrap">
+                {activeSubNode.desc}
+              </div>
+            )}
+            
+            {activeSubNode.link && (
+              <button 
+                onClick={() => {
+                  if (activeSubNode.link!.startsWith('http')) {
+                    window.open(activeSubNode.link, '_blank');
+                  } else {
+                    navigate(activeSubNode.link!);
+                  }
+                }}
+                className="mt-8 w-full border border-[#4ADE80] text-[#4ADE80] hover:bg-[#4ADE80] hover:text-[#030a07] px-4 py-3 transition-colors font-pixel tracking-widest text-xs"
+              >
+                [ EXPLORE FURTHER ]
+              </button>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Zoom Mode Exit Button */}
       <AnimatePresence>

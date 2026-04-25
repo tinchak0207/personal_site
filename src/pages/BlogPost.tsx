@@ -19,18 +19,25 @@ export function BlogPost() {
 
   useEffect(() => {
     async function fetchPost() {
-      const { data, error } = await supabase
-        .from('posts')
-        .select('title, content, created_at, tags')
-        .eq('slug', slug)
-        .single();
+      try {
+        const { data, error } = await supabase
+          .from('posts')
+          .select('title, content, created_at, tags')
+          .eq('slug', slug)
+          .single();
 
-      if (error) {
-        console.error('Error fetching post:', error);
-      } else {
-        setPost(data);
+        if (error) {
+          console.error('Error fetching post:', error);
+          setPost(null);
+        } else {
+          setPost(data);
+        }
+      } catch (err) {
+        console.error('Fetch exception:', err);
+        setPost(null);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     }
 
     if (slug) {
@@ -104,8 +111,19 @@ export function BlogPost() {
             >
               {post.content}
             </ReactMarkdown>
-          </article>
-        </ExpandableSection>
+            </article>
+          </ExpandableSection>
+        )}
+
+        {!loading && post && (
+          <div className="mt-16 mb-8 border-t border-[#1B3B2B] pt-8 flex justify-center">
+            <Link 
+              to="/blog" 
+              className="inline-block border border-[#4ADE80] text-[#4ADE80] hover:bg-[#4ADE80] hover:text-[#030a07] px-6 py-3 transition-colors font-pixel tracking-widest text-sm"
+            >
+              {'[ RETURN TO ARCHIVE ]'}
+            </Link>
+          </div>
         )}
       </div>
       
