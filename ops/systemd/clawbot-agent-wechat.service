@@ -1,0 +1,18 @@
+[Unit]
+Description=Clawbot agent-wechat bridge
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=clawbot
+WorkingDirectory=/opt/clawbot-agent-wechat
+EnvironmentFile=/opt/clawbot-agent-wechat/.env
+ExecStart=/usr/bin/docker compose up
+ExecStop=/usr/bin/docker compose down
+Restart=always
+RestartSec=10
+TimeoutStartSec=0
+
+[Install]
+WantedBy=multi-user.target

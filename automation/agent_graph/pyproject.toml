@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agent-graph"
+version = "0.1.0"
+description = "Graph proposal automation for the neural blog"
+requires-python = ">=3.11"
+dependencies = [
+  "pydantic>=2.8,<3",
+  "pydantic-ai>=1.89,<2",
+  "requests>=2.32,<3",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.3,<9",
+]
+
+[project.scripts]
+agent-graph = "agent_graph.cli:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
