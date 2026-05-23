@@ -32,7 +32,8 @@ services:
           name: tinchak-store-db
           property: connectionString
       - key: REDIS_URL
-        fromDatabase:
+        fromService:
+          type: keyvalue
           name: tinchak-store-redis
           property: connectionString
       - key: BOOTSTRAP_DEFAULT_ADMIN_USERNAME
