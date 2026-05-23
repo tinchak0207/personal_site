@@ -1,0 +1,63 @@
+# Cheapest workable Render experiment for store.tinchak0207.xyz.
+# This uses the official fullstack release so the storefront and admin UI are bundled.
+# For real sales, upgrade the web/key-value/Postgres plans and attach a persistent disk
+# to the web service at /app/uploads because Render free web storage is ephemeral.
+
+services:
+  - type: web
+    name: tinchak-store
+    runtime: docker
+    plan: free
+    region: singapore
+    branch: main
+    autoDeploy: true
+    dockerfilePath: ./Dockerfile.render
+    dockerContext: .
+    healthCheckPath: /health
+    envVars:
+      - key: APP_MODE
+        value: all
+      - key: APP_TOTP_ISSUER
+        value: Tinchak Store
+      - key: APP_SECRET_KEY
+        generateValue: true
+      - key: JWT_SECRET
+        generateValue: true
+      - key: USER_JWT_SECRET
+        generateValue: true
+      - key: DATABASE_DRIVER
+        value: postgres
+      - key: DATABASE_DSN
+        fromDatabase:
+          name: tinchak-store-db
+          property: connectionString
+      - key: REDIS_URL
+        fromDatabase:
+          name: tinchak-store-redis
+          property: connectionString
+      - key: BOOTSTRAP_DEFAULT_ADMIN_USERNAME
+        value: admin
+      - key: BOOTSTRAP_DEFAULT_ADMIN_PASSWORD
+        sync: false
+      - key: WEB_ADMIN_PATH
+        value: /console-tinchak
+      - key: EMAIL_ENABLED
+        value: false
+      - key: CAPTCHA_PROVIDER
+        value: none
+      - key: REDIS_PREFIX
+        value: tinchak
+
+databases:
+  - name: tinchak-store-db
+    plan: free
+    region: singapore
+    databaseName: tinchak_store
+    user: tinchak_store
+    postgresMajorVersion: "16"
+
+  - name: tinchak-store-redis
+    plan: free
+    region: singapore
+    maxmemoryPolicy: noeviction
+    ipAllowList: []

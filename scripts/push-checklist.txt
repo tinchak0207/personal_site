@@ -1,0 +1,13 @@
+1. Create an empty GitHub repo under your account.
+2. In this repo folder run:
+   git remote remove origin
+   git remote add origin https://github.com/YOUR_GITHUB_NAME/YOUR_REPO.git
+   git add .
+   git commit -m "Prepare Tinchak store deploy"
+   git push -u origin main
+3. Then run:
+   scripts\open-render-blueprint.bat https://github.com/YOUR_GITHUB_NAME/YOUR_REPO
+4. In Render fill BOOTSTRAP_DEFAULT_ADMIN_PASSWORD.
+5. After deploy add custom domain: store.tinchak0207.xyz
+6. In GitHub repo secrets add:
+   RENDER_KEEPALIVE_URL = https://store.tinchak0207.xyz
