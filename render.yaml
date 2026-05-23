@@ -9,7 +9,7 @@ services:
     runtime: docker
     plan: free
     region: singapore
-    branch: main
+    branch: store-render
     autoDeploy: true
     dockerfilePath: ./Dockerfile.render
     dockerContext: .
@@ -48,6 +48,13 @@ services:
       - key: REDIS_PREFIX
         value: tinchak
 
+  - type: keyvalue
+    name: tinchak-store-redis
+    plan: free
+    region: singapore
+    ipAllowList: []
+    maxmemoryPolicy: noeviction
+
 databases:
   - name: tinchak-store-db
     plan: free
@@ -55,9 +62,3 @@ databases:
     databaseName: tinchak_store
     user: tinchak_store
     postgresMajorVersion: "16"
-
-  - name: tinchak-store-redis
-    plan: free
-    region: singapore
-    maxmemoryPolicy: noeviction
-    ipAllowList: []
