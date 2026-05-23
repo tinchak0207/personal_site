@@ -20,5 +20,7 @@ Composed by: Gemini 3.1 Pro (In Trae Solo Preview Web)
 
 建站日期:2026/04/19
 
-## Codebase Standards
-- **Admin UI & Text Editing**: All admin textareas for content/descriptions MUST use the `MarkdownEditor` component (`src/components/admin/MarkdownEditor.tsx`). It provides standard formatting tools and **built-in image upload** (via drag-and-drop, paste, and manual upload to the Supabase `images` bucket). Do not use standard `<textarea>` elements for rich text content.
+實用分頁:
+
+market.tinchak0207.xyz 輕鬆查詢澳門所有街市商品的最新價格，查看今天最適合煮的餐單
+store.tinchak0207.xyz 以低於官方價格輕鬆購買各種AI會員，還有其他方便的神秘服務!
