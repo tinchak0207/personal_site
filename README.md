@@ -23,4 +23,5 @@ Composed by: Gemini 3.1 Pro (In Trae Solo Preview Web)
 實用分頁:
 
 market.tinchak0207.xyz 輕鬆查詢澳門所有街市商品的最新價格，查看今天最適合煮的餐單
+
 store.tinchak0207.xyz 以低於官方價格輕鬆購買各種AI會員，還有其他方便的神秘服務!
