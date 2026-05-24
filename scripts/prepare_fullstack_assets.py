@@ -3,8 +3,7 @@ from __future__ import annotations
 import io
 import zipfile
 from pathlib import Path
-
-import requests
+from urllib.request import urlopen
 
 
 USER_RELEASE_URL = "https://github.com/dujiao-next/user/releases/download/v1.1.0/dujiao-next-user-v1.1.0.zip"
@@ -23,9 +22,8 @@ def _extract_dist(zip_bytes: bytes, destination: Path) -> None:
 
 
 def _download(url: str) -> bytes:
-    response = requests.get(url, timeout=60)
-    response.raise_for_status()
-    return response.content
+    with urlopen(url, timeout=60) as response:
+        return response.read()
 
 
 def prepare_fullstack_assets(dist_root: Path) -> None:

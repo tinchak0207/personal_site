@@ -8,14 +8,13 @@ ARG APP_VERSION=v1.1.0
 WORKDIR /src
 ENV CGO_ENABLED=0
 
-RUN apk add --no-cache ca-certificates curl git nodejs npm python3 py3-pip tar
+RUN apk add --no-cache ca-certificates curl git python3 tar
 
 COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
 
-RUN pip3 install --no-cache-dir requests
 RUN python3 scripts/prepare_fullstack_assets.py
 RUN set -eux; \
     export GOOS="${TARGETOS:-linux}" GOARCH="${TARGETARCH:-amd64}"; \
