@@ -13,15 +13,15 @@ permissions:
 jobs:
   ping:
     runs-on: ubuntu-latest
+    env:
+      RENDER_KEEPALIVE_URL: ${{ secrets.RENDER_KEEPALIVE_URL }}
     steps:
       - name: Skip if keepalive URL is not configured
-        if: ${{ secrets.RENDER_KEEPALIVE_URL == '' }}
+        if: ${{ env.RENDER_KEEPALIVE_URL == '' }}
         run: echo "RENDER_KEEPALIVE_URL is not set; skipping ping."
 
       - name: Wake the store
-        if: ${{ secrets.RENDER_KEEPALIVE_URL != '' }}
-        env:
-          RENDER_KEEPALIVE_URL: ${{ secrets.RENDER_KEEPALIVE_URL }}
+        if: ${{ env.RENDER_KEEPALIVE_URL != '' }}
         run: |
           set -euo pipefail
           HEALTH_URL="${RENDER_KEEPALIVE_URL%/}/health?ts=$(date +%s)"
