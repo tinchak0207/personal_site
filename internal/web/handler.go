@@ -106,6 +106,10 @@ func RegisterUser(r *gin.Engine, fsys fs.FS) error {
 	fileServer := http.FileServer(http.FS(fsys))
 
 	r.NoRoute(func(c *gin.Context) {
+		if isReservedPathRequest(c.Request.URL.Path) {
+			c.Status(http.StatusNotFound)
+			return
+		}
 		fp := strings.TrimPrefix(c.Request.URL.Path, "/")
 		if fp == "" || fp == "index.html" {
 			c.Data(http.StatusOK, "text/html; charset=utf-8", indexCached)
@@ -118,6 +122,16 @@ func RegisterUser(r *gin.Engine, fsys fs.FS) error {
 		c.Data(http.StatusOK, "text/html; charset=utf-8", indexCached)
 	})
 	return nil
+}
+
+func isReservedPathRequest(requestPath string) bool {
+	cleaned := path.Clean("/" + strings.TrimSpace(requestPath))
+	for _, reserved := range reservedPaths {
+		if cleaned == reserved || strings.HasPrefix(cleaned, reserved+"/") {
+			return true
+		}
+	}
+	return false
 }
 
 func hasFile(fsys fs.FS, name string) bool {

@@ -3,6 +3,8 @@ package router
 import (
 	"fmt"
 	"net/http"
+	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 
@@ -16,6 +18,7 @@ import (
 	upstreamhandlers "github.com/dujiao-next/internal/http/handlers/upstream"
 	"github.com/dujiao-next/internal/http/response"
 	"github.com/dujiao-next/internal/logger"
+	"github.com/dujiao-next/internal/models"
 	"github.com/dujiao-next/internal/provider"
 	"github.com/dujiao-next/internal/web"
 
@@ -73,8 +76,8 @@ func SetupRouter(cfg *config.Config, c *provider.Container) *gin.Engine {
 	r.Use(CORSMiddleware(cfg.CORS))
 	r.Use(CallbackRouteMiddleware(c.SettingService, publicHandler, upstreamHandler))
 
-	// 静态文件服务（上传的图片）- 必须放在最前面
-	r.Static("/uploads", "./uploads")
+	// 上传素材服务（磁盘优先，缺盘时回退到数据库 blob）- 必须放在最前面
+	registerUploadsRoute(r, "uploads", c.MediaBlobRepo)
 
 	// SEO 资源（动态生成）
 	r.GET("/sitemap.xml", publicHandler.GetSitemap)
@@ -606,4 +609,41 @@ func deriveAdminPermissionModule(object string) string {
 		return "authz"
 	}
 	return segments[1]
+}
+
+type uploadBlobSource interface {
+	GetByPath(path string) (*models.MediaBlob, error)
+}
+
+func registerUploadsRoute(r *gin.Engine, uploadsDir string, blobSource uploadBlobSource) {
+	r.GET("/uploads/*filepath", func(c *gin.Context) {
+		rel := strings.TrimPrefix(c.Param("filepath"), "/")
+		if rel == "" {
+			c.Status(http.StatusNotFound)
+			return
+		}
+
+		diskPath := filepath.Join(uploadsDir, filepath.FromSlash(rel))
+		if stat, err := os.Stat(diskPath); err == nil && !stat.IsDir() {
+			c.File(diskPath)
+			return
+		}
+
+		if blobSource != nil {
+			publicPath := "/uploads/" + strings.ReplaceAll(rel, "\\", "/")
+			blob, err := blobSource.GetByPath(publicPath)
+			if err == nil && blob != nil && len(blob.Data) > 0 {
+				_ = os.MkdirAll(filepath.Dir(diskPath), 0o755)
+				_ = os.WriteFile(diskPath, blob.Data, 0o644)
+				if blob.MimeType != "" {
+					c.Data(http.StatusOK, blob.MimeType, blob.Data)
+				} else {
+					c.Data(http.StatusOK, "application/octet-stream", blob.Data)
+				}
+				return
+			}
+		}
+
+		c.Status(http.StatusNotFound)
+	})
 }

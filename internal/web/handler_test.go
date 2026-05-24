@@ -272,3 +272,19 @@ func TestRegisterUser_DoesNotShadowExistingRoutes(t *testing.T) {
 		t.Fatalf("body = %s, want pong", w.Body.String())
 	}
 }
+
+func TestRegisterUser_DoesNotFallbackReservedUploadsPath(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	r := gin.New()
+	if err := RegisterUser(r, newUserFS()); err != nil {
+		t.Fatalf("RegisterUser: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/uploads/banner/2026/05/missing.png", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusNotFound {
+		t.Fatalf("status = %d, want 404", w.Code)
+	}
+}

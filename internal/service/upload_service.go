@@ -1,6 +1,7 @@
 package service
 
 import (
+	"bytes"
 	"encoding/binary"
 	"fmt"
 	"image"
@@ -13,6 +14,8 @@ import (
 	"time"
 
 	"github.com/dujiao-next/internal/config"
+	"github.com/dujiao-next/internal/models"
+	"github.com/dujiao-next/internal/repository"
 
 	_ "image/gif"
 	_ "image/jpeg"
@@ -33,12 +36,13 @@ var allowedUploadScenes = map[string]struct{}{
 
 // UploadService 文件上传服务
 type UploadService struct {
-	cfg *config.Config
+	cfg      *config.Config
+	blobRepo repository.MediaBlobRepository
 }
 
 // NewUploadService 创建文件上传服务实例
-func NewUploadService(cfg *config.Config) *UploadService {
-	return &UploadService{cfg: cfg}
+func NewUploadService(cfg *config.Config, blobRepo repository.MediaBlobRepository) *UploadService {
+	return &UploadService{cfg: cfg, blobRepo: blobRepo}
 }
 
 // UploadResult 上传结果（包含完整元数据）
@@ -170,13 +174,25 @@ func (s *UploadService) SaveFileWithMeta(file *multipart.FileHeader, scene strin
 	}
 	defer dst.Close()
 
-	_, err = io.Copy(dst, src)
+	var stored bytes.Buffer
+	_, err = io.Copy(io.MultiWriter(dst, &stored), src)
 	if err != nil {
 		return nil, err
 	}
 
+	relativeURL := fmt.Sprintf("/uploads/%s/%s/%s/%s", normalizedScene, year, month, filename)
+	if s.blobRepo != nil {
+		if err := s.blobRepo.Upsert(&models.MediaBlob{
+			Path:     relativeURL,
+			MimeType: contentType,
+			Data:     stored.Bytes(),
+		}); err != nil {
+			return nil, err
+		}
+	}
+
 	return &UploadResult{
-		URL:      fmt.Sprintf("/uploads/%s/%s/%s/%s", normalizedScene, year, month, filename),
+		URL:      relativeURL,
 		Filename: file.Filename,
 		MimeType: contentType,
 		Size:     file.Size,

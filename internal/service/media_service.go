@@ -17,12 +17,13 @@ import (
 
 // MediaService 素材管理服务
 type MediaService struct {
-	repo repository.MediaRepository
+	repo     repository.MediaRepository
+	blobRepo repository.MediaBlobRepository
 }
 
 // NewMediaService 创建素材服务实例
-func NewMediaService(repo repository.MediaRepository) *MediaService {
-	return &MediaService{repo: repo}
+func NewMediaService(repo repository.MediaRepository, blobRepo repository.MediaBlobRepository) *MediaService {
+	return &MediaService{repo: repo, blobRepo: blobRepo}
 }
 
 // List 素材列表
@@ -125,6 +126,24 @@ func (s *MediaService) RecordLocalFile(localPath, scene string) {
 	if err := s.repo.Create(media); err != nil {
 		logger.Warnw("media_record_local_file_failed", "path", localPath, "error", err)
 	}
+	if s.blobRepo != nil {
+		if data, err := os.ReadFile(diskPath); err == nil {
+			if err := s.blobRepo.Upsert(&models.MediaBlob{
+				Path:     localPath,
+				MimeType: mimeType,
+				Data:     data,
+			}); err != nil {
+				logger.Warnw("media_record_local_blob_failed", "path", localPath, "error", err)
+			}
+		}
+	}
+}
+
+func (s *MediaService) GetBlobByPath(path string) (*models.MediaBlob, error) {
+	if s.blobRepo == nil {
+		return nil, nil
+	}
+	return s.blobRepo.GetByPath(path)
 }
 
 // Rename 重命名素材
@@ -160,6 +179,11 @@ func (s *MediaService) Delete(id uint) error {
 	diskPath := strings.TrimPrefix(media.Path, "/")
 	if err := os.Remove(diskPath); err != nil && !os.IsNotExist(err) {
 		logger.Warnw("media_delete_file_failed", "id", id, "path", diskPath, "error", err)
+	}
+	if s.blobRepo != nil {
+		if err := s.blobRepo.DeleteByPath(media.Path); err != nil {
+			logger.Warnw("media_delete_blob_failed", "id", id, "path", media.Path, "error", err)
+		}
 	}
 	return nil
 }

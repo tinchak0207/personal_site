@@ -152,6 +152,7 @@ func AutoMigrate() error {
 		&MemberLevel{},
 		&MemberLevelPrice{},
 		&Media{},
+		&MediaBlob{},
 	); err != nil {
 		return err
 	}

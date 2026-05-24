@@ -14,9 +14,10 @@
 ## What was added
 
 - `Dockerfile.render`
-  Uses the official `dujiao-all` release so the storefront and admin UI are bundled into one service.
+  Builds the backend from the current repo source, and keeps the deployment shape compatible with Render.
 - `scripts/render-entrypoint.sh`
   Converts Render's Redis URL into the individual Redis/queue env vars this app expects.
+  It also seeds known media files into durable DB blobs at startup.
 - `render.yaml`
   Creates:
   - `tinchak-store` web service
@@ -30,8 +31,8 @@
 - The web service is set to `free` for a cheap experiment.
 - Render free web services spin down after 15 minutes of no traffic, so the keepalive workflow exists for that.
 - The web service runs the app in `all` mode, so HTTP and the asynq worker live in the same container to avoid paying for a separate worker during the experiment.
-- Render free web storage is ephemeral. Uploaded images and any local files under `/app/uploads` are not durable on free web.
-- For real selling, upgrade the web service and attach a persistent disk at `/app/uploads`, and consider upgrading Postgres and Key Value off free tiers.
+- Render free web storage is ephemeral. This repo now persists uploaded media binaries into Postgres and rehydrates `/app/uploads` on demand, so images survive container rebuilds without changing existing `/uploads/...` URLs.
+- For larger scale or many large images, object storage or a persistent disk is still the better long-term choice than growing Postgres blobs indefinitely.
 
 ## Render setup checklist
 

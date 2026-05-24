@@ -10,7 +10,9 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
+	"mime"
 	"os"
+	"path/filepath"
 	"strings"
 	"text/tabwriter"
 	"time"
@@ -35,7 +37,8 @@ func Usage() {
   dujiao-api admin reset-2fa --username <name>            重置指定管理员的 2FA
   dujiao-api admin reset-password --username <name> [--password <new>]
                                                           重置管理员密码（超管忘记密码恢复用）
-                                                          不传 --password 时从 stdin 隐藏读入两次确认`)
+                                                          不传 --password 时从 stdin 隐藏读入两次确认
+  dujiao-api admin seed-media-blobs [--dir <path>]        将 seed_uploads/uploads 回填到数据库 blob`)
 }
 
 // Run 分发 admin 子命令。args 是去掉 "admin" 之后的参数（os.Args[2:]）。
@@ -71,6 +74,8 @@ func Run(args []string) {
 			os.Exit(1)
 		}
 		resetPassword(username, password)
+	case "seed-media-blobs":
+		seedMediaBlobs(parseStringFlag(rest, "dir"))
 	default:
 		Usage()
 		os.Exit(1)
@@ -247,4 +252,56 @@ func sanityCheckPassword(pwd string) error {
 		return fmt.Errorf("密码长度至少 %d 个字符", minPasswordLength)
 	}
 	return nil
+}
+
+func seedMediaBlobs(dir string) {
+	root := strings.TrimSpace(dir)
+	if root == "" {
+		root = filepath.Join("seed_uploads", "uploads")
+	}
+
+	info, err := os.Stat(root)
+	if err != nil || !info.IsDir() {
+		fmt.Fprintf(os.Stderr, "seed dir not found: %s\n", root)
+		os.Exit(1)
+	}
+
+	repo := repository.NewMediaBlobRepository(models.DB)
+	count := 0
+	err = filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if info.IsDir() {
+			return nil
+		}
+		rel, err := filepath.Rel(root, path)
+		if err != nil {
+			return err
+		}
+		publicPath := "/uploads/" + filepath.ToSlash(rel)
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		mimeType := mime.TypeByExtension(strings.ToLower(filepath.Ext(path)))
+		if mimeType == "" {
+			mimeType = "application/octet-stream"
+		}
+		if err := repo.Upsert(&models.MediaBlob{
+			Path:     publicPath,
+			MimeType: mimeType,
+			Data:     data,
+		}); err != nil {
+			return err
+		}
+		count++
+		return nil
+	})
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "seed media blobs failed: %v\n", err)
+		os.Exit(1)
+	}
+
+	fmt.Printf("OK: seeded %d media blobs from %s\n", count, root)
 }

@@ -68,4 +68,6 @@ else
   export QUEUE_ENABLED="${QUEUE_ENABLED:-false}"
 fi
 
+/app/dujiao-server admin seed-media-blobs --dir /app/seed_uploads/uploads >/tmp/seed-media-blobs.log 2>&1 || true
+
 exec /app/dujiao-server --mode "${APP_MODE}"

@@ -1,20 +1,47 @@
-FROM alpine:3.20
+FROM golang:1.25.3-alpine AS builder
 
-ARG DJ_RELEASE=v1.1.0
-ARG DJ_PACKAGE=dujiao-all_${DJ_RELEASE}_Linux_x86_64.tar.gz
+ARG TARGETOS
+ARG TARGETARCH
+ARG TARGETVARIANT
+ARG APP_VERSION=v1.1.0
+
+WORKDIR /src
+ENV CGO_ENABLED=0
+
+RUN apk add --no-cache ca-certificates curl tar
+
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY . .
+
+RUN set -eux; \
+    export GOOS="${TARGETOS:-linux}" GOARCH="${TARGETARCH:-amd64}"; \
+    if [ "$GOARCH" = "arm" ] && [ -n "${TARGETVARIANT:-}" ]; then export GOARM="${TARGETVARIANT#v}"; fi; \
+    if [ "$GOARCH" = "amd64" ] && [ -n "${TARGETVARIANT:-}" ]; then export GOAMD64="${TARGETVARIANT#v}"; fi; \
+    go build -trimpath -tags release -ldflags="-s -w -X github.com/dujiao-next/internal/version.Version=${APP_VERSION}" -o /out/dujiao-server ./cmd/server
+
+RUN set -eux; \
+    DJ_RELEASE="v1.1.0"; \
+    DJ_PACKAGE="dujiao-all_${DJ_RELEASE}_Linux_x86_64.tar.gz"; \
+    curl -fsSL "https://github.com/dujiao-next/dujiao-next/releases/download/${DJ_RELEASE}/${DJ_PACKAGE}" -o /tmp/dujiao-all.tgz; \
+    mkdir -p /release; \
+    tar -xzf /tmp/dujiao-all.tgz -C /release; \
+    rm /tmp/dujiao-all.tgz
+
+FROM alpine:3.20
 
 WORKDIR /app
 
-RUN apk add --no-cache ca-certificates curl tar tzdata \
-    && mkdir -p /app/db /app/uploads /app/logs \
-    && curl -fsSL "https://github.com/dujiao-next/dujiao-next/releases/download/${DJ_RELEASE}/${DJ_PACKAGE}" -o /tmp/dujiao-all.tgz \
-    && tar -xzf /tmp/dujiao-all.tgz -C /app \
-    && rm /tmp/dujiao-all.tgz \
-    && chmod +x /app/dujiao-server
+RUN apk add --no-cache ca-certificates tzdata \
+    && mkdir -p /app/db /app/uploads /app/logs /app/seed_uploads
 
+COPY --from=builder /out/dujiao-server /app/dujiao-server
+COPY --from=builder /release/config.yml.example /app/config.yml.example
+COPY seed_uploads/ /app/seed_uploads/
 COPY scripts/render-entrypoint.sh /usr/local/bin/render-entrypoint.sh
 
-RUN chmod +x /usr/local/bin/render-entrypoint.sh
+RUN chmod +x /app/dujiao-server /usr/local/bin/render-entrypoint.sh
 
 EXPOSE 10000
 

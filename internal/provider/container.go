@@ -61,6 +61,7 @@ type Container struct {
 	MemberLevelRepo        repository.MemberLevelRepository
 	MemberLevelPriceRepo   repository.MemberLevelPriceRepository
 	MediaRepo              repository.MediaRepository
+	MediaBlobRepo          repository.MediaBlobRepository
 
 	// Services
 	AuthzService              *authz.Service
@@ -205,6 +206,7 @@ func (c *Container) initRepositories() {
 	c.MemberLevelRepo = repository.NewMemberLevelRepository(db)
 	c.MemberLevelPriceRepo = repository.NewMemberLevelPriceRepository(db)
 	c.MediaRepo = repository.NewMediaRepository(db)
+	c.MediaBlobRepo = repository.NewMediaBlobRepository(db)
 }
 
 func (c *Container) initServices() {
@@ -248,7 +250,7 @@ func (c *Container) initServices() {
 	c.UserTOTPService = service.NewUserTOTPService(c.Config, c.UserRepo, cache.Client())
 	c.TelegramAuthService = service.NewTelegramAuthService(c.Config.TelegramAuth)
 	c.UserAuthService = service.NewUserAuthService(c.Config, c.UserRepo, c.UserOAuthIdentityRepo, c.EmailVerifyCodeRepo, c.SettingService, c.EmailService, c.TelegramAuthService)
-	c.UploadService = service.NewUploadService(c.Config)
+	c.UploadService = service.NewUploadService(c.Config, c.MediaBlobRepo)
 	c.AffiliateService = service.NewAffiliateService(c.AffiliateRepo, c.UserRepo, c.OrderRepo, c.ProductRepo, c.SettingService)
 	c.ProductService = service.NewProductService(c.ProductRepo, c.ProductSKURepo, c.CardSecretRepo, c.CardSecretBatchRepo, c.CategoryRepo, c.MemberLevelPriceRepo, c.CartRepo, c.ProductMappingRepo, c.OrderRepo)
 	c.PostService = service.NewPostService(c.PostRepo)
@@ -341,7 +343,7 @@ func (c *Container) initServices() {
 	c.FulfillmentService.SetDownstreamCallbackService(c.DownstreamCallbackService)
 	c.ProcurementOrderService.SetDownstreamCallbackService(c.DownstreamCallbackService)
 	c.ProcurementOrderService.SetNotificationService(c.NotificationService)
-	c.MediaService = service.NewMediaService(c.MediaRepo)
+	c.MediaService = service.NewMediaService(c.MediaRepo, c.MediaBlobRepo)
 	c.ProductMappingService.SetMediaService(c.MediaService)
 	c.AdProxyService = service.NewAdProxyService()
 }
