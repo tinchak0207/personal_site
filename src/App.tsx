@@ -1,5 +1,6 @@
 import { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { Analytics } from '@vercel/analytics/react';
 import { Home } from './pages/Home';
 
 // Custom lazy function that automatically reloads the page if a chunk fails to load
@@ -46,6 +47,7 @@ function App() {
           <Route path="/settings" element={<Settings />} />
         </Routes>
       </Suspense>
+      <Analytics />
     </Router>
   );
 }
