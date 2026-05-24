@@ -14,7 +14,9 @@
 ## What was added
 
 - `Dockerfile.render`
-  Builds the backend from the current repo source, and keeps the deployment shape compatible with Render.
+  Builds the server from source with `-tags=release,fullstack` after preparing frontend assets, while keeping the deployment shape compatible with Render.
+- `scripts/prepare_fullstack_assets.py`
+  Downloads the official `dujiao-next/user` and `dujiao-next/admin` release zips and prepares `internal/web/dist/{user,admin}` before the Go fullstack build.
 - `scripts/render-entrypoint.sh`
   Converts Render's Redis URL into the individual Redis/queue env vars this app expects.
   It also seeds known media files into durable DB blobs at startup.
@@ -33,6 +35,25 @@
 - The web service runs the app in `all` mode, so HTTP and the asynq worker live in the same container to avoid paying for a separate worker during the experiment.
 - Render free web storage is ephemeral. This repo now persists uploaded media binaries into Postgres and rehydrates `/app/uploads` on demand, so images survive container rebuilds without changing existing `/uploads/...` URLs.
 - For larger scale or many large images, object storage or a persistent disk is still the better long-term choice than growing Postgres blobs indefinitely.
+
+## Critical correction
+
+An earlier assumption in this note was wrong:
+
+- the official `dujiao-all_v1.1.0_Linux_x86_64.tar.gz` release package does **not** contain storefront/admin SPA assets
+- that package only contains:
+  - `README.md`
+  - `config.yml.example`
+  - `dujiao-server`
+
+So the current recovery path must not depend on that package for storefront HTML routes.
+The corrected path is:
+
+1. download official frontend release artifacts from:
+   - `dujiao-next/user`
+   - `dujiao-next/admin`
+2. prepare `internal/web/dist/{user,admin}`
+3. build the API server with `-tags=release,fullstack`
 
 ## Render setup checklist
 
