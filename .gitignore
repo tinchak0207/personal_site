@@ -3,6 +3,9 @@ config.yml
 .idea
 db
 uploads
+!seed_uploads/
+!seed_uploads/uploads/
+!seed_uploads/uploads/**
 *.db
 *.log
 .env
