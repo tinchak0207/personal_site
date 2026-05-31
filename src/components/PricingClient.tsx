@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Check, Coins, Gift, Copy, ExternalLink, Ticket } from "lucide-react";
+import { ArrowLeft, Check, Coins, Gift, Copy, ExternalLink, Ticket, Sparkles } from "lucide-react";
 import { PLANS, pricePerCoin } from "@/lib/plans";
 import { useAuth } from "@/hooks/use-auth";
 import { fetchAffCode, redeemTopupCode } from "@/lib/new-api-client";
@@ -70,7 +70,7 @@ export function PricingClient() {
           {/* Back nav */}
           <Link
             href="/"
-            className="mb-8 inline-flex items-center gap-1.5 text-ios-footnote text-[rgba(0,0,0,0.44)] lg-transition hover:text-[rgba(0,0,0,0.72)]"
+            className="mb-8 inline-flex items-center gap-1.5 text-ios-footnote text-[rgba(0,0,0,0.40)] lg-transition hover:text-[rgba(0,0,0,0.65)] cursor-pointer"
           >
             <ArrowLeft className="h-3.5 w-3.5" />
             返回做圖
@@ -78,11 +78,16 @@ export function PricingClient() {
 
           {/* Header */}
           <div className="mb-10 text-center">
+            <div className="mb-4 flex justify-center">
+              <div className="flex h-12 w-12 items-center justify-center rounded-ios-2xl bg-[rgba(0,122,255,0.10)]">
+                <Sparkles className="h-5 w-5 text-[#007AFF]" />
+              </div>
+            </div>
             <h1 className="text-ios-large-title font-bold tracking-tight text-[rgba(0,0,0,0.85)]">
               選擇你的方案
             </h1>
             <p className="mt-2 text-ios-body text-[rgba(0,0,0,0.44)]">
-              所有方案均支援全部模型 · 到期前提醒 · 未用完退折扣券
+              所有方案均支援全部模型·到期前提醒·未用完退折扣券
             </p>
           </div>
 
@@ -93,7 +98,7 @@ export function PricingClient() {
                 key={plan.id}
                 className={cn(
                   "lg-card relative overflow-hidden rounded-ios-4xl p-6 flex flex-col",
-                  plan.highlight && "ring-2 ring-[#007AFF]/30",
+                  plan.highlight && "ring-2 ring-[rgba(0,122,255,0.28)]",
                 )}
               >
                 {/* Specular */}
@@ -149,10 +154,10 @@ export function PricingClient() {
                   type="button"
                   onClick={() => handleBuy(plan.id)}
                   className={cn(
-                    "mt-6 w-full rounded-ios-xl py-3 text-ios-body font-semibold transition-all duration-200",
+                    "mt-6 w-full rounded-ios-xl py-3 text-ios-body font-semibold transition-all duration-200 cursor-pointer",
                     plan.highlight
-                      ? "bg-[#007AFF] text-white shadow-[0_6px_24px_rgba(0,122,255,0.40)] hover:bg-[#0066DD] hover:scale-[1.02]"
-                      : "lg-float text-[rgba(0,0,0,0.72)] hover:text-[rgba(0,0,0,0.85)]",
+                      ? "bg-[#007AFF] text-white shadow-[0_6px_24px_rgba(0,122,255,0.40)] hover:bg-[#0066DD] hover:scale-[1.02] active:scale-[0.98]"
+                      : "lg-float text-[rgba(0,0,0,0.65)] hover:text-[rgba(0,0,0,0.85)]",
                   )}
                 >
                   立即購買
@@ -187,7 +192,7 @@ export function PricingClient() {
                   type="button"
                   onClick={handleRedeem}
                   disabled={redeemLoading || !redeemCode.trim()}
-                  className="rounded-ios-xl bg-[#007AFF] px-4 py-2.5 text-ios-footnote font-semibold text-white shadow-[0_4px_16px_rgba(0,122,255,0.30)] transition-all hover:bg-[#0066DD] disabled:bg-[rgba(0,0,0,0.16)] disabled:shadow-none"
+                  className="rounded-ios-xl bg-[#007AFF] px-4 py-2.5 text-ios-footnote font-semibold text-white shadow-[0_4px_16px_rgba(0,122,255,0.30)] transition-all hover:bg-[#0066DD] disabled:bg-[rgba(0,0,0,0.16)] disabled:shadow-none cursor-pointer disabled:cursor-default"
                 >
                   {redeemLoading ? "兌換中" : "兌換"}
                 </button>
@@ -221,7 +226,7 @@ export function PricingClient() {
                   type="button"
                   onClick={handleFetchAff}
                   disabled={affLoading}
-                  className="w-full rounded-ios-xl border border-[rgba(0,0,0,0.10)] py-2.5 text-ios-footnote font-medium text-[rgba(0,0,0,0.56)] transition-all hover:border-[rgba(0,0,0,0.18)] hover:text-[rgba(0,0,0,0.80)] disabled:opacity-50"
+                  className="w-full rounded-ios-xl border border-[rgba(0,0,0,0.10)] py-2.5 text-ios-footnote font-medium text-[rgba(0,0,0,0.56)] transition-all hover:border-[rgba(0,0,0,0.18)] hover:text-[rgba(0,0,0,0.80)] disabled:opacity-50 cursor-pointer disabled:cursor-default"
                 >
                   {affLoading ? "載入中…" : isLoggedIn ? "查看我的邀請連結" : "登錄後查看"}
                 </button>
