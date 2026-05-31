@@ -1,27 +1,50 @@
+﻿FROM node:22-alpine AS admin_builder
+
+ARG DJ_RELEASE=v1.1.0
+
+WORKDIR /build/admin
+
+RUN apk add --no-cache git
+RUN git clone --depth 1 --branch "${DJ_RELEASE}" https://github.com/dujiao-next/admin.git .
+RUN npm ci
+RUN npm run build:fullstack
+
+FROM node:22-alpine AS user_builder
+
+ARG DJ_RELEASE=v1.1.0
+
+WORKDIR /build/user
+
+RUN apk add --no-cache git
+RUN git clone --depth 1 --branch "${DJ_RELEASE}" https://github.com/dujiao-next/user.git .
+RUN npm ci
+RUN npm run build
+
 FROM golang:1.25.3-alpine AS builder
 
 ARG TARGETOS
 ARG TARGETARCH
 ARG TARGETVARIANT
 ARG APP_VERSION=v1.1.0
+ARG DJ_RELEASE=v1.1.0
 
 WORKDIR /src
 ENV CGO_ENABLED=0
 
-RUN apk add --no-cache ca-certificates curl git python3 tar
+RUN apk add --no-cache ca-certificates
 
 COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
+COPY --from=admin_builder /build/admin/dist ./internal/web/dist/admin
+COPY --from=user_builder /build/user/dist ./internal/web/dist/user
 
-RUN python3 scripts/prepare_fullstack_assets.py
 RUN set -eux; \
     export GOOS="${TARGETOS:-linux}" GOARCH="${TARGETARCH:-amd64}"; \
     if [ "$GOARCH" = "arm" ] && [ -n "${TARGETVARIANT:-}" ]; then export GOARM="${TARGETVARIANT#v}"; fi; \
     if [ "$GOARCH" = "amd64" ] && [ -n "${TARGETVARIANT:-}" ]; then export GOAMD64="${TARGETVARIANT#v}"; fi; \
-    go build -trimpath -tags release,fullstack -ldflags="-s -w -X github.com/dujiao-next/internal/version.Version=${APP_VERSION}" -o /out/dujiao-server ./cmd/server
-
+    go build -trimpath -tags "release fullstack" -ldflags="-s -w -X github.com/dujiao-next/internal/version.Version=${APP_VERSION}" -o /out/dujiao-server ./cmd/server
 
 FROM alpine:3.20
 
@@ -32,9 +55,8 @@ RUN apk add --no-cache ca-certificates tzdata \
 
 COPY --from=builder /out/dujiao-server /app/dujiao-server
 COPY config.yml.example /app/config.yml.example
-COPY scripts/render-entrypoint.sh /usr/local/bin/render-entrypoint.sh
 COPY seed_uploads/ /app/seed_uploads/
-COPY seed_uploads/ /seed_uploads/
+COPY scripts/render-entrypoint.sh /usr/local/bin/render-entrypoint.sh
 
 RUN chmod +x /app/dujiao-server /usr/local/bin/render-entrypoint.sh
 
