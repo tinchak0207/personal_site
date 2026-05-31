@@ -92,6 +92,7 @@ export function ImagePlayground({ suggestions }: { suggestions: Suggestion[] }) 
             <PromptInput
               onSubmit={handlePromptSubmit}
               isLoading={isLoading}
+              isLoggedIn={isLoggedIn}
               suggestions={shuffledSuggestions}
               stylePreset={stylePreset}
               onStyleChange={setStylePreset}

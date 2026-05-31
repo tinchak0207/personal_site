@@ -12,6 +12,7 @@ import { type ModelMode } from "@/lib/provider-config";
 interface PromptInputProps {
   onSubmit: (prompt: string) => void;
   isLoading?: boolean;
+  isLoggedIn?: boolean;
   suggestions: Suggestion[];
   stylePreset: StylePreset;
   onStyleChange: (preset: StylePreset) => void;
@@ -27,6 +28,7 @@ const MODE_OPTIONS: { value: ModelMode; label: string; desc: string }[] = [
 export function PromptInput({
   suggestions: initialSuggestions,
   isLoading,
+  isLoggedIn,
   onSubmit,
   stylePreset,
   onStyleChange,
@@ -44,6 +46,8 @@ export function PromptInput({
   };
 
   const handleSubmit = () => {
+    // Not logged in: always allow click → parent will open auth modal
+    if (!isLoggedIn) { onSubmit(input); return; }
     if (!isLoading && input.trim()) onSubmit(input);
   };
 
@@ -151,7 +155,7 @@ export function PromptInput({
           <button
             type="button"
             onClick={handleSubmit}
-            disabled={isLoading || !input.trim()}
+            disabled={isLoading || (isLoggedIn && !input.trim())}
             className="inline-flex shrink-0 items-center justify-center gap-2 rounded-ios-xl bg-[#007AFF] px-6 py-3 text-ios-body font-semibold text-white shadow-[0_6px_24px_rgba(0,122,255,0.40),0_2px_8px_rgba(0,122,255,0.24)] transition-all duration-200 hover:bg-[#0066DD] hover:shadow-[0_10px_32px_rgba(0,122,255,0.52),0_4px_12px_rgba(0,122,255,0.30)] hover:scale-[1.025] active:scale-[0.97] disabled:cursor-not-allowed disabled:bg-[rgba(0,0,0,0.16)] disabled:shadow-none disabled:scale-100 cursor-pointer"
           >
             {isLoading ? (
