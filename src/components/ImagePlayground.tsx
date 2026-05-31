@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { ModelSelect } from "@/components/ModelSelect";
 import { PromptInput } from "@/components/PromptInput";
 import { AuthModal } from "@/components/AuthModal";
@@ -32,9 +32,13 @@ export function ImagePlayground({ suggestions }: { suggestions: Suggestion[] }) 
   const { user, isLoggedIn, refresh } = useAuth();
   const { toast } = useToast();
 
-  // Shuffle on client only — avoids SSR/hydration mismatch
+  // Start with SSR order (no shuffle) to avoid hydration mismatch.
+  // After mount, shuffle once on the client.
+  const [displaySuggestions, setDisplaySuggestions] = useState<Suggestion[]>(suggestions);
+  useEffect(() => {
+    setDisplaySuggestions(shuffleArray(suggestions));
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const shuffledSuggestions = useMemo(() => shuffleArray(suggestions), []);
+  }, []);
   const [mode, setMode] = useState<ModelMode>("fast");
   const [selectedModels, setSelectedModels] = useState(MODEL_CONFIGS.fast);
   const [stylePreset, setStylePreset] = useState<StylePreset>("none");
@@ -93,7 +97,7 @@ export function ImagePlayground({ suggestions }: { suggestions: Suggestion[] }) 
               onSubmit={handlePromptSubmit}
               isLoading={isLoading}
               isLoggedIn={isLoggedIn}
-              suggestions={shuffledSuggestions}
+              suggestions={displaySuggestions}
               stylePreset={stylePreset}
               onStyleChange={setStylePreset}
               mode={mode}
