@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { LogOut, User } from "lucide-react";
+import { LogOut, User, History, CreditCard } from "lucide-react";
 import { WalletBadge } from "@/components/WalletBadge";
 import { AuthModal } from "@/components/AuthModal";
 import { useAuth } from "@/hooks/use-auth";
@@ -57,6 +57,22 @@ export function Navbar({ className }: NavbarProps) {
             {isLoggedIn && user ? (
               <>
                 <WalletBadge showTopUp />
+
+                {/* Nav links */}
+                <Link
+                  href="/history"
+                  className="lg-float hidden sm:flex items-center gap-1.5 rounded-full px-3 py-1.5 text-ios-footnote font-medium text-[rgba(0,0,0,0.44)] lg-transition hover:text-[rgba(0,0,0,0.72)]"
+                >
+                  <History className="h-3.5 w-3.5" aria-hidden="true" />
+                  歷史
+                </Link>
+                <Link
+                  href="/pricing"
+                  className="lg-float hidden sm:flex items-center gap-1.5 rounded-full px-3 py-1.5 text-ios-footnote font-medium text-[rgba(0,0,0,0.44)] lg-transition hover:text-[rgba(0,0,0,0.72)]"
+                >
+                  <CreditCard className="h-3.5 w-3.5" aria-hidden="true" />
+                  充值
+                </Link>
 
                 {/* User pill */}
                 <div className="lg-float flex items-center gap-1.5 rounded-full px-3 py-1.5">
