@@ -69,7 +69,7 @@ export function PromptInput({
             onKeyDown={handleKeyDown}
             placeholder="試試：幫我把這瓶香水放在落日的海灘上，要有高級網美風的環境光"
             rows={5}
-            className="min-h-[180px] rounded-ios-2xl border-0 bg-[rgba(0,0,0,0.04)] px-5 py-4 pb-8 text-ios-body text-[rgba(0,0,0,0.85)] placeholder:text-[rgba(0,0,0,0.24)] focus:bg-[rgba(0,122,255,0.04)] focus:ring-2 focus:ring-[rgba(0,122,255,0.20)] resize-none transition-all duration-200"
+            className="min-h-[180px] rounded-ios-2xl border-0 bg-[rgba(0,0,0,0.04)] px-5 py-4 pb-8 text-ios-body text-[rgba(0,0,0,0.85)] placeholder:text-[rgba(0,0,0,0.24)] focus:bg-[rgba(0,122,255,0.04)] focus:ring-2 focus:ring-[rgba(0,122,255,0.20)] resize-none transition-all duration-200 [background-image:none]"
           />
           <p className="pointer-events-none absolute bottom-3 right-4 select-none text-ios-caption2 text-[rgba(0,0,0,0.22)]">
             Enter 送出 · Shift+Enter 換行
@@ -101,12 +101,14 @@ export function PromptInput({
             </div>
           </div>
 
-          {/* 風格 chips inline */}
+          {/* 風格 chips inline — label 固定不換行，chips 區域自由換行 */}
           <div className="flex flex-wrap items-center gap-x-2 gap-y-2">
             <span className="shrink-0 text-ios-caption1 font-semibold uppercase tracking-widest text-[rgba(0,0,0,0.30)]">
               風格
             </span>
-            <StylePresets value={stylePreset} onChange={onStyleChange} inline />
+            <div className="flex flex-wrap gap-1.5">
+              <StylePresets value={stylePreset} onChange={onStyleChange} inline />
+            </div>
           </div>
 
         </div>
@@ -145,12 +147,12 @@ export function PromptInput({
             ))}
           </div>
 
-          {/* Single CTA — always blue, auth check happens on submit */}
+          {/* Single CTA — elevated blue, strong shadow, scale on hover */}
           <button
             type="button"
             onClick={handleSubmit}
             disabled={isLoading || !input.trim()}
-            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-ios-xl bg-[#007AFF] px-6 py-3 text-ios-body font-semibold text-white shadow-[0_4px_16px_rgba(0,122,255,0.28)] lg-transition hover:bg-[#0066DD] hover:shadow-[0_6px_20px_rgba(0,122,255,0.36)] disabled:cursor-not-allowed disabled:bg-[rgba(0,0,0,0.16)] disabled:shadow-none cursor-pointer"
+            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-ios-xl bg-[#007AFF] px-6 py-3 text-ios-body font-semibold text-white shadow-[0_6px_24px_rgba(0,122,255,0.40),0_2px_8px_rgba(0,122,255,0.24)] transition-all duration-200 hover:bg-[#0066DD] hover:shadow-[0_10px_32px_rgba(0,122,255,0.52),0_4px_12px_rgba(0,122,255,0.30)] hover:scale-[1.025] active:scale-[0.97] disabled:cursor-not-allowed disabled:bg-[rgba(0,0,0,0.16)] disabled:shadow-none disabled:scale-100 cursor-pointer"
           >
             {isLoading ? (
               <><Spinner className="h-4 w-4 text-white" />正在做圖</>

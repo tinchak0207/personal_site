@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Coins, ExternalLink, Gift, CheckCircle2 } from "lucide-react";
+import { Coins, Gift, CheckCircle2 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { quotaToCoins, fetchCheckinStatus, doCheckin } from "@/lib/new-api-client";
 import { cn } from "@/lib/utils";
@@ -46,11 +46,14 @@ export function WalletBadge({ className, showTopUp = true }: WalletBadgeProps) {
 
   return (
     <div className={cn("flex items-center gap-1.5", className)}>
-      {/* Coin balance */}
-      <div className="coin-badge cursor-default select-none" aria-label={`餘額 ${coins} 硬幣`}>
-        <Coins className="h-3.5 w-3.5" aria-hidden="true" />
+      {/* Coin balance — muted amber, no harsh yellow */}
+      <div
+        className="inline-flex items-center gap-1.5 rounded-full bg-[rgba(0,0,0,0.05)] px-3 py-1.5 text-ios-footnote font-semibold text-[rgba(120,90,20,0.72)] cursor-default select-none"
+        aria-label={`餘額 ${coins} 硬幣`}
+      >
+        <Coins className="h-3.5 w-3.5 text-[rgba(160,120,30,0.60)]" aria-hidden="true" />
         <span className="tabular-nums">{coins.toLocaleString()}</span>
-        <span className="text-[rgba(184,134,11,0.6)] text-[0.7rem]">幣</span>
+        <span className="text-[rgba(120,90,20,0.45)] text-[0.7rem]">幣</span>
       </div>
 
       {/* Daily checkin button */}
@@ -76,17 +79,16 @@ export function WalletBadge({ className, showTopUp = true }: WalletBadgeProps) {
         </span>
       )}
 
-      {/* Top-up link */}
+      {/* Top-up — ghost button, no default web-blue link style */}
       {showTopUp && (
         <a
           href="https://store.tinchak0207.xyz"
           target="_blank"
           rel="noopener noreferrer"
-          className="lg-float inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-ios-caption1 font-semibold text-[#007AFF] lg-transition hover:text-[#0066DD] cursor-pointer"
+          className="inline-flex items-center gap-1 rounded-full border border-[rgba(0,0,0,0.10)] bg-transparent px-3 py-1.5 text-ios-caption1 font-medium text-[rgba(0,0,0,0.50)] lg-transition hover:border-[rgba(0,0,0,0.18)] hover:text-[rgba(0,0,0,0.72)] cursor-pointer no-underline"
           aria-label="前往充值"
         >
           充值
-          <ExternalLink className="h-3 w-3" aria-hidden="true" />
         </a>
       )}
     </div>

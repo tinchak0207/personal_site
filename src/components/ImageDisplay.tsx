@@ -8,17 +8,10 @@ import {
   Share,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
 import { Stopwatch } from "./Stopwatch";
 import { ProviderTiming } from "@/lib/image-types";
 import { imageHelpers } from "@/lib/image-helpers";
 import { cn } from "@/lib/utils";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "./ui/tooltip";
 
 interface ImageDisplayProps {
   provider: string;
@@ -36,7 +29,7 @@ export function ImageDisplay({
   timing,
   failed,
   fallbackIcon,
-  modelId,
+  // modelId kept in interface for API compatibility
 }: ImageDisplayProps) {
   const [isZoomed, setIsZoomed] = useState(false);
   const hasImage = Boolean(image) && !failed;
@@ -100,21 +93,7 @@ export function ImageDisplay({
         {/* fix #15: specular top edge */}
         <div className="pointer-events-none absolute inset-x-0 top-0 z-20 h-px bg-gradient-to-r from-transparent via-white to-transparent opacity-90" aria-hidden="true" />
 
-        <div className="absolute inset-x-0 top-0 z-10 flex items-start justify-between gap-3 p-4">
-          <div className="max-w-[72%] rounded-full lg-float px-3 py-1.5">
-            <TooltipProvider>
-              <Tooltip delayDuration={100}>
-                <TooltipTrigger asChild>
-                  <Label className="block truncate text-xs font-medium text-foreground/88">
-                    {imageHelpers.formatModelId(modelId)}
-                  </Label>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>{modelId}</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          </div>
+        <div className="absolute inset-x-0 top-0 z-10 flex items-start justify-end gap-3 p-4">
 
           {/* fix #16: unified iOS tint badges */}
           <div
