@@ -92,13 +92,16 @@ export function ImageDisplay({
     <>
       <div
         className={cn(
-          "group relative aspect-square w-full overflow-hidden rounded-[2rem] border border-white/45 bg-[linear-gradient(180deg,rgba(255,255,255,0.58)_0%,rgba(247,249,251,0.42)_100%)] shadow-[0_10px_28px_rgba(89,103,122,0.03),inset_0_1px_0_rgba(255,255,255,0.62)] backdrop-blur-[18px]",
+          "group relative aspect-square w-full overflow-hidden rounded-ios-3xl bg-[rgba(255,255,255,0.52)] shadow-[0_8px_32px_rgba(0,0,0,0.06)] backdrop-blur-[40px]",
           hasImage ? "cursor-zoom-in" : "",
         )}
         onClick={handleImageClick}
       >
+        {/* fix #15: specular top edge */}
+        <div className="pointer-events-none absolute inset-x-0 top-0 z-20 h-px bg-gradient-to-r from-transparent via-white to-transparent opacity-90" aria-hidden="true" />
+
         <div className="absolute inset-x-0 top-0 z-10 flex items-start justify-between gap-3 p-4">
-          <div className="max-w-[72%] rounded-full paper-float px-3 py-1.5">
+          <div className="max-w-[72%] rounded-full lg-float px-3 py-1.5">
             <TooltipProvider>
               <Tooltip delayDuration={100}>
                 <TooltipTrigger asChild>
@@ -113,16 +116,17 @@ export function ImageDisplay({
             </TooltipProvider>
           </div>
 
+          {/* fix #16: unified iOS tint badges */}
           <div
             className={cn(
-              "rounded-full px-3 py-1.5 text-xs font-medium backdrop-blur-xl",
+              "rounded-full px-3 py-1.5 text-ios-caption1 font-semibold whitespace-nowrap",
               failed
-                ? "bg-[#f1e4e0] text-[#8a615a]"
+                ? "lg-tint-red text-[#FF3B30]"
                 : hasImage
-                  ? "bg-[#2d3142]/68 text-white/92"
+                  ? "bg-[rgba(0,0,0,0.52)] text-white"
                   : isRendering
-                    ? "bg-[#e7efe9] text-[#59725e]"
-                    : "bg-white/72 text-[#6f7987]",
+                    ? "lg-tint-green text-[#34C759]"
+                    : "lg-float text-[rgba(0,0,0,0.44)]",
             )}
           >
             {failed
@@ -131,7 +135,7 @@ export function ImageDisplay({
                 ? `${(timing.elapsed / 1000).toFixed(1)}s`
                 : isRendering
                   ? "生成中"
-                  : "待命"}
+                  : "目前可用"}
           </div>
         </div>
 
@@ -166,17 +170,18 @@ export function ImageDisplay({
         ) : (
           <div className="absolute inset-0 flex items-center justify-center p-8">
             <div className="flex max-w-[20rem] flex-col items-center text-center">
-              <div className="paper-float flex h-16 w-16 items-center justify-center rounded-[1.5rem] text-[#7b8694]">
+              {/* fix #9 & #10: larger icon, stronger empty state */}
+              <div className="lg-float flex h-20 w-20 items-center justify-center rounded-ios-2xl text-[rgba(0,0,0,0.36)]">
                 {failed ? (
-                  fallbackIcon || <AlertCircle className="h-8 w-8" />
+                  fallbackIcon || <AlertCircle className="h-9 w-9" />
                 ) : isRendering ? (
-                  <LoaderCircle className="h-8 w-8 animate-spin text-[#59725e]" />
+                  <LoaderCircle className="h-9 w-9 animate-spin text-[#34C759]" />
                 ) : (
-                  <ImageIcon className="h-8 w-8" />
+                  <ImageIcon className="h-9 w-9" />
                 )}
               </div>
 
-              <h4 className="mt-5 text-lg font-medium tracking-[-0.03em] text-foreground">
+              <h4 className="mt-5 text-ios-title3 font-semibold tracking-tight text-[rgba(0,0,0,0.72)]">
                 {failed
                   ? "這次沒有成功"
                   : isRendering
@@ -184,7 +189,7 @@ export function ImageDisplay({
                     : "圖片會出現在這裡"}
               </h4>
 
-              <p className="mt-2 text-sm leading-7 text-[#6e7886]">
+              <p className="mt-2 text-ios-subhead leading-relaxed text-[rgba(0,0,0,0.40)]">
                 {failed
                   ? "換個說法再試一次，通常很快就會好。"
                   : isRendering
@@ -193,7 +198,7 @@ export function ImageDisplay({
               </p>
 
               {isRendering && timing?.startTime ? (
-                <div className="zen-panel mt-4 rounded-full px-4 py-2">
+                <div className="lg-float mt-4 rounded-full px-4 py-2">
                   <Stopwatch startTime={timing.startTime} />
                 </div>
               ) : null}

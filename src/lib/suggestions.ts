@@ -45,6 +45,10 @@ function shuffle<T>(array: T[]): T[] {
   return shuffled;
 }
 
+export function getAllSuggestions(): Suggestion[] {
+  return [...basePrompts];
+}
+
 export function getRandomSuggestions(count: number = 5): Suggestion[] {
   return shuffle(basePrompts).slice(0, count);
 }

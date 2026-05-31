@@ -51,61 +51,66 @@ export function ModelSelect({
   const status = failed
     ? {
         label: "需要重試",
-        className: "bg-[#f1e4e0] text-[#8a615a]",
-        icon: <AlertTriangle className="h-4 w-4" />,
+        className: "lg-tint-red text-[#FF3B30]",
+        icon: <AlertTriangle className="h-3.5 w-3.5" />,
       }
     : isRendering
       ? {
           label: "生成中",
-          className: "bg-[#e7efe9] text-[#59725e]",
-          icon: <LoaderCircle className="h-4 w-4 animate-spin" />,
+          className: "lg-tint-green text-[#34C759]",
+          icon: <LoaderCircle className="h-3.5 w-3.5 animate-spin" />,
         }
       : timing?.elapsed
         ? {
             label: `${(timing.elapsed / 1000).toFixed(1)}s`,
-            className: "bg-[#edf2ee] text-[#55695c]",
-            icon: <CheckCircle2 className="h-4 w-4" />,
+            className: "lg-tint-green text-[#34C759]",
+            icon: <CheckCircle2 className="h-3.5 w-3.5" />,
           }
         : {
-            label: "待命",
-            className: "bg-white/70 text-[#6f7987]",
-            icon: <CheckCircle2 className="h-4 w-4 opacity-60" />,
+            label: "目前可用",
+            className: "lg-float text-[rgba(0,0,0,0.44)]",
+            icon: null,
           };
 
   return (
     <section
       className={cn(
-        "paper-card relative overflow-hidden rounded-[2.15rem] p-4 sm:p-5",
-        enabled ? "" : "opacity-50",
+        "lg-card relative overflow-hidden rounded-ios-3xl p-4 sm:p-5",
+        !enabled && "opacity-50",
       )}
     >
+      {/* Specular top edge */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-px rounded-t-ios-3xl bg-gradient-to-r from-transparent via-white to-transparent opacity-80" aria-hidden="true" />
+
       <div className="relative space-y-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          {/* Provider identity */}
           <div className="flex items-center gap-3">
-            <div className="paper-float flex h-12 w-12 items-center justify-center rounded-[1.3rem] text-foreground">
-              <Icon size={22} />
+            <div className="lg-float flex h-11 w-11 items-center justify-center rounded-ios-xl text-[rgba(0,0,0,0.72)]">
+              <Icon size={20} />
             </div>
-            <p className="text-sm font-medium text-foreground">{label}</p>
+            <div className="flex items-center gap-2">
+              <p className="text-ios-subhead font-semibold text-[rgba(0,0,0,0.85)]">{label}</p>
+            </div>
           </div>
 
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          {/* Controls */}
+          <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center">
             <Select
               defaultValue={value}
               value={value}
-              onValueChange={(selectedValue) =>
-                onChange(selectedValue, providerKey)
-              }
+              onValueChange={(v) => onChange(v, providerKey)}
             >
-              <SelectTrigger className="min-w-[220px] rounded-[1.35rem] border border-white/52 bg-white/58 px-4 py-3 text-left shadow-none">
-                <SelectValue placeholder={value || "選擇版本"} />
+              <SelectTrigger className="min-w-[180px] rounded-ios-xl border-0 bg-[rgba(0,0,0,0.04)] px-4 py-2.5 text-ios-footnote font-medium text-[rgba(0,0,0,0.72)] shadow-none focus:ring-2 focus:ring-[rgba(0,122,255,0.20)]">
+                <SelectValue placeholder={value || "選擇模型"} />
               </SelectTrigger>
-              <SelectContent className="rounded-[1.4rem]">
+              <SelectContent className="rounded-ios-xl border-0 lg-sheet">
                 <SelectGroup>
                   {models.map((model) => (
                     <SelectItem
                       key={model}
                       value={model}
-                      className="rounded-[1rem]"
+                      className="rounded-ios-lg text-ios-footnote"
                     >
                       {model}
                     </SelectItem>
@@ -114,15 +119,18 @@ export function ModelSelect({
               </SelectContent>
             </Select>
 
+            {/* Status badge — only show when generating or done */}
+            {(status.label !== "目前可用") && (
             <div
               className={cn(
-                "inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium",
+                "inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3.5 py-2 text-ios-footnote font-semibold",
                 status.className,
               )}
             >
               {status.icon}
               {status.label}
             </div>
+            )}
           </div>
         </div>
 

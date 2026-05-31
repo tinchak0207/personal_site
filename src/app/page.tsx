@@ -1,8 +1,6 @@
 import { ImagePlayground } from "@/components/ImagePlayground";
-import { getRandomSuggestions } from "@/lib/suggestions";
-
-export const dynamic = "force-dynamic";
+import { getAllSuggestions } from "@/lib/suggestions";
 
 export default function Page() {
-  return <ImagePlayground suggestions={getRandomSuggestions()} />;
+  return <ImagePlayground suggestions={getAllSuggestions()} />;
 }

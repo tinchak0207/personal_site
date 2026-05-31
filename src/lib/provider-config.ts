@@ -6,7 +6,7 @@ export const PROVIDERS = {
     displayName: "圖像引擎",
     iconPath: "/provider-icons/openai.svg",
     color: "from-slate-200 to-white",
-    models: ["gpt-image-2", "gpt-image-1"],
+    models: ["gpt-image-2"],
   },
 } satisfies Record<
   ProviderKey,

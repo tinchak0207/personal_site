@@ -1,0 +1,86 @@
+"use client";
+
+import { useState, useEffect, useCallback, createContext, useContext } from "react";
+import type { NewApiUser } from "@/lib/new-api-client";
+import { getStoredToken, getStoredUser, clearStoredToken, setStoredToken } from "@/lib/new-api-client";
+import { fetchMe, logout as doLogout } from "@/lib/auth-client";
+
+interface AuthState {
+  user: NewApiUser | null;
+  token: string | null;
+  isLoading: boolean;
+  isLoggedIn: boolean;
+  refresh: () => Promise<void>;
+  logout: () => void;
+  setAuth: (token: string, user: NewApiUser) => void;
+}
+
+const AuthContext = createContext<AuthState | null>(null);
+
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [user, setUser] = useState<NewApiUser | null>(null);
+  const [token, setToken] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const refresh = useCallback(async () => {
+    const t = getStoredToken();
+    if (!t) { setIsLoading(false); return; }
+
+    const result = await fetchMe(t);
+    if (result.ok && result.user) {
+      setUser(result.user);
+      setToken(t);
+    } else {
+      clearStoredToken();
+      setUser(null);
+      setToken(null);
+    }
+    setIsLoading(false);
+  }, []);
+
+  const setAuth = useCallback((t: string, u: NewApiUser) => {
+    setStoredToken(t, u);   // persist to localStorage
+    setToken(t);
+    setUser(u);
+  }, []);
+
+  const logout = useCallback(() => {
+    doLogout();
+    setUser(null);
+    setToken(null);
+  }, []);
+
+  useEffect(() => {
+    // Hydrate from localStorage on mount
+    const storedUser = getStoredUser();
+    const storedToken = getStoredToken();
+    if (storedUser && storedToken) {
+      setUser(storedUser);
+      setToken(storedToken);
+      setIsLoading(false);
+      // Refresh in background to get latest quota
+      fetchMe(storedToken).then((result) => {
+        if (result.ok && result.user) setUser(result.user);
+        else { clearStoredToken(); setUser(null); setToken(null); }
+      });
+    } else {
+      setIsLoading(false);
+    }
+  }, []);
+
+  return (
+    <AuthContext.Provider value={{
+      user, token, isLoading,
+      isLoggedIn: !!user && !!token,
+      refresh, logout, setAuth,
+    }}>
+      {children}
+    </AuthContext.Provider>
+  );
+}
+
+export function useAuth(): AuthState {
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
+  return ctx;
+}
