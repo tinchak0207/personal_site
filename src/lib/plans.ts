@@ -15,18 +15,19 @@ export interface PricingPlan {
 export const PLANS: PricingPlan[] = [
   {
     id: "starter",
-    name: "入門包",
-    tagline: "給第一次試圖、偶爾要做封面和商品圖的人。",
-    price: 29,
-    anchorPrice: 39,
-    coins: 600,
-    validDays: 30,
+    name: "嘗鮮包",
+    tagline: "第一次上手最便宜，先測風格、測 prompt、測成片率。",
+    price: 9.9,
+    anchorPrice: 19.9,
+    coins: 200,
+    validDays: 15,
     features: [
       "全部模型可用",
-      "適合測試 prompt 與風格",
+      "適合首次測試 prompt 與風格",
       "到期前提醒",
       "未用完退折扣券",
     ],
+    badge: "嘗鮮",
   },
   {
     id: "popular",
