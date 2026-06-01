@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { MOCK_MODE, mockGetSelf } from "@/lib/mock";
-
-const GATEWAY_BASE = process.env.GATEWAY_BASE_URL ?? "http://localhost:3001";
+import { getGatewayBaseUrl } from "@/lib/new-api-auth-server";
 
 export async function GET(req: NextRequest) {
   const authHeader = req.headers.get("authorization");
+  const userIdHeader = req.headers.get("x-user-id");
   if (!authHeader?.startsWith("Bearer ")) {
     return NextResponse.json({ success: false, message: "未授權" }, { status: 401 });
   }
@@ -18,8 +18,10 @@ export async function GET(req: NextRequest) {
 
   // ── Real mode ──────────────────────────────────────────────────────────────
   try {
-    const upstream = await fetch(`${GATEWAY_BASE}/api/user/self`, {
-      headers: { Authorization: `Bearer ${token}` },
+    const headers: Record<string, string> = { Authorization: `Bearer ${token}` };
+    if (userIdHeader) headers["New-Api-User"] = userIdHeader;
+    const upstream = await fetch(`${getGatewayBaseUrl()}/api/user/self`, {
+      headers,
       cache: "no-store",
     });
     if (upstream.status === 401) {

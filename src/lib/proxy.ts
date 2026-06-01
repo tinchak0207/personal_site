@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-
-const GATEWAY_BASE = process.env.GATEWAY_BASE_URL ?? "http://localhost:3001";
+import { getGatewayBaseUrl } from "@/lib/new-api-auth-server";
 
 interface ProxyOptions {
   upstreamPath?: string;
@@ -16,6 +15,7 @@ export function makeProxy(opts: ProxyOptions = {}) {
     context: RouteContext,
   ): Promise<NextResponse> {
     const auth = req.headers.get("authorization") ?? "";
+    const userId = req.headers.get("x-user-id") ?? "";
 
     if (!opts.public && !auth) {
       return NextResponse.json({ success: false, message: "未登錄" }, { status: 401 });
@@ -29,10 +29,11 @@ export function makeProxy(opts: ProxyOptions = {}) {
     }
 
     const qs = req.nextUrl.searchParams.toString();
-    const url = `${GATEWAY_BASE}${upstreamPath}${qs ? `?${qs}` : ""}`;
+    const url = `${getGatewayBaseUrl()}${upstreamPath}${qs ? `?${qs}` : ""}`;
 
     const headers: Record<string, string> = { "Content-Type": "application/json" };
     if (auth) headers["Authorization"] = auth;
+    if (userId) headers["New-Api-User"] = userId;
 
     const fetchOpts: RequestInit = {
       method: req.method,

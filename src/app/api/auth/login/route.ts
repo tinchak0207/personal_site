@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { MOCK_MODE, mockLogin } from "@/lib/mock";
-
-const GATEWAY_BASE = process.env.GATEWAY_BASE_URL ?? "http://localhost:3001";
+import { getGatewayBaseUrl, loginViaNewApi } from "@/lib/new-api-auth-server";
 
 export async function POST(req: NextRequest) {
   const body = await req.json() as { username?: string; password?: string };
@@ -18,24 +17,18 @@ export async function POST(req: NextRequest) {
 
   // ── Real mode ──────────────────────────────────────────────────────────────
   try {
-    const upstream = await fetch(`${GATEWAY_BASE}/api/user/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username: body.username, password: body.password }),
-    });
-    const data = await upstream.json();
-    if (!upstream.ok || !data.success) {
+    const result = await loginViaNewApi(getGatewayBaseUrl(), body.username, body.password);
+    if (!result.ok) {
       return NextResponse.json(
-        { success: false, message: data.message ?? "登錄失敗，請重試" },
-        { status: 401 },
+        { success: false, message: result.message },
+        { status: result.status },
       );
     }
-    const token: string = data.data;
-    const userRes = await fetch(`${GATEWAY_BASE}/api/user/self`, {
-      headers: { Authorization: `Bearer ${token}` },
+    return NextResponse.json({
+      success: true,
+      message: "登錄成功",
+      data: { token: result.token, user: result.user },
     });
-    const userData = await userRes.json();
-    return NextResponse.json({ success: true, message: "登錄成功", data: { token, user: userData.data } });
   } catch (err) {
     console.error("[auth/login]", err);
     return NextResponse.json({ success: false, message: "服務暫時不可用" }, { status: 503 });

@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { MOCK_MODE, mockRegister } from "@/lib/mock";
-
-const GATEWAY_BASE = process.env.GATEWAY_BASE_URL ?? "http://localhost:3001";
+import { getGatewayBaseUrl, loginViaNewApi } from "@/lib/new-api-auth-server";
 const TURNSTILE_SECRET = process.env.TURNSTILE_SECRET_KEY ?? "";
 
 async function verifyTurnstile(token: string, ip: string): Promise<boolean> {
@@ -50,7 +49,8 @@ export async function POST(req: NextRequest) {
 
   // ── Real mode ──────────────────────────────────────────────────────────────
   try {
-    const upstream = await fetch(`${GATEWAY_BASE}/api/user/register`, {
+    const gatewayBase = getGatewayBaseUrl();
+    const upstream = await fetch(`${gatewayBase}/api/user/register`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ username: body.username, password: body.password, email: body.email ?? "" }),
@@ -62,22 +62,18 @@ export async function POST(req: NextRequest) {
         { status: 400 },
       );
     }
-    // Auto-login after register
-    const loginRes = await fetch(`${GATEWAY_BASE}/api/user/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username: body.username, password: body.password }),
-    });
-    const loginData = await loginRes.json();
-    if (!loginData.success) {
-      return NextResponse.json({ success: false, message: "注冊成功，請手動登錄" });
+    const loginResult = await loginViaNewApi(gatewayBase, body.username, body.password);
+    if (!loginResult.ok) {
+      return NextResponse.json({
+        success: false,
+        message: loginResult.message ?? "注冊成功，請手動登錄",
+      });
     }
-    const token: string = loginData.data;
-    const userRes = await fetch(`${GATEWAY_BASE}/api/user/self`, {
-      headers: { Authorization: `Bearer ${token}` },
+    return NextResponse.json({
+      success: true,
+      message: "注冊成功",
+      data: { token: loginResult.token, user: loginResult.user },
     });
-    const userData = await userRes.json();
-    return NextResponse.json({ success: true, message: "注冊成功", data: { token, user: userData.data } });
   } catch (err) {
     console.error("[auth/register]", err);
     return NextResponse.json({ success: false, message: "服務暫時不可用" }, { status: 503 });
