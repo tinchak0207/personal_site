@@ -116,7 +116,11 @@ export interface NewApiModel {
 // ─── Client-side API helpers (all go through /api/* proxy) ───────────────────
 
 function bearerHeader(token: string) {
-  return { Authorization: `Bearer ${token}` };
+  const user = getStoredUser();
+  return {
+    Authorization: `Bearer ${token}`,
+    ...(user?.id ? { "x-user-id": String(user.id) } : {}),
+  };
 }
 
 /** Fetch paginated usage logs */
