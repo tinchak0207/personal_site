@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { GenerateImageRequest } from "@/lib/api-types";
 import { MOCK_MODE, mockGenerateImage } from "@/lib/mock";
+import { buildGatewayEndpoints } from "@/lib/sub2api";
 
 const DEFAULT_IMAGE_SIZE = "1024x1024";
 
@@ -9,6 +10,20 @@ type UpstreamSuccess = {
   data?: Array<{ b64_json?: string; url?: string }>;
   error?: { message?: string };
 };
+
+async function readUpstreamPayload(response: Response): Promise<UpstreamSuccess | null> {
+  const text = await response.text();
+  if (!text) return null;
+
+  try {
+    return JSON.parse(text) as UpstreamSuccess;
+  } catch {
+    if (!response.ok) {
+      throw new Error(text.slice(0, 300));
+    }
+    throw new Error("Upstream returned a non-JSON success payload.");
+  }
+}
 
 async function requestImageGeneration(
   endpoint: { apiKey: string; baseURL: string; label: string },
@@ -24,15 +39,15 @@ async function requestImageGeneration(
     body: JSON.stringify({ model: modelId, prompt, size: DEFAULT_IMAGE_SIZE }),
   });
 
-  const payload = (await response.json()) as UpstreamSuccess;
+  const payload = await readUpstreamPayload(response);
 
   if (!response.ok) {
     throw new Error(
-      payload.error?.message ?? `Image generation failed on ${endpoint.label} endpoint.`,
+      payload?.error?.message ?? `Image generation failed on ${endpoint.label} endpoint.`,
     );
   }
 
-  const firstItem = payload.data?.[0];
+  const firstItem = payload?.data?.[0];
   if (!firstItem?.b64_json && !firstItem?.url) {
     throw new Error(`No image payload returned from ${endpoint.label} endpoint.`);
   }
@@ -55,24 +70,16 @@ export async function POST(req: NextRequest) {
   }
 
   // ── Real mode ──────────────────────────────────────────────────────────────
-  const endpoints = [
-    {
-      baseURL: process.env.IMAGE_API_BASE_URL ?? process.env.IMAGE_API_BASE_URL_PRIMARY ?? "",
-      apiKey: process.env.IMAGE_API_KEY ?? process.env.IMAGE_API_KEY_PRIMARY ?? "",
-      label: "primary",
-    },
-    {
-      baseURL: process.env.IMAGE_API_BASE_URL_FALLBACK ?? "",
-      apiKey: process.env.IMAGE_API_KEY_FALLBACK ?? "",
-      label: "fallback",
-    },
-  ].filter((e): e is { baseURL: string; apiKey: string; label: string } =>
-    Boolean(e.apiKey && e.baseURL),
-  );
+  const endpoints = buildGatewayEndpoints(process.env);
 
   if (endpoints.length === 0) {
     return NextResponse.json(
-      { error: "Missing IMAGE_API_KEY. Add your image API credentials before generating images." },
+      {
+        error:
+          process.env.SUB2API_ENABLED === "true"
+            ? "Missing SUB2API_API_KEY or SUB2API_BASE_URL."
+            : "Missing IMAGE_API_KEY. Add your image API credentials before generating images.",
+      },
       { status: 500 },
     );
   }

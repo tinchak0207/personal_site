@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils";
 interface ImageDisplayProps {
   provider: string;
   image: string | null | undefined;
+  imageUrl?: string | null | undefined;
   timing?: ProviderTiming;
   failed?: boolean;
   fallbackIcon?: React.ReactNode;
@@ -26,14 +27,16 @@ interface ImageDisplayProps {
 export function ImageDisplay({
   provider,
   image,
+  imageUrl,
   timing,
   failed,
   fallbackIcon,
   // modelId kept in interface for API compatibility
 }: ImageDisplayProps) {
   const [isZoomed, setIsZoomed] = useState(false);
-  const hasImage = Boolean(image) && !failed;
+  const hasImage = (Boolean(image) || Boolean(imageUrl)) && !failed;
   const isRendering = Boolean(timing?.startTime) && !timing?.elapsed && !failed;
+  const resolvedImageSrc = imageUrl || (image ? `data:image/png;base64,${image}` : null);
 
   useEffect(() => {
     if (isZoomed) {
@@ -122,7 +125,7 @@ export function ImageDisplay({
           <>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={`data:image/png;base64,${image}`}
+              src={resolvedImageSrc ?? undefined}
               alt={`${provider} 生成的圖片`}
               className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.018]"
             />
@@ -132,7 +135,7 @@ export function ImageDisplay({
               size="icon"
               variant="outline"
               className="absolute bottom-4 left-4 h-11 w-11 rounded-full border-white/52 bg-white/64 shadow-[0_14px_30px_rgba(45,49,66,0.08)] transition-all duration-200 sm:translate-y-1 sm:opacity-0 sm:group-hover:translate-y-0 sm:group-hover:opacity-100"
-              onClick={(event) => handleActionClick(event, image, provider)}
+              onClick={(event) => image ? handleActionClick(event, image, provider) : event.stopPropagation()}
             >
               <span className="sm:hidden">
                 <Share className="h-4 w-4" />
@@ -187,7 +190,7 @@ export function ImageDisplay({
       </div>
 
       {isZoomed &&
-        image &&
+        resolvedImageSrc &&
         createPortal(
           <div
             className="fixed inset-0 z-50 flex min-h-[100dvh] w-screen cursor-pointer items-center justify-center bg-[#1f2230]/74 p-6 backdrop-blur-md"
@@ -200,7 +203,7 @@ export function ImageDisplay({
             </div>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={`data:image/png;base64,${image}`}
+              src={resolvedImageSrc}
               alt={`${provider} 生成的圖片`}
               className="max-h-[88dvh] max-w-[92vw] rounded-[1.7rem] object-contain shadow-[0_30px_80px_rgba(0,0,0,0.22)]"
               onClick={(event) => event.stopPropagation()}

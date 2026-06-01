@@ -49,6 +49,10 @@ export function getAllSuggestions(): Suggestion[] {
   return [...basePrompts];
 }
 
+export function getInitialSuggestions(suggestions: Suggestion[]): Suggestion[] {
+  return [...suggestions];
+}
+
 export function getRandomSuggestions(count: number = 5): Suggestion[] {
   return shuffle(basePrompts).slice(0, count);
 }

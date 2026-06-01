@@ -39,6 +39,8 @@
     "node_modules",
     "archived-custom-ui",
     "backup-current",
-    "open-source-base"
+    "open-source-base",
+    "**/*.test.ts",
+    "**/*.test.tsx"
   ]
 }

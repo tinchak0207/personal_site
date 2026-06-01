@@ -8,5 +8,6 @@ export interface GenerateImageRequest {
 
 export interface GenerateImageResponse {
   image?: string;
+  imageUrl?: string;
   error?: string;
 }

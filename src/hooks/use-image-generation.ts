@@ -48,6 +48,7 @@ export function useImageGeneration(): UseImageGenerationReturn {
         providers.map((provider) => ({
           provider,
           image: null,
+          imageUrl: null,
           modelId: providerToModel[provider],
         })),
       );
@@ -106,7 +107,7 @@ export function useImageGeneration(): UseImageGenerationReturn {
           setImages((prevImages) =>
             prevImages.map((item) =>
               item.provider === provider
-                ? { ...item, image: data.image ?? null, modelId }
+                ? { ...item, image: data.image ?? null, imageUrl: data.imageUrl ?? null, modelId }
                 : item,
             ),
           );
@@ -130,7 +131,7 @@ export function useImageGeneration(): UseImageGenerationReturn {
           setImages((prevImages) =>
             prevImages.map((item) =>
               item.provider === provider
-                ? { ...item, image: null, modelId }
+                ? { ...item, image: null, imageUrl: null, modelId }
                 : item,
             ),
           );

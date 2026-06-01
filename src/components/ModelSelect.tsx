@@ -24,6 +24,7 @@ interface ModelSelectProps {
   enabled?: boolean;
   onToggle?: (enabled: boolean) => void;
   image: string | null | undefined;
+  imageUrl?: string | null | undefined;
   timing?: ProviderTiming;
   failed?: boolean;
   modelId: string;
@@ -41,6 +42,7 @@ export function ModelSelect({
   onChange,
   enabled = true,
   image,
+  imageUrl,
   timing,
   failed,
   modelId,
@@ -138,6 +140,7 @@ export function ModelSelect({
           modelId={modelId}
           provider={providerKey}
           image={image}
+          imageUrl={imageUrl}
           timing={timing}
           failed={failed}
         />

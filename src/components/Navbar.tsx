@@ -6,6 +6,7 @@ import { LogOut, User, History, CreditCard } from "lucide-react";
 import { WalletBadge } from "@/components/WalletBadge";
 import { AuthModal } from "@/components/AuthModal";
 import { useAuth } from "@/hooks/use-auth";
+import { LOCAL_TEST_MODE } from "@/lib/sub2api";
 import { cn } from "@/lib/utils";
 
 interface NavbarProps {
@@ -54,7 +55,11 @@ export function Navbar({ className }: NavbarProps) {
 
           {/* Right side */}
           <div className="flex items-center gap-3">
-            {isLoggedIn && user ? (
+            {LOCAL_TEST_MODE ? (
+              <div className="lg-float rounded-full px-4 py-2 text-ios-footnote font-medium text-[rgba(0,0,0,0.56)]">
+                Local Test Mode
+              </div>
+            ) : isLoggedIn && user ? (
               <>
                 <WalletBadge showTopUp />
 

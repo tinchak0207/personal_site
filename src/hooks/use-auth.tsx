@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, createContext, useContext } from "rea
 import type { NewApiUser } from "@/lib/new-api-client";
 import { getStoredToken, getStoredUser, clearStoredToken, setStoredToken } from "@/lib/new-api-client";
 import { fetchMe, logout as doLogout } from "@/lib/auth-client";
+import { shouldBypassAuthForLocalTest } from "@/lib/sub2api";
 
 interface AuthState {
   user: NewApiUser | null;
@@ -17,12 +18,30 @@ interface AuthState {
 
 const AuthContext = createContext<AuthState | null>(null);
 
+const LOCAL_TEST_AUTH_USER: NewApiUser = {
+  id: 0,
+  username: "local-test",
+  display_name: "Local Test",
+  email: "local@test",
+  quota: 999_999_999,
+  used_quota: 0,
+};
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const localTestMode = shouldBypassAuthForLocalTest(process.env);
   const [user, setUser] = useState<NewApiUser | null>(null);
   const [token, setToken] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(!localTestMode);
+
+  useEffect(() => {
+    if (!localTestMode) return;
+    setUser(LOCAL_TEST_AUTH_USER);
+    setToken("local-test-token");
+    setIsLoading(false);
+  }, [localTestMode]);
 
   const refresh = useCallback(async () => {
+    if (localTestMode) return;
     const t = getStoredToken();
     if (!t) { setIsLoading(false); return; }
 
@@ -36,21 +55,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setToken(null);
     }
     setIsLoading(false);
-  }, []);
+  }, [localTestMode]);
 
   const setAuth = useCallback((t: string, u: NewApiUser) => {
+    if (localTestMode) return;
     setStoredToken(t, u);   // persist to localStorage
     setToken(t);
     setUser(u);
-  }, []);
+  }, [localTestMode]);
 
   const logout = useCallback(() => {
+    if (localTestMode) return;
     doLogout();
     setUser(null);
     setToken(null);
-  }, []);
+  }, [localTestMode]);
 
   useEffect(() => {
+    if (localTestMode) return;
     // Hydrate from localStorage on mount
     const storedUser = getStoredUser();
     const storedToken = getStoredToken();
@@ -66,7 +88,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } else {
       setIsLoading(false);
     }
-  }, []);
+  }, [localTestMode]);
 
   return (
     <AuthContext.Provider value={{
