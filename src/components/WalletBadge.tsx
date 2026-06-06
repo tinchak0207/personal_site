@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Coins, Gift, CheckCircle2 } from "lucide-react";
+import Link from "next/link";
+import { Coins, Gift, CheckCircle2, CreditCard } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { quotaToCoins, fetchCheckinStatus, doCheckin } from "@/lib/new-api-client";
 import { cn } from "@/lib/utils";
@@ -49,11 +50,11 @@ export function WalletBadge({ className, showTopUp = true }: WalletBadgeProps) {
       {/* Coin balance — muted amber, no harsh yellow */}
       <div
         className="inline-flex items-center gap-1.5 rounded-full bg-[rgba(0,0,0,0.05)] px-3 py-1.5 text-ios-footnote font-semibold text-[rgba(120,90,20,0.72)] cursor-default select-none"
-        aria-label={`餘額 ${coins} 硬幣`}
+        aria-label={`余额 ${coins} 币`}
       >
         <Coins className="h-3.5 w-3.5 text-[rgba(160,120,30,0.60)]" aria-hidden="true" />
         <span className="tabular-nums">{coins.toLocaleString()}</span>
-        <span className="text-[rgba(120,90,20,0.45)] text-[0.7rem]">幣</span>
+        <span className="text-[rgba(120,90,20,0.45)] text-[0.7rem]">币</span>
       </div>
 
       {/* Daily checkin button */}
@@ -63,11 +64,11 @@ export function WalletBadge({ className, showTopUp = true }: WalletBadgeProps) {
           onClick={handleCheckin}
           disabled={checkinLoading}
           className="lg-tint-green inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-ios-caption1 font-semibold text-[#34C759] lg-transition hover:opacity-80 cursor-pointer disabled:opacity-50"
-          aria-label="每日簽到領取硬幣"
-          title="每日簽到"
+          aria-label="每日签到领取币"
+          title="每日签到"
         >
           <Gift className="h-3 w-3" aria-hidden="true" />
-          簽到
+          签到
         </button>
       )}
 
@@ -75,21 +76,20 @@ export function WalletBadge({ className, showTopUp = true }: WalletBadgeProps) {
       {checkinDone && (
         <span className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-ios-caption2 text-[#34C759]">
           <CheckCircle2 className="h-3 w-3" aria-hidden="true" />
-          已簽到
+          已签到
         </span>
       )}
 
-      {/* Top-up — ghost button, no default web-blue link style */}
+      {/* Top-up button in the same iOS pill language as the navbar */}
       {showTopUp && (
-        <a
-          href="https://store.tinchak0207.xyz"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 rounded-full border border-[rgba(0,0,0,0.10)] bg-transparent px-3 py-1.5 text-ios-caption1 font-medium text-[rgba(0,0,0,0.50)] lg-transition hover:border-[rgba(0,0,0,0.18)] hover:text-[rgba(0,0,0,0.72)] cursor-pointer no-underline"
-          aria-label="前往充值"
+        <Link
+          href="/pricing"
+          className="lg-float inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-ios-footnote font-medium text-[rgba(0,0,0,0.52)] lg-transition hover:text-[rgba(0,0,0,0.78)] no-underline"
+          aria-label="前往充值页面"
         >
+          <CreditCard className="h-3.5 w-3.5" aria-hidden="true" />
           充值
-        </a>
+        </Link>
       )}
     </div>
   );

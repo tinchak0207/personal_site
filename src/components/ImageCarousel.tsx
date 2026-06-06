@@ -66,7 +66,7 @@ export function ImageCarousel({
                   enabled={enabledProviders[provider]}
                 />
                 <div className="text-center text-sm text-muted-foreground mt-4">
-                  第 {i + 1} 張，共 {providers.length} 張
+                  第 {i + 1} 张，共 {providers.length} 张
                 </div>
               </CarouselItem>
             );
@@ -91,7 +91,7 @@ export function ImageCarousel({
               )}
               onClick={() => api?.scrollTo(index)}
             >
-              <span className="sr-only">前往第 {index + 1} 張圖片</span>
+              <span className="sr-only">前往第 {index + 1} 张图片</span>
             </button>
           ))}
         </div>

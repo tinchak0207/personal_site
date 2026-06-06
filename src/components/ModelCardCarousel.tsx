@@ -84,7 +84,7 @@ export function ModelCardCarousel({ models }: ModelCardCarouselProps) {
                 }
               />
               <div className="text-center text-sm text-muted-foreground mt-4">
-                第 {i + 1} 張，共 {models.length} 張
+                第 {i + 1} 张，共 {models.length} 张
               </div>
             </CarouselItem>
           ))}

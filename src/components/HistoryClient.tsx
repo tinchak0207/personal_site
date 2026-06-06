@@ -27,7 +27,7 @@ const PAGE_SIZE = 20;
 const QUOTA_PER_COIN = 500_000;
 
 function formatTime(ts: number) {
-  return new Date(ts * 1000).toLocaleString("zh-HK", {
+  return new Date(ts * 1000).toLocaleString("zh-CN", {
     month: "2-digit", day: "2-digit",
     hour: "2-digit", minute: "2-digit",
   });
@@ -96,13 +96,13 @@ export function HistoryClient() {
 
   const statCards = [
     {
-      label: "累計消耗",
+      label: "累计消耗",
       value: stat ? quotaToCoins(stat.quota) : "—",
-      unit: "張",
+      unit: "张",
       icon: <Coins className="h-4 w-4 text-[rgba(120,90,20,0.55)]" />,
     },
     {
-      label: "請求速率",
+      label: "请求速率",
       value: stat ? String(stat.rpm) : "—",
       unit: "rpm",
       icon: <Zap className="h-4 w-4 text-[rgba(0,122,255,0.55)]" />,
@@ -127,7 +127,7 @@ export function HistoryClient() {
             className="mb-8 inline-flex items-center gap-1.5 text-ios-footnote text-[rgba(0,0,0,0.40)] lg-transition hover:text-[rgba(0,0,0,0.65)] cursor-pointer"
           >
             <ArrowLeft className="h-3.5 w-3.5" />
-            返回做圖
+            返回做图
           </Link>
 
           {/* Header */}
@@ -136,9 +136,9 @@ export function HistoryClient() {
               <div className="flex h-9 w-9 items-center justify-center rounded-ios-xl bg-[rgba(0,122,255,0.10)]">
                 <TrendingUp className="h-4.5 w-4.5 text-[#007AFF]" />
               </div>
-              <h1 className="text-ios-large-title font-bold tracking-tight text-[rgba(0,0,0,0.85)]">生成歷史</h1>
+              <h1 className="text-ios-large-title font-bold tracking-tight text-[rgba(0,0,0,0.85)]">生成历史</h1>
             </div>
-            <p className="ml-12 text-ios-footnote text-[rgba(0,0,0,0.40)]">查看所有生成記錄與消耗明細</p>
+            <p className="ml-12 text-ios-footnote text-[rgba(0,0,0,0.40)]">查看所有生成记录和消耗明细</p>
           </div>
 
           {/* Stat cards */}
@@ -172,7 +172,7 @@ export function HistoryClient() {
                 value={keyword}
                 onChange={(e) => setKeyword(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                placeholder="搜尋模型名稱…"
+                placeholder="搜索模型名称…"
                 className="w-full rounded-ios-xl border-0 bg-[rgba(0,0,0,0.05)] py-2.5 pl-9 pr-4 text-ios-footnote text-[rgba(0,0,0,0.85)] placeholder:text-[rgba(0,0,0,0.24)] focus:outline-none focus:ring-2 focus:ring-[rgba(0,122,255,0.20)] [background-image:none]"
               />
             </div>
@@ -181,7 +181,7 @@ export function HistoryClient() {
               onClick={handleSearch}
               className="rounded-ios-xl bg-[rgba(0,0,0,0.06)] px-4 py-2.5 text-ios-footnote font-medium text-[rgba(0,0,0,0.56)] transition-all duration-200 hover:bg-[rgba(0,0,0,0.10)] cursor-pointer"
             >
-              搜尋
+              搜索
             </button>
           </div>
 
@@ -199,14 +199,14 @@ export function HistoryClient() {
                   <ImageIcon className="h-6 w-6 text-[rgba(0,0,0,0.20)]" />
                 </div>
                 <div>
-                  <p className="text-ios-body font-medium text-[rgba(0,0,0,0.50)]">還沒有生成記錄</p>
-                  <p className="mt-1 text-ios-footnote text-[rgba(0,0,0,0.30)]">做圖後會在這裡顯示</p>
+                  <p className="text-ios-body font-medium text-[rgba(0,0,0,0.50)]">还没有生成记录</p>
+                  <p className="mt-1 text-ios-footnote text-[rgba(0,0,0,0.30)]">做图后会显示在这里</p>
                 </div>
                 <Link
                   href="/"
                   className="mt-1 inline-flex items-center gap-1.5 rounded-full bg-[#007AFF] px-5 py-2 text-ios-footnote font-semibold text-white shadow-[0_4px_16px_rgba(0,122,255,0.30)] transition-all hover:bg-[#0066DD] cursor-pointer"
                 >
-                  去做圖
+                  去做图
                 </Link>
               </div>
             ) : (
@@ -245,16 +245,16 @@ export function HistoryClient() {
                 disabled={page === 0}
                 className="flex items-center gap-1.5 rounded-ios-xl px-4 py-2 text-ios-footnote font-medium text-[rgba(0,0,0,0.44)] transition-all duration-200 hover:text-[rgba(0,0,0,0.72)] disabled:opacity-25 cursor-pointer disabled:cursor-default"
               >
-                <ChevronLeft className="h-4 w-4" />上一頁
+                <ChevronLeft className="h-4 w-4" />上一页
               </button>
-              <span className="text-ios-caption1 text-[rgba(0,0,0,0.32)]">第 {page + 1} 頁</span>
+              <span className="text-ios-caption1 text-[rgba(0,0,0,0.32)]">第 {page + 1} 页</span>
               <button
                 type="button"
                 onClick={nextPage}
                 disabled={!hasMore}
                 className="flex items-center gap-1.5 rounded-ios-xl px-4 py-2 text-ios-footnote font-medium text-[rgba(0,0,0,0.44)] transition-all duration-200 hover:text-[rgba(0,0,0,0.72)] disabled:opacity-25 cursor-pointer disabled:cursor-default"
               >
-                下一頁<ChevronRight className="h-4 w-4" />
+                下一页<ChevronRight className="h-4 w-4" />
               </button>
             </div>
           )}

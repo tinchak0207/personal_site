@@ -31,13 +31,13 @@ export function Navbar({ className }: NavbarProps) {
       >
         <nav
           className="lg-bar pointer-events-auto flex w-full max-w-[1660px] items-center justify-between rounded-ios-3xl px-4 py-2.5 sm:px-5"
-          aria-label="主導航"
+          aria-label="主导航"
         >
           {/* Brand */}
           <Link
             href="/"
             className="flex items-center gap-2.5 lg-transition hover:opacity-70"
-            aria-label="回到首頁"
+            aria-label="回到首页"
           >
             {/* iOS-style app icon grid */}
             <div className="lg-float flex h-8 w-8 items-center justify-center rounded-ios-lg">
@@ -61,7 +61,7 @@ export function Navbar({ className }: NavbarProps) {
               </div>
             ) : isLoggedIn && user ? (
               <>
-                <WalletBadge showTopUp />
+                <WalletBadge showTopUp={false} />
 
                 {/* Nav links */}
                 <Link
@@ -69,7 +69,7 @@ export function Navbar({ className }: NavbarProps) {
                   className="lg-float hidden sm:flex items-center gap-1.5 rounded-full px-3 py-1.5 text-ios-footnote font-medium text-[rgba(0,0,0,0.44)] lg-transition hover:text-[rgba(0,0,0,0.72)]"
                 >
                   <History className="h-3.5 w-3.5" aria-hidden="true" />
-                  歷史
+                  历史
                 </Link>
                 <Link
                   href="/pricing"
@@ -91,7 +91,7 @@ export function Navbar({ className }: NavbarProps) {
                   type="button"
                   onClick={logout}
                   className="lg-float flex h-8 w-8 items-center justify-center rounded-full text-[rgba(0,0,0,0.44)] lg-transition hover:text-[rgba(0,0,0,0.72)] cursor-pointer"
-                  aria-label="登出"
+                  aria-label="退出登录"
                 >
                   <LogOut className="h-3.5 w-3.5" />
                 </button>
@@ -103,14 +103,14 @@ export function Navbar({ className }: NavbarProps) {
                   onClick={openLogin}
                   className="lg-float rounded-full px-4 py-2 text-ios-footnote font-medium text-[rgba(0,0,0,0.56)] lg-transition hover:text-[rgba(0,0,0,0.85)] cursor-pointer"
                 >
-                  登錄
+                  登录
                 </button>
                 <button
                   type="button"
                   onClick={openRegister}
                   className="rounded-full bg-[#007AFF] px-4 py-2 text-ios-footnote font-semibold text-white shadow-[0_4px_16px_rgba(0,122,255,0.28)] lg-transition hover:bg-[#0066DD] hover:shadow-[0_6px_20px_rgba(0,122,255,0.36)] cursor-pointer"
                 >
-                  免費注冊
+                  免费注册
                 </button>
               </>
             )}

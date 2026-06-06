@@ -31,13 +31,13 @@ export async function login(username: string, password: string): Promise<AuthRes
     const data = (await res.json()) as NewApiLoginResponse;
 
     if (!res.ok || !data.success || !data.data) {
-      return { ok: false, error: data.message || "登錄失敗，請重試" };
+      return { ok: false, error: data.message || "登录失败，请重试" };
     }
 
     setStoredToken(data.data.token, data.data.user);
     return { ok: true, user: data.data.user, token: data.data.token };
   } catch {
-    return { ok: false, error: "網絡錯誤，請檢查連接" };
+    return { ok: false, error: "网络错误，请检查连接" };
   }
 }
 
@@ -59,13 +59,13 @@ export async function register(
     const data = (await res.json()) as NewApiLoginResponse;
 
     if (!res.ok || !data.success || !data.data) {
-      return { ok: false, error: data.message || "注冊失敗，請重試" };
+      return { ok: false, error: data.message || "注册失败，请重试" };
     }
 
     setStoredToken(data.data.token, data.data.user);
     return { ok: true, user: data.data.user, token: data.data.token };
   } catch {
-    return { ok: false, error: "網絡錯誤，請檢查連接" };
+    return { ok: false, error: "网络错误，请检查连接" };
   }
 }
 
@@ -88,12 +88,12 @@ export async function fetchMe(token: string): Promise<AuthResult> {
 
     const data = await res.json() as { success: boolean; data?: NewApiUser; message?: string };
     if (!data.success || !data.data) {
-      return { ok: false, error: data.message || "無法獲取用戶信息" };
+      return { ok: false, error: data.message || "无法获取用户信息" };
     }
 
     return { ok: true, user: data.data };
   } catch {
-    return { ok: false, error: "網絡錯誤" };
+    return { ok: false, error: "网络错误" };
   }
 }
 

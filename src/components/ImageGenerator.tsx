@@ -43,7 +43,7 @@ export function ImageGenerator({
               className="flex items-center gap-2 text-destructive"
             >
               <AlertCircle className="h-4 w-4" />
-              這次有 {errors.length} 個地方需要重試
+              这次有 {errors.length} 处需要重试
               <ChevronDown className="h-4 w-4 transition-transform duration-200 data-[state=open]:rotate-180" />
             </Button>
           </CollapsibleTrigger>
@@ -53,7 +53,7 @@ export function ImageGenerator({
                 <Alert key={index} variant="destructive">
                   <AlertCircle className="h-4 w-4" />
                   <div className="ml-3">
-                    <AlertTitle>{err.provider} 暫時沒有成功</AlertTitle>
+                    <AlertTitle>{err.provider} 暂时没有成功</AlertTitle>
                     <AlertDescription className="mt-1 text-sm">
                       {err.message}
                     </AlertDescription>
@@ -66,7 +66,7 @@ export function ImageGenerator({
       )}
 
       <div className="flex items-center justify-between">
-        <h3 className="text-xl font-semibold">生成結果</h3>
+        <h3 className="text-xl font-semibold">生成结果</h3>
         <Button
           variant="outline"
           className=""

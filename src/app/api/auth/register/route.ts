@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
   };
 
   if (!body.username || !body.password) {
-    return NextResponse.json({ success: false, message: "請填寫帳號和密碼" }, { status: 400 });
+    return NextResponse.json({ success: false, message: "请填写账号和密码" }, { status: 400 });
   }
 
   // ── Mock mode ──────────────────────────────────────────────────────────────
@@ -37,13 +37,13 @@ export async function POST(req: NextRequest) {
   // ── Turnstile check ────────────────────────────────────────────────────────
   if (TURNSTILE_SECRET) {
     if (!body.turnstileToken) {
-      return NextResponse.json({ success: false, message: "請完成人機驗證" }, { status: 400 });
+      return NextResponse.json({ success: false, message: "请完成人机验证" }, { status: 400 });
     }
     const ip = req.headers.get("cf-connecting-ip")
       ?? req.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
       ?? "unknown";
     if (!await verifyTurnstile(body.turnstileToken, ip)) {
-      return NextResponse.json({ success: false, message: "人機驗證失敗，請重試" }, { status: 400 });
+      return NextResponse.json({ success: false, message: "人机验证失败，请重试" }, { status: 400 });
     }
   }
 
@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
     const data = await upstream.json();
     if (!upstream.ok || !data.success) {
       return NextResponse.json(
-        { success: false, message: data.message ?? "注冊失敗，帳號可能已存在" },
+        { success: false, message: data.message ?? "注册失败，账号可能已存在" },
         { status: 400 },
       );
     }
@@ -66,16 +66,16 @@ export async function POST(req: NextRequest) {
     if (!loginResult.ok) {
       return NextResponse.json({
         success: false,
-        message: loginResult.message ?? "注冊成功，請手動登錄",
+        message: loginResult.message ?? "注册成功，请手动登录",
       });
     }
     return NextResponse.json({
       success: true,
-      message: "注冊成功",
+      message: "注册成功",
       data: { token: loginResult.token, user: loginResult.user },
     });
   } catch (err) {
     console.error("[auth/register]", err);
-    return NextResponse.json({ success: false, message: "服務暫時不可用" }, { status: 503 });
+    return NextResponse.json({ success: false, message: "服务暂时不可用" }, { status: 503 });
   }
 }

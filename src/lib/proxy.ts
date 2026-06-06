@@ -18,7 +18,7 @@ export function makeProxy(opts: ProxyOptions = {}) {
     const userId = req.headers.get("x-user-id") ?? "";
 
     if (!opts.public && !auth) {
-      return NextResponse.json({ success: false, message: "未登錄" }, { status: 401 });
+      return NextResponse.json({ success: false, message: "未登录" }, { status: 401 });
     }
 
     const params = context?.params ? await context.params : {};
@@ -54,7 +54,7 @@ export function makeProxy(opts: ProxyOptions = {}) {
       return NextResponse.json(data, { status: upstream.status });
     } catch (err) {
       console.error(`[proxy ${upstreamPath}]`, err);
-      return NextResponse.json({ success: false, message: "服務暫時不可用" }, { status: 503 });
+      return NextResponse.json({ success: false, message: "服务暂时不可用" }, { status: 503 });
     }
   };
 }

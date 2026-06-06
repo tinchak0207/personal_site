@@ -40,7 +40,7 @@ export function ImagePlayground({ suggestions }: { suggestions: Suggestion[] }) 
       return;
     }
     if (!LOCAL_TEST_MODE && user && !hasEnoughQuota(user)) {
-      toast({ title: "硬幣不足", description: "請前往充值後繼續生圖", variant: "destructive" });
+      toast({ title: "余额不足", description: "请先充值再继续做图", variant: "destructive" });
       return;
     }
     const finalPrompt = enhancePrompt(rawPrompt, stylePreset);
@@ -75,10 +75,10 @@ export function ImagePlayground({ suggestions }: { suggestions: Suggestion[] }) 
   const renderState = isLoading
     ? "生成中"
     : failedProviders.length > 0
-      ? "需要重試"
+      ? "需要重试"
       : images.some((i) => i.image || i.imageUrl)
         ? "已完成"
-        : "目前可用";
+        : "当前可用";
 
   return (
     <>

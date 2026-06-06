@@ -36,7 +36,7 @@ export function ImageDisplay({
   const [isZoomed, setIsZoomed] = useState(false);
   const hasImage = (Boolean(image) || Boolean(imageUrl)) && !failed;
   const isRendering = Boolean(timing?.startTime) && !timing?.elapsed && !failed;
-  const resolvedImageSrc = imageUrl || (image ? `data:image/png;base64,${image}` : null);
+  const resolvedImageSrc = image ? `data:image/png;base64,${image}` : imageUrl || null;
 
   useEffect(() => {
     if (isZoomed) {
@@ -111,13 +111,13 @@ export function ImageDisplay({
                     : "lg-float text-[rgba(0,0,0,0.44)]",
             )}
           >
-            {failed
-              ? "需要重試"
-              : timing?.elapsed
-                ? `${(timing.elapsed / 1000).toFixed(1)}s`
-                : isRendering
-                  ? "生成中"
-                  : "目前可用"}
+              {failed
+                ? "需要重试"
+                : timing?.elapsed
+                  ? `${(timing.elapsed / 1000).toFixed(1)}s`
+                  : isRendering
+                    ? "生成中"
+                    : "当前可用"}
           </div>
         </div>
 
@@ -126,7 +126,7 @@ export function ImageDisplay({
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={resolvedImageSrc ?? undefined}
-              alt={`${provider} 生成的圖片`}
+              alt={`${provider} 生成的图片`}
               className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.018]"
             />
             <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.16)_0%,transparent_28%,transparent_72%,rgba(45,49,66,0.12)_100%)]" />
@@ -146,7 +146,7 @@ export function ImageDisplay({
             </Button>
 
             <div className="absolute bottom-4 right-4 rounded-full bg-white/18 px-3 py-2 text-xs font-medium text-white/90 backdrop-blur-xl">
-              點一下放大
+              点一下放大
             </div>
           </>
         ) : (
@@ -165,18 +165,18 @@ export function ImageDisplay({
 
               <h4 className="mt-5 text-ios-title3 font-semibold tracking-tight text-[rgba(0,0,0,0.72)]">
                 {failed
-                  ? "這次沒有成功"
+                  ? "这次没有成功"
                   : isRendering
-                    ? "正在做圖"
-                    : "圖片會出現在這裡"}
+                    ? "正在做图"
+                    : "图片会出现在这里"}
               </h4>
 
               <p className="mt-2 text-ios-subhead leading-relaxed text-[rgba(0,0,0,0.40)]">
                 {failed
-                  ? "換個說法再試一次，通常很快就會好。"
+                  ? "换个说法再试一次，通常很快就会恢复。"
                   : isRendering
-                    ? "先不用等在這裡，完成後會直接顯示。"
-                    : "送出需求後，右側就會開始生成第一版圖片。"}
+                    ? "不用一直盯着这里，完成后会直接显示。"
+                    : "提交需求后，右侧会开始生成第一版图片。"}
               </p>
 
               {isRendering && timing?.startTime ? (
@@ -198,13 +198,13 @@ export function ImageDisplay({
           >
             <div className="absolute inset-x-0 top-6 flex justify-center">
               <div className="paper-float rounded-full px-4 py-2 text-sm text-[#6f7987]">
-                按 Esc 關閉
+                按 Esc 关闭
               </div>
             </div>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={resolvedImageSrc}
-              alt={`${provider} 生成的圖片`}
+              alt={`${provider} 生成的图片`}
               className="max-h-[88dvh] max-w-[92vw] rounded-[1.7rem] object-contain shadow-[0_30px_80px_rgba(0,0,0,0.22)]"
               onClick={(event) => event.stopPropagation()}
             />

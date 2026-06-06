@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Check, Coins, Gift, Copy, ExternalLink, Ticket, Sparkles } from "lucide-react";
+import { ArrowLeft, Check, Coins, Gift, Copy, Ticket, Sparkles } from "lucide-react";
 import { PLANS, pricePerCoin } from "@/lib/plans";
 import { useAuth } from "@/hooks/use-auth";
 import { fetchAffCode, redeemTopupCode } from "@/lib/new-api-client";
@@ -19,10 +19,8 @@ export function PricingClient() {
   const [redeemCode, setRedeemCode] = useState("");
   const [redeemLoading, setRedeemLoading] = useState(false);
 
-  const handleBuy = (planId: string) => {
-    if (!isLoggedIn) { setAuthOpen(true); return; }
-    // Redirect to store with plan hint
-    window.open(`https://store.tinchak0207.xyz?plan=${planId}`, "_blank");
+  const handleBuy = (purchaseUrl: string) => {
+    window.open(purchaseUrl, "_blank");
   };
 
   const handleFetchAff = async () => {
@@ -31,9 +29,9 @@ export function PricingClient() {
     try {
       const res = await fetchAffCode(token);
       if (res.success && res.data) setAffCode(res.data);
-      else toast({ title: "獲取失敗", description: res.message ?? "請稍後再試", variant: "destructive" });
+      else toast({ title: "获取失败", description: res.message ?? "请稍后再试", variant: "destructive" });
     } catch {
-      toast({ title: "網絡錯誤", variant: "destructive" });
+      toast({ title: "网络错误", variant: "destructive" });
     } finally { setAffLoading(false); }
   };
 
@@ -41,7 +39,7 @@ export function PricingClient() {
     if (!affCode) return;
     const url = `${window.location.origin}?ref=${affCode}`;
     navigator.clipboard.writeText(url).then(() =>
-      toast({ title: "已複製邀請連結" })
+      toast({ title: "已复制邀请链接" })
     );
   };
 
@@ -52,13 +50,13 @@ export function PricingClient() {
     try {
       const res = await redeemTopupCode(token, redeemCode.trim());
       if (res.success) {
-        toast({ title: "兌換成功 🎉", description: `已入帳 ${res.data?.quota ?? ""} 額度` });
+        toast({ title: "兑换成功", description: `已到账 ${res.data?.quota ?? ""} 点额度` });
         setRedeemCode("");
       } else {
-        toast({ title: "兌換失敗", description: res.message ?? "碼無效或已使用", variant: "destructive" });
+        toast({ title: "兑换失败", description: res.message ?? "兑换码无效或已使用", variant: "destructive" });
       }
     } catch {
-      toast({ title: "網絡錯誤", variant: "destructive" });
+      toast({ title: "网络错误", variant: "destructive" });
     } finally { setRedeemLoading(false); }
   };
 
@@ -70,10 +68,11 @@ export function PricingClient() {
           {/* Back nav */}
           <Link
             href="/"
-            className="mb-8 inline-flex items-center gap-1.5 text-ios-footnote text-[rgba(0,0,0,0.40)] lg-transition hover:text-[rgba(0,0,0,0.65)] cursor-pointer"
+            className="lg-float mb-8 inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-ios-footnote font-medium text-[rgba(0,0,0,0.56)] lg-transition hover:text-[rgba(0,0,0,0.82)] cursor-pointer"
+            aria-label="返回做图"
           >
             <ArrowLeft className="h-3.5 w-3.5" />
-            返回做圖
+            返回做图
           </Link>
 
           {/* Header */}
@@ -84,10 +83,10 @@ export function PricingClient() {
               </div>
             </div>
             <h1 className="text-ios-large-title font-bold tracking-tight text-[rgba(0,0,0,0.85)]">
-              選擇你的方案
+              选择你的方案
             </h1>
             <p className="mt-2 text-ios-body text-[rgba(0,0,0,0.44)]">
-              所有方案均支援全部模型·到期前提醒·未用完退折扣券
+              所有方案都支持全部模型，到期前会提醒，没用完会退等值折扣券
             </p>
           </div>
 
@@ -131,11 +130,11 @@ export function PricingClient() {
                   <div className="mt-2 flex items-center gap-1.5">
                     <Coins className="h-3.5 w-3.5 text-[rgba(120,90,20,0.60)]" />
                     <span className="text-ios-caption1 text-[rgba(0,0,0,0.44)]">
-                      {plan.coins} 張 · {plan.validDays} 天有效
+                      {plan.coins} 张 · {plan.validDays} 天有效
                     </span>
                   </div>
                   <p className="mt-1 text-ios-caption2 text-[rgba(0,0,0,0.28)]">
-                    約 ¥{pricePerCoin(plan)} / 張
+                    约 ¥{pricePerCoin(plan)} / 张
                   </p>
                 </div>
 
@@ -152,7 +151,7 @@ export function PricingClient() {
                 {/* CTA */}
                 <button
                   type="button"
-                  onClick={() => handleBuy(plan.id)}
+                  onClick={() => handleBuy(plan.purchaseUrl)}
                   className={cn(
                     "mt-6 w-full rounded-ios-xl py-3 text-ios-body font-semibold transition-all duration-200 cursor-pointer",
                     plan.highlight
@@ -160,7 +159,7 @@ export function PricingClient() {
                       : "lg-float text-[rgba(0,0,0,0.65)] hover:text-[rgba(0,0,0,0.85)]",
                   )}
                 >
-                  立即購買
+                  立即购买
                 </button>
               </section>
             ))}
@@ -174,10 +173,10 @@ export function PricingClient() {
               <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white to-transparent opacity-80" />
               <div className="flex items-center gap-2 mb-4">
                 <Ticket className="h-4 w-4 text-[rgba(0,0,0,0.44)]" />
-                <h3 className="text-ios-subhead font-semibold text-[rgba(0,0,0,0.85)]">兌換碼</h3>
+                <h3 className="text-ios-subhead font-semibold text-[rgba(0,0,0,0.85)]">兑换码</h3>
               </div>
               <p className="mb-4 text-ios-footnote text-[rgba(0,0,0,0.44)]">
-                輸入兌換碼，額度即時入帳。
+                输入兑换码，额度会立即到账。
               </p>
               <div className="flex gap-2">
                 <input
@@ -185,7 +184,7 @@ export function PricingClient() {
                   value={redeemCode}
                   onChange={(e) => setRedeemCode(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handleRedeem()}
-                  placeholder="輸入兌換碼"
+                  placeholder="输入兑换码"
                   className="flex-1 rounded-ios-xl border-0 bg-[rgba(0,0,0,0.04)] px-4 py-2.5 text-ios-footnote text-[rgba(0,0,0,0.85)] placeholder:text-[rgba(0,0,0,0.24)] focus:outline-none focus:ring-2 focus:ring-[rgba(0,122,255,0.20)] [background-image:none]"
                 />
                 <button
@@ -194,7 +193,7 @@ export function PricingClient() {
                   disabled={redeemLoading || !redeemCode.trim()}
                   className="rounded-ios-xl bg-[#007AFF] px-4 py-2.5 text-ios-footnote font-semibold text-white shadow-[0_4px_16px_rgba(0,122,255,0.30)] transition-all hover:bg-[#0066DD] disabled:bg-[rgba(0,0,0,0.16)] disabled:shadow-none cursor-pointer disabled:cursor-default"
                 >
-                  {redeemLoading ? "兌換中" : "兌換"}
+                  {redeemLoading ? "兑换中" : "兑换"}
                 </button>
               </div>
             </section>
@@ -204,10 +203,10 @@ export function PricingClient() {
               <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white to-transparent opacity-80" />
               <div className="flex items-center gap-2 mb-4">
                 <Gift className="h-4 w-4 text-[rgba(0,0,0,0.44)]" />
-                <h3 className="text-ios-subhead font-semibold text-[rgba(0,0,0,0.85)]">邀請好友</h3>
+                <h3 className="text-ios-subhead font-semibold text-[rgba(0,0,0,0.85)]">邀请好友</h3>
               </div>
               <p className="mb-4 text-ios-footnote text-[rgba(0,0,0,0.44)]">
-                好友首次充值後，你獲得 <span className="font-semibold text-[rgba(0,0,0,0.72)]">100 張額度</span>，好友獲得 <span className="font-semibold text-[rgba(0,0,0,0.72)]">50 張額度</span>。獎勵以額度形式發放，不可提現。
+                好友首次充值后，你获得 <span className="font-semibold text-[rgba(0,0,0,0.72)]">100 点额度</span>，好友获得 <span className="font-semibold text-[rgba(0,0,0,0.72)]">50 点额度</span>。奖励会以额度形式发放，不能提现。
               </p>
               {affCode ? (
                 <div className="space-y-2">
@@ -219,7 +218,7 @@ export function PricingClient() {
                       <Copy className="h-3.5 w-3.5" />
                     </button>
                   </div>
-                  <p className="text-ios-caption2 text-[rgba(0,0,0,0.30)]">你的邀請碼：{affCode}</p>
+                  <p className="text-ios-caption2 text-[rgba(0,0,0,0.30)]">你的邀请码：{affCode}</p>
                 </div>
               ) : (
                 <button
@@ -228,7 +227,7 @@ export function PricingClient() {
                   disabled={affLoading}
                   className="w-full rounded-ios-xl border border-[rgba(0,0,0,0.10)] py-2.5 text-ios-footnote font-medium text-[rgba(0,0,0,0.56)] transition-all hover:border-[rgba(0,0,0,0.18)] hover:text-[rgba(0,0,0,0.80)] disabled:opacity-50 cursor-pointer disabled:cursor-default"
                 >
-                  {affLoading ? "載入中…" : isLoggedIn ? "查看我的邀請連結" : "登錄後查看"}
+                  {affLoading ? "加载中…" : isLoggedIn ? "查看我的邀请链接" : "登录后查看"}
                 </button>
               )}
             </section>
@@ -237,7 +236,7 @@ export function PricingClient() {
           {/* FAQ strip */}
           <div className="mt-8 lg-card relative overflow-hidden rounded-ios-4xl p-6">
             <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white to-transparent opacity-80" />
-            <h3 className="mb-4 text-ios-subhead font-semibold text-[rgba(0,0,0,0.85)]">常見問題</h3>
+            <h3 className="mb-4 text-ios-subhead font-semibold text-[rgba(0,0,0,0.85)]">常见问题</h3>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {FAQ.map((item) => (
                 <div key={item.q}>
@@ -246,19 +245,6 @@ export function PricingClient() {
                 </div>
               ))}
             </div>
-          </div>
-
-          {/* Store link */}
-          <div className="mt-6 text-center">
-            <a
-              href="https://store.tinchak0207.xyz"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 text-ios-footnote text-[rgba(0,0,0,0.36)] hover:text-[rgba(0,0,0,0.60)] transition-colors"
-            >
-              前往充值商店
-              <ExternalLink className="h-3 w-3" />
-            </a>
           </div>
 
         </div>
@@ -271,28 +257,28 @@ export function PricingClient() {
 
 const FAQ = [
   {
-    q: "額度過期了怎麼辦？",
-    a: "到期前 3 天會發通知。過期後未用完的額度，我們會退一張等值折扣券，有效期 72 小時。",
+    q: "额度过期了怎么办？",
+    a: "到期前 3 天会提醒。过期后如果还有没用完的额度，我们会退一张等值折扣券，有效期 72 小时。",
   },
   {
-    q: "邀請獎勵是現金嗎？",
-    a: "不是。獎勵以生成額度形式發放，不可提現，不可轉讓。這樣我們才能把成本壓到最低，讓你的單張成本更便宜。",
+    q: "邀请奖励是现金吗？",
+    a: "不是。奖励会以生成额度形式发放，不能提现，也不能转让。",
   },
   {
-    q: "支援哪些模型？",
-    a: "所有方案均支援平台上架的全部模型，包括 GPT-Image、DALL·E 等，不額外收費。",
+    q: "支持哪些模型？",
+    a: "所有方案都支持平台上架的全部模型，包括 GPT-Image、DALL·E 等，不会额外收费。",
   },
   {
-    q: "可以退款嗎？",
-    a: "虛擬商品一經發放不支援退款。如遇平台故障導致無法使用，會按比例補償額度。",
+    q: "可以退款吗？",
+    a: "虚拟商品一经发放就不支持退款。如果因为平台故障导致无法使用，会按比例补偿额度。",
   },
   {
-    q: "一張圖消耗多少額度？",
-    a: "根據模型和解析度不同，通常 1 張消耗 1 個額度單位。高解析度或特殊模型可能消耗 2-3 個。",
+    q: "一张图会消耗多少额度？",
+    a: "会根据模型和分辨率不同而变化。通常 1 张图消耗 1 个额度单位，高分辨率或特殊模型可能消耗 2 到 3 个。",
   },
   {
-    q: "充值後多久到帳？",
-    a: "通過兌換碼充值即時到帳。如有延遲請聯繫客服，通常 5 分鐘內解決。",
+    q: "充值后多久到账？",
+    a: "通过兑换码充值会立即到账。如果有延迟，请联系客服，通常 5 分钟内可以解决。",
   },
 ];
 

@@ -6,7 +6,7 @@ export async function GET(req: NextRequest) {
   const authHeader = req.headers.get("authorization");
   const userIdHeader = req.headers.get("x-user-id");
   if (!authHeader?.startsWith("Bearer ")) {
-    return NextResponse.json({ success: false, message: "未授權" }, { status: 401 });
+    return NextResponse.json({ success: false, message: "未授权" }, { status: 401 });
   }
   const token = authHeader.slice(7);
 
@@ -31,6 +31,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(data);
   } catch (err) {
     console.error("[auth/me]", err);
-    return NextResponse.json({ success: false, message: "服務暫時不可用" }, { status: 503 });
+    return NextResponse.json({ success: false, message: "服务暂时不可用" }, { status: 503 });
   }
 }

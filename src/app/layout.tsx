@@ -20,9 +20,9 @@ const geistMono = localFont({
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://image.tinchak0207.xyz"),
-  title: "image.tinchak0207.xyz — AI 生圖工作室",
+  title: "image.tinchak0207.xyz — AI 做图工作室",
   description:
-    "只要說話，就能做出好圖片。商品照、社群海報、小店宣傳都能快速開始。",
+    "只要说话，就能做出好图片。商品图、社交海报、小店宣传都能快速开始。",
 };
 
 export default function RootLayout({
@@ -31,7 +31,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="zh-Hant" className={`${geistSans.variable} ${geistMono.variable}`}>
+    <html lang="zh-CN" className={`${geistSans.variable} ${geistMono.variable}`}>
       <body className="font-sans antialiased text-[15px] text-foreground">
         <AuthProvider>
           <Navbar />

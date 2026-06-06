@@ -37,7 +37,7 @@ export function AuthModal({ open, onClose, defaultTab = "login" }: AuthModalProp
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!username.trim() || !password.trim()) {
-      setError("請填寫帳號和密碼");
+      setError("请填写账号和密码");
       return;
     }
     setIsLoading(true);
@@ -50,7 +50,7 @@ export function AuthModal({ open, onClose, defaultTab = "login" }: AuthModalProp
     setIsLoading(false);
 
     if (!result.ok) {
-      setError(result.error ?? "操作失敗");
+      setError(result.error ?? "操作失败");
       return;
     }
 
@@ -64,7 +64,7 @@ export function AuthModal({ open, onClose, defaultTab = "login" }: AuthModalProp
       className="fixed inset-0 z-50 flex items-end justify-center sm:items-center px-0 sm:px-4"
       role="dialog"
       aria-modal="true"
-      aria-label={tab === "login" ? "登錄" : "注冊"}
+      aria-label={tab === "login" ? "登录" : "注册"}
     >
       {/* Scrim */}
       <div
@@ -84,7 +84,7 @@ export function AuthModal({ open, onClose, defaultTab = "login" }: AuthModalProp
           type="button"
           onClick={handleClose}
           className="absolute right-5 top-5 lg-float flex h-8 w-8 items-center justify-center rounded-full text-[rgba(0,0,0,0.44)] lg-transition hover:text-[rgba(0,0,0,0.72)] cursor-pointer"
-          aria-label="關閉"
+          aria-label="关闭"
         >
           <X className="h-3.5 w-3.5" />
         </button>
@@ -103,7 +103,7 @@ export function AuthModal({ open, onClose, defaultTab = "login" }: AuthModalProp
                   : "text-[rgba(0,0,0,0.44)] hover:text-[rgba(0,0,0,0.72)]",
               )}
             >
-              {t === "login" ? "登錄" : "注冊"}
+              {t === "login" ? "登录" : "注册"}
             </button>
           ))}
         </div>
@@ -112,7 +112,7 @@ export function AuthModal({ open, onClose, defaultTab = "login" }: AuthModalProp
           {/* Username */}
           <div className="space-y-1.5">
             <label htmlFor="auth-username" className="text-ios-caption1 font-semibold uppercase tracking-widest text-[rgba(0,0,0,0.36)]">
-              帳號
+              账号
             </label>
             <input
               id="auth-username"
@@ -120,7 +120,7 @@ export function AuthModal({ open, onClose, defaultTab = "login" }: AuthModalProp
               autoComplete={tab === "login" ? "username" : "new-password"}
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              placeholder="輸入你的帳號"
+              placeholder="输入你的账号"
               className="w-full rounded-ios-xl border-0 bg-[rgba(0,0,0,0.04)] px-4 py-3.5 text-ios-body text-[rgba(0,0,0,0.85)] placeholder:text-[rgba(0,0,0,0.28)] outline-none focus:bg-[rgba(0,122,255,0.06)] focus:ring-2 focus:ring-[rgba(0,122,255,0.28)] transition-all duration-200"
             />
           </div>
@@ -129,7 +129,7 @@ export function AuthModal({ open, onClose, defaultTab = "login" }: AuthModalProp
           {tab === "register" && (
             <div className="space-y-1.5">
               <label htmlFor="auth-email" className="text-ios-caption1 font-semibold uppercase tracking-widest text-[rgba(0,0,0,0.36)]">
-                電郵（選填）
+                邮箱（选填）
               </label>
               <input
                 id="auth-email"
@@ -146,7 +146,7 @@ export function AuthModal({ open, onClose, defaultTab = "login" }: AuthModalProp
           {/* Password */}
           <div className="space-y-1.5">
             <label htmlFor="auth-password" className="text-ios-caption1 font-semibold uppercase tracking-widest text-[rgba(0,0,0,0.36)]">
-              密碼
+              密码
             </label>
             <div className="relative">
               <input
@@ -155,14 +155,14 @@ export function AuthModal({ open, onClose, defaultTab = "login" }: AuthModalProp
                 autoComplete={tab === "login" ? "current-password" : "new-password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="輸入密碼"
+                placeholder="输入密码"
                 className="w-full rounded-ios-xl border-0 bg-[rgba(0,0,0,0.04)] px-4 py-3.5 pr-12 text-ios-body text-[rgba(0,0,0,0.85)] placeholder:text-[rgba(0,0,0,0.28)] outline-none focus:bg-[rgba(0,122,255,0.06)] focus:ring-2 focus:ring-[rgba(0,122,255,0.28)] transition-all duration-200"
               />
               <button
                 type="button"
                 onClick={() => setShowPw((v) => !v)}
                 className="absolute right-4 top-1/2 -translate-y-1/2 text-[rgba(0,0,0,0.30)] hover:text-[rgba(0,0,0,0.56)] lg-transition cursor-pointer"
-                aria-label={showPw ? "隱藏密碼" : "顯示密碼"}
+                aria-label={showPw ? "隐藏密码" : "显示密码"}
               >
                 {showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
@@ -190,7 +190,7 @@ export function AuthModal({ open, onClose, defaultTab = "login" }: AuthModalProp
             className="mt-2 w-full inline-flex items-center justify-center gap-2 rounded-ios-xl bg-[#007AFF] px-5 py-4 text-ios-body font-semibold text-white shadow-[0_4px_16px_rgba(0,122,255,0.28)] lg-transition hover:bg-[#0066DD] hover:shadow-[0_6px_20px_rgba(0,122,255,0.36)] disabled:cursor-not-allowed disabled:bg-[rgba(0,0,0,0.18)] disabled:shadow-none cursor-pointer"
           >
             {isLoading && <LoaderCircle className="h-4 w-4 animate-spin" />}
-            {tab === "login" ? "登錄" : "建立帳號"}
+            {tab === "login" ? "登录" : "创建账号"}
           </button>
         </form>
 

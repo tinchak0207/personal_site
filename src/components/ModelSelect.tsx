@@ -52,7 +52,7 @@ export function ModelSelect({
 
   const status = failed
     ? {
-        label: "需要重試",
+        label: "需要重试",
         className: "lg-tint-red text-[#FF3B30]",
         icon: <AlertTriangle className="h-3.5 w-3.5" />,
       }
@@ -69,7 +69,7 @@ export function ModelSelect({
             icon: <CheckCircle2 className="h-3.5 w-3.5" />,
           }
         : {
-            label: "目前可用",
+            label: "当前可用",
             className: "lg-float text-[rgba(0,0,0,0.44)]",
             icon: null,
           };
@@ -104,7 +104,7 @@ export function ModelSelect({
               onValueChange={(v) => onChange(v, providerKey)}
             >
               <SelectTrigger className="min-w-[180px] rounded-ios-xl border-0 bg-[rgba(0,0,0,0.04)] px-4 py-2.5 text-ios-footnote font-medium text-[rgba(0,0,0,0.72)] shadow-none focus:ring-2 focus:ring-[rgba(0,122,255,0.20)]">
-                <SelectValue placeholder={value || "選擇模型"} />
+                <SelectValue placeholder={value || "选择模型"} />
               </SelectTrigger>
               <SelectContent className="rounded-ios-xl border-0 lg-sheet">
                 <SelectGroup>
@@ -122,7 +122,7 @@ export function ModelSelect({
             </Select>
 
             {/* Status badge — only show when generating or done */}
-            {(status.label !== "目前可用") && (
+            {(status.label !== "当前可用") && (
             <div
               className={cn(
                 "inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3.5 py-2 text-ios-footnote font-semibold",

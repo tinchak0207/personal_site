@@ -32,17 +32,17 @@ function usernameFrom(token: string): string | null {
 // ─── Auth ─────────────────────────────────────────────────────────────────────
 
 export function mockRegister(username: string, _password: string, email?: string) {
-  if (!username.trim()) return { success: false, message: "請填寫帳號" };
+  if (!username.trim()) return { success: false, message: "请填写账号" };
   const user = mockUser(username);
   if (email) user.email = email;
-  return { success: true, message: "注冊成功", data: { token: tokenFor(username), user } };
+  return { success: true, message: "注册成功", data: { token: tokenFor(username), user } };
 }
 
 export function mockLogin(username: string, password: string) {
   if (!username.trim() || !password.trim()) {
-    return { success: false, message: "帳號或密碼錯誤" };
+    return { success: false, message: "账号或密码错误" };
   }
-  return { success: true, message: "登錄成功", data: { token: tokenFor(username), user: mockUser(username) } };
+  return { success: true, message: "登录成功", data: { token: tokenFor(username), user: mockUser(username) } };
 }
 
 export function mockGetSelf(token: string) {

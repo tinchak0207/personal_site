@@ -84,7 +84,7 @@ export async function loginViaNewApi(baseUrl: string, username: string, password
     return {
       ok: false,
       status: 401,
-      message: loginData.message ?? "登錄失敗，請重試",
+      message: loginData.message ?? "登录失败，请重试",
     } as const;
   }
 
@@ -93,7 +93,7 @@ export async function loginViaNewApi(baseUrl: string, username: string, password
     return {
       ok: false,
       status: 503,
-      message: "後端沒有返回 session cookie。",
+      message: "后端没有返回 session cookie。",
     } as const;
   }
 
@@ -109,7 +109,7 @@ export async function loginViaNewApi(baseUrl: string, username: string, password
     return {
       ok: false,
       status: 503,
-      message: selfData.message ?? "獲取用戶信息失敗。",
+      message: selfData.message ?? "获取用户信息失败。",
     } as const;
   }
 
@@ -117,7 +117,7 @@ export async function loginViaNewApi(baseUrl: string, username: string, password
     return {
       ok: false,
       status: 503,
-      message: tokenData.message ?? "生成 access token 失敗。",
+      message: tokenData.message ?? "生成 access token 失败。",
     } as const;
   }
 

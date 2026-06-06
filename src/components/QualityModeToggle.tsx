@@ -27,13 +27,13 @@ export function QualityModeToggle({
           onClick={() => {
             onValueChange("performance");
             toast({
-              description: "已切到快速出圖，先幫你更快看到第一版。",
+              description: "已切到快速出图，会更快看到第一版。",
               duration: 2000,
             });
           }}
         >
           <Zap className="h-4 w-4 mr-2" />
-          快速出圖
+          快速出图
         </Button>
         <Button
           variant="secondary"
@@ -41,13 +41,13 @@ export function QualityModeToggle({
           onClick={() => {
             onValueChange("quality");
             toast({
-              description: "已切到細節優先，會更專注在畫面完整度。",
+              description: "已切到细节优先，会更注重画面完整度。",
               duration: 2000,
             });
           }}
         >
           <Sparkles className="h-4 w-4 mr-2" />
-          細節優先
+          细节优先
         </Button>
       </div>
     </div>

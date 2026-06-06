@@ -3,7 +3,7 @@ export type ModelMode = "fast" | "quality";
 
 export const PROVIDERS = {
   image_tinchak: {
-    displayName: "圖像引擎",
+    displayName: "图像引擎",
     iconPath: "/provider-icons/openai.svg",
     color: "from-slate-200 to-white",
     models: ["gpt-image-2"],

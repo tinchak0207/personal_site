@@ -21,8 +21,8 @@ interface PromptInputProps {
 }
 
 const MODE_OPTIONS: { value: ModelMode; label: string; desc: string }[] = [
-  { value: "fast",    label: "快速出圖",  desc: "速度優先，適合快速預覽" },
-  { value: "quality", label: "高質感",    desc: "細節更豐富，稍慢" },
+  { value: "fast",    label: "快速出图",  desc: "速度优先，适合快速预览" },
+  { value: "quality", label: "高质感",    desc: "细节更丰富，但会稍慢一些" },
 ];
 
 export function PromptInput({
@@ -71,12 +71,12 @@ export function PromptInput({
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="試試：幫我把這瓶香水放在落日的海灘上，要有高級網美風的環境光"
+            placeholder="试试：帮我把这瓶香水放在落日海滩上，要有高级感和自然环境光"
             rows={5}
             className="min-h-[180px] rounded-ios-2xl border-0 bg-[rgba(0,0,0,0.04)] px-5 py-4 pb-8 text-ios-body text-[rgba(0,0,0,0.85)] placeholder:text-[rgba(0,0,0,0.24)] focus:bg-[rgba(0,122,255,0.04)] focus:ring-2 focus:ring-[rgba(0,122,255,0.20)] resize-none transition-all duration-200 [background-image:none]"
           />
           <p className="pointer-events-none absolute bottom-3 right-4 select-none text-ios-caption2 text-[rgba(0,0,0,0.22)]">
-            Enter 送出 · Shift+Enter 換行
+            Enter 发送 · Shift+Enter 换行
           </p>
         </div>
 
@@ -89,7 +89,7 @@ export function PromptInput({
           {/* 畫質 dropdown */}
           <div className="flex items-center gap-2">
             <span className="shrink-0 text-ios-caption1 font-semibold uppercase tracking-widest text-[rgba(0,0,0,0.30)]">
-              畫質
+              画质
             </span>
             <div className="relative">
               <select
@@ -108,7 +108,7 @@ export function PromptInput({
           {/* 風格 chips inline — label 固定不換行，chips 區域自由換行 */}
           <div className="flex flex-wrap items-center gap-x-2 gap-y-2">
             <span className="shrink-0 text-ios-caption1 font-semibold uppercase tracking-widest text-[rgba(0,0,0,0.30)]">
-              風格
+              风格
             </span>
             <div className="flex flex-wrap gap-1.5">
               <StylePresets value={stylePreset} onChange={onStyleChange} inline />
@@ -126,13 +126,13 @@ export function PromptInput({
           {/* 範例 inline */}
           <div className="flex flex-wrap items-center gap-x-2 gap-y-2">
             <span className="shrink-0 text-ios-caption1 font-semibold uppercase tracking-widest text-[rgba(0,0,0,0.30)]">
-              範例
+              示例
             </span>
             <button
               type="button"
               onClick={updateSuggestions}
               className="lg-float flex h-6 w-6 items-center justify-center rounded-full text-[rgba(0,0,0,0.36)] lg-transition hover:text-[rgba(0,0,0,0.64)] cursor-pointer"
-              aria-label="換一批範例"
+              aria-label="换一批示例"
             >
               <RefreshCw className="h-3 w-3" />
             </button>
@@ -159,9 +159,9 @@ export function PromptInput({
             className="inline-flex shrink-0 items-center justify-center gap-2 rounded-ios-xl bg-[#007AFF] px-6 py-3 text-ios-body font-semibold text-white shadow-[0_6px_24px_rgba(0,122,255,0.40),0_2px_8px_rgba(0,122,255,0.24)] transition-all duration-200 hover:bg-[#0066DD] hover:shadow-[0_10px_32px_rgba(0,122,255,0.52),0_4px_12px_rgba(0,122,255,0.30)] hover:scale-[1.025] active:scale-[0.97] disabled:cursor-not-allowed disabled:bg-[rgba(0,0,0,0.16)] disabled:shadow-none disabled:scale-100 cursor-pointer"
           >
             {isLoading ? (
-              <><Spinner className="h-4 w-4 text-white" />正在做圖</>
+              <><Spinner className="h-4 w-4 text-white" />正在出图</>
             ) : (
-              <>開始做圖<ArrowUpRight className="h-4 w-4" /></>
+              <>开始做图<ArrowUpRight className="h-4 w-4" /></>
             )}
           </button>
         </div>
