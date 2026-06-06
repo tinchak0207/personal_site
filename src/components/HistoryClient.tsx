@@ -8,13 +8,22 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { AuthModal } from "@/components/AuthModal";
+import {
+  mergePersistedHistory,
+  readGenerationCache,
+  type PersistedGenerationEntry,
+} from "@/lib/generation-cache";
 
 interface LogEntry {
-  id: number;
+  id: number | string;
   created_at: number;
   model: string;
   quota: number;
   channel_name?: string;
+  prompt?: string;
+  image?: string | null;
+  imageUrl?: string | null;
+  source?: "server" | "local";
 }
 
 interface LogStat {
@@ -38,7 +47,7 @@ function quotaToCoins(quota: number) {
 }
 
 export function HistoryClient() {
-  const { token, isLoggedIn } = useAuth();
+  const { token, isLoggedIn, user } = useAuth();
   const [authOpen, setAuthOpen] = useState(false);
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [stat, setStat] = useState<LogStat | null>(null);
@@ -49,7 +58,7 @@ export function HistoryClient() {
   const [search, setSearch] = useState("");
 
   const fetchLogs = useCallback(async (p: number, kw: string) => {
-    if (!token) return;
+    if (!token || !user) return;
     setLoading(true);
     try {
       const params = new URLSearchParams({
@@ -62,13 +71,41 @@ export function HistoryClient() {
       });
       const json = await res.json();
       if (json.success && Array.isArray(json.data)) {
-        setLogs(json.data);
-        setHasMore(json.data.length === PAGE_SIZE);
+        const serverEntries: PersistedGenerationEntry[] = json.data.map((item: LogEntry) => ({
+          id: `server-${item.id}`,
+          prompt: item.prompt ?? item.model,
+          generatedAt: item.created_at * 1000,
+          results: item.image || item.imageUrl ? [{
+            provider: "image_tinchak",
+            modelId: item.model,
+            image: item.image ?? null,
+            imageUrl: item.imageUrl ?? null,
+          }] : [],
+          source: "server",
+        }));
+
+        const merged = mergePersistedHistory(readGenerationCache(), user.id, serverEntries);
+        const visible = merged
+          .filter((entry) => !kw || entry.prompt.includes(kw) || entry.results.some((result) => result.modelId.includes(kw)))
+          .slice(p * PAGE_SIZE, (p + 1) * PAGE_SIZE)
+          .map((entry) => ({
+            id: entry.id,
+            created_at: Math.floor(entry.generatedAt / 1000),
+            model: entry.results[0]?.modelId ?? "gpt-image-2",
+            quota: 0,
+            prompt: entry.prompt,
+            image: entry.results[0]?.image ?? null,
+            imageUrl: entry.results[0]?.imageUrl ?? null,
+            source: entry.source,
+          }));
+
+        setLogs(visible);
+        setHasMore(merged.length > (p + 1) * PAGE_SIZE);
       }
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, [token, user]);
 
   const fetchStat = useCallback(async () => {
     if (!token) return;
@@ -217,18 +254,34 @@ export function HistoryClient() {
                       <ImageIcon className="h-3.5 w-3.5 text-[rgba(0,122,255,0.55)]" />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-ios-footnote font-medium text-[rgba(0,0,0,0.75)]">{log.model}</p>
+                      <p className="truncate text-ios-footnote font-medium text-[rgba(0,0,0,0.75)]">{log.prompt || log.model}</p>
                       <div className="mt-0.5 flex items-center gap-1.5">
                         <Clock className="h-2.5 w-2.5 text-[rgba(0,0,0,0.25)]" />
                         <span className="text-ios-caption2 text-[rgba(0,0,0,0.35)]">{formatTime(log.created_at)}</span>
                         {log.channel_name && (
                           <span className="text-ios-caption2 text-[rgba(0,0,0,0.25)]">· {log.channel_name}</span>
                         )}
+                        {log.source === "local" && (
+                          <span className="text-ios-caption2 text-[rgba(0,0,0,0.25)]">· 本地缓存</span>
+                        )}
                       </div>
                     </div>
                     <div className="shrink-0 flex items-center gap-1">
-                      <Coins className="h-3 w-3 text-[rgba(120,90,20,0.45)]" />
-                      <span className="text-ios-caption1 font-semibold tabular-nums text-[rgba(0,0,0,0.55)]">{quotaToCoins(log.quota)}</span>
+                      {(log.image || log.imageUrl) ? (
+                        <div className="h-10 w-10 overflow-hidden rounded-ios-lg border border-[rgba(0,0,0,0.08)] bg-[rgba(0,0,0,0.03)]">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={log.image ? `data:image/png;base64,${log.image}` : (log.imageUrl ?? undefined)}
+                            alt="历史图片预览"
+                            className="h-full w-full object-cover"
+                          />
+                        </div>
+                      ) : (
+                        <>
+                          <Coins className="h-3 w-3 text-[rgba(120,90,20,0.45)]" />
+                          <span className="text-ios-caption1 font-semibold tabular-nums text-[rgba(0,0,0,0.55)]">{quotaToCoins(log.quota)}</span>
+                        </>
+                      )}
                     </div>
                   </div>
                 ))}

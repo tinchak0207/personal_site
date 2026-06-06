@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Coins, Gift, CheckCircle2, CreditCard } from "lucide-react";
+import { formatCheckinRewardText, quotaToRewardCount } from "@/lib/checkin-copy";
 import { useAuth } from "@/hooks/use-auth";
 import { quotaToCoins, fetchCheckinStatus, doCheckin } from "@/lib/new-api-client";
 import { cn } from "@/lib/utils";
@@ -17,12 +18,18 @@ export function WalletBadge({ className, showTopUp = true }: WalletBadgeProps) {
   const [canCheckin, setCanCheckin] = useState(false);
   const [checkinLoading, setCheckinLoading] = useState(false);
   const [checkinDone, setCheckinDone] = useState(false);
+  const [checkinRewardCount, setCheckinRewardCount] = useState<number | null>(null);
 
   // Check checkin status on mount
   useEffect(() => {
     if (!token) return;
     fetchCheckinStatus(token)
-      .then((res) => { if (res.success && res.data) setCanCheckin(res.data.can_checkin); })
+      .then((res) => {
+        if (res.success && res.data) {
+          setCanCheckin(res.data.can_checkin);
+          if (res.data.quota) setCheckinRewardCount(quotaToRewardCount(res.data.quota));
+        }
+      })
       .catch(() => {});
   }, [token]);
 
@@ -38,6 +45,7 @@ export function WalletBadge({ className, showTopUp = true }: WalletBadgeProps) {
       if (res.success) {
         setCanCheckin(false);
         setCheckinDone(true);
+        if (res.data?.quota) setCheckinRewardCount(quotaToRewardCount(res.data.quota));
         // Refresh quota display
         await refresh();
       }
@@ -59,24 +67,27 @@ export function WalletBadge({ className, showTopUp = true }: WalletBadgeProps) {
 
       {/* Daily checkin button */}
       {canCheckin && !checkinDone && (
-        <button
-          type="button"
-          onClick={handleCheckin}
-          disabled={checkinLoading}
-          className="lg-tint-green inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-ios-caption1 font-semibold text-[#34C759] lg-transition hover:opacity-80 cursor-pointer disabled:opacity-50"
-          aria-label="每日签到领取币"
-          title="每日签到"
-        >
-          <Gift className="h-3 w-3" aria-hidden="true" />
-          签到
-        </button>
+        <div className="inline-flex items-center gap-2">
+          <button
+            type="button"
+            onClick={handleCheckin}
+            disabled={checkinLoading}
+            className="lg-tint-green inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-ios-caption1 font-semibold text-[#34C759] lg-transition hover:opacity-80 cursor-pointer disabled:opacity-50"
+            aria-label="每日签到领取额度"
+            title={formatCheckinRewardText()}
+          >
+            <Gift className="h-3 w-3" aria-hidden="true" />
+            签到
+          </button>
+          <span className="text-ios-caption2 text-[rgba(0,0,0,0.38)]">{formatCheckinRewardText()}</span>
+        </div>
       )}
 
       {/* Checkin done indicator (fades after 3s) */}
       {checkinDone && (
         <span className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-ios-caption2 text-[#34C759]">
           <CheckCircle2 className="h-3 w-3" aria-hidden="true" />
-          已签到
+          {formatCheckinRewardText(checkinRewardCount ?? undefined)}
         </span>
       )}
 

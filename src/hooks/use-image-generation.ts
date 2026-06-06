@@ -1,6 +1,12 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ImageError, ImageResult, ProviderTiming } from "@/lib/image-types";
 import { initializeProviderRecord, ProviderKey } from "@/lib/provider-config";
+import { getStoredUser } from "@/lib/new-api-client";
+import {
+  readGenerationCache,
+  recordGenerationResult,
+  writeGenerationCache,
+} from "@/lib/generation-cache";
 
 interface UseImageGenerationReturn {
   images: ImageResult[];
@@ -26,6 +32,25 @@ export function useImageGeneration(): UseImageGenerationReturn {
   const [failedProviders, setFailedProviders] = useState<ProviderKey[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [activePrompt, setActivePrompt] = useState("");
+
+  useEffect(() => {
+    const user = getStoredUser();
+    if (!user) return;
+
+    const cache = readGenerationCache();
+    const current = cache.current;
+    if (!current || current.userId !== user.id) return;
+
+    setActivePrompt(current.prompt);
+    setImages(
+      current.results.map((result) => ({
+        provider: result.provider,
+        image: result.image,
+        imageUrl: result.imageUrl,
+        modelId: result.modelId,
+      })),
+    );
+  }, []);
 
   const resetState = () => {
     setImages([]);
@@ -104,13 +129,18 @@ export function useImageGeneration(): UseImageGenerationReturn {
           );
 
           // Update image in state
+          const result = {
+            provider,
+            image: data.image ?? null,
+            imageUrl: data.imageUrl ?? null,
+            modelId,
+          };
           setImages((prevImages) =>
             prevImages.map((item) =>
-              item.provider === provider
-                ? { ...item, image: data.image ?? null, imageUrl: data.imageUrl ?? null, modelId }
-                : item,
+              item.provider === provider ? { ...item, ...result } : item,
             ),
           );
+          return result;
         } catch (err) {
           console.error(
             `Error [provider=${provider}, modelId=${modelId}]:`,
@@ -128,13 +158,18 @@ export function useImageGeneration(): UseImageGenerationReturn {
             },
           ]);
 
+          const result = {
+            provider,
+            image: null,
+            imageUrl: null,
+            modelId,
+          };
           setImages((prevImages) =>
             prevImages.map((item) =>
-              item.provider === provider
-                ? { ...item, image: null, imageUrl: null, modelId }
-                : item,
+              item.provider === provider ? { ...item, ...result } : item,
             ),
           );
+          return result;
         }
       };
 
@@ -144,7 +179,19 @@ export function useImageGeneration(): UseImageGenerationReturn {
         return generateImage(provider, modelId);
       });
 
-      await Promise.all(fetchPromises);
+      const completedResults = await Promise.all(fetchPromises);
+
+      const user = getStoredUser();
+      if (user) {
+        const updatedCache = recordGenerationResult(readGenerationCache(), {
+          userId: user.id,
+          username: user.username,
+          prompt,
+          generatedAt: Date.now(),
+          results: completedResults,
+        });
+        writeGenerationCache(updatedCache);
+      }
     } catch (error) {
       console.error("Error fetching images:", error);
     } finally {
