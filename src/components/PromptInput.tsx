@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ArrowUpRight, RefreshCw, ChevronDown } from "lucide-react";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
@@ -18,6 +18,7 @@ interface PromptInputProps {
   onStyleChange: (preset: StylePreset) => void;
   mode: ModelMode;
   onModeChange: (mode: ModelMode) => void;
+  externalPrompt?: string;
 }
 
 const MODE_OPTIONS: { value: ModelMode; label: string; desc: string }[] = [
@@ -34,9 +35,14 @@ export function PromptInput({
   onStyleChange,
   mode,
   onModeChange,
+  externalPrompt,
 }: PromptInputProps) {
   const [input, setInput] = useState("");
   const [suggestions, setSuggestions] = useState<Suggestion[]>(initialSuggestions);
+
+  useEffect(() => {
+    if (externalPrompt) setInput(externalPrompt);
+  }, [externalPrompt]);
 
   const updateSuggestions = () => setSuggestions(getRandomSuggestions());
 

@@ -3,6 +3,7 @@
 import { useState, useCallback } from "react";
 import { ModelSelect } from "@/components/ModelSelect";
 import { PromptInput } from "@/components/PromptInput";
+import { CaseShowcase } from "@/components/CaseShowcase";
 import { AuthModal } from "@/components/AuthModal";
 import { useImageGeneration } from "@/hooks/use-image-generation";
 import { useAuth } from "@/hooks/use-auth";
@@ -27,11 +28,18 @@ export function ImagePlayground({ suggestions }: { suggestions: Suggestion[] }) 
   const [mode, setMode] = useState<ModelMode>("fast");
   const [selectedModels, setSelectedModels] = useState(MODEL_CONFIGS.fast);
   const [stylePreset, setStylePreset] = useState<StylePreset>("none");
+  const [casePrompt, setCasePrompt] = useState("");
   const [authOpen, setAuthOpen] = useState(false);
 
   const handleModeChange = (newMode: ModelMode) => {
     setMode(newMode);
     setSelectedModels(MODEL_CONFIGS[newMode]);
+  };
+
+  const handleUseCasePrompt = (prompt: string, style: StylePreset) => {
+    setCasePrompt(prompt);
+    setStylePreset(style);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const handlePromptSubmit = useCallback(async (rawPrompt: string) => {
@@ -94,6 +102,7 @@ export function ImagePlayground({ suggestions }: { suggestions: Suggestion[] }) 
               onStyleChange={setStylePreset}
               mode={mode}
               onModeChange={handleModeChange}
+              externalPrompt={casePrompt}
             />
 
             <div className="space-y-3">
@@ -104,6 +113,8 @@ export function ImagePlayground({ suggestions }: { suggestions: Suggestion[] }) 
           </div>
         </div>
       </div>
+
+      <CaseShowcase onUsePrompt={handleUseCasePrompt} />
 
       {(isLoading || failedProviders.length > 0) && (
         <div className="pointer-events-none fixed inset-x-0 bottom-4 z-30 flex justify-center px-4 sm:bottom-6">
