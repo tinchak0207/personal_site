@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import type { GenerateImageRequest } from "@/lib/api-types";
 import { MOCK_MODE, mockGenerateImage } from "@/lib/mock";
 import { buildGatewayEndpoints } from "@/lib/sub2api";
+import { publicImageUrl } from "@/lib/image-url";
+import { saveGeneratedHistoryEntry } from "@/lib/server-history-store";
+import { getStoredUserFromHeaders } from "@/lib/server-user";
 
 const DEFAULT_IMAGE_SIZE = "1024x1024";
 
@@ -52,11 +55,12 @@ async function requestImageGeneration(
     throw new Error(`No image payload returned from ${endpoint.label} endpoint.`);
   }
 
-  return { image: firstItem.b64_json ?? null, imageUrl: firstItem.url ?? null };
+  return { image: firstItem.b64_json ?? null, imageUrl: publicImageUrl(firstItem.url) };
 }
 
 export async function POST(req: NextRequest) {
   const requestId = Math.random().toString(36).slice(2);
+  const user = getStoredUserFromHeaders(req);
   const { prompt, modelId } = (await req.json()) as GenerateImageRequest;
 
   if (!prompt || !modelId) {
@@ -89,6 +93,22 @@ export async function POST(req: NextRequest) {
   for (const endpoint of endpoints) {
     try {
       const result = await requestImageGeneration(endpoint, prompt, modelId);
+      if (user) {
+        await saveGeneratedHistoryEntry({
+          id: `${user.id}-${Date.now()}`,
+          userId: user.id,
+          prompt,
+          generatedAt: Date.now(),
+          results: [
+            {
+              provider: "image_tinchak",
+              modelId,
+              image: result.image,
+              imageUrl: result.imageUrl,
+            },
+          ],
+        });
+      }
       console.log(`Completed [requestId=${requestId}, model=${modelId}, endpoint=${endpoint.label}]`);
       return NextResponse.json({ provider: "image_tinchak", image: result.image, imageUrl: result.imageUrl });
     } catch (error) {

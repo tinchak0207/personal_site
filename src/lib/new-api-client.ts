@@ -113,6 +113,19 @@ export interface NewApiModel {
   owned_by?: string;
 }
 
+export interface StoredHistoryEntry {
+  id: string;
+  userId: number;
+  prompt: string;
+  generatedAt: number;
+  results: Array<{
+    provider: string;
+    modelId: string;
+    image?: string | null;
+    imageUrl?: string | null;
+  }>;
+}
+
 // ─── Client-side API helpers (all go through /api/* proxy) ───────────────────
 
 function bearerHeader(token: string) {
@@ -199,6 +212,13 @@ export async function fetchAffCode(
 ): Promise<{ success: boolean; data?: string; message?: string }> {
   const res = await fetch(`/api/user/aff`, { headers: bearerHeader(token) });
   return res.json() as Promise<{ success: boolean; data?: string; message?: string }>;
+}
+
+export async function fetchStoredHistory(
+  token: string,
+): Promise<{ success: boolean; data?: StoredHistoryEntry[]; message?: string }> {
+  const res = await fetch(`/api/history`, { headers: bearerHeader(token), cache: "no-store" });
+  return res.json() as Promise<{ success: boolean; data?: StoredHistoryEntry[]; message?: string }>;
 }
 
 /** Fetch user's API token list */

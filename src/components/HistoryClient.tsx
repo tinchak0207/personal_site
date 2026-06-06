@@ -13,6 +13,7 @@ import {
   readGenerationCache,
   type PersistedGenerationEntry,
 } from "@/lib/generation-cache";
+import { fetchStoredHistory } from "@/lib/new-api-client";
 
 interface LogEntry {
   id: number | string;
@@ -69,9 +70,13 @@ export function HistoryClient() {
       const res = await fetch(`/api/log/self?${params}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      const json = await res.json();
+      const [json, storedHistory] = await Promise.all([
+        res.json(),
+        fetchStoredHistory(token),
+      ]);
+
       if (json.success && Array.isArray(json.data)) {
-        const serverEntries: PersistedGenerationEntry[] = json.data.map((item: LogEntry) => ({
+        const logEntries: PersistedGenerationEntry[] = json.data.map((item: LogEntry) => ({
           id: `server-${item.id}`,
           prompt: item.prompt ?? item.model,
           generatedAt: item.created_at * 1000,
@@ -84,7 +89,26 @@ export function HistoryClient() {
           source: "server",
         }));
 
-        const merged = mergePersistedHistory(readGenerationCache(), user.id, serverEntries);
+        const persistedEntries: PersistedGenerationEntry[] = Array.isArray(storedHistory.data)
+          ? storedHistory.data.map((entry) => ({
+              id: entry.id,
+              prompt: entry.prompt,
+              generatedAt: entry.generatedAt,
+              results: entry.results.map((result) => ({
+                provider: result.provider as "image_tinchak",
+                modelId: result.modelId,
+                image: result.image ?? null,
+                imageUrl: result.imageUrl ?? null,
+              })),
+              source: "server",
+            }))
+          : [];
+
+        const merged = mergePersistedHistory(
+          readGenerationCache(),
+          user.id,
+          [...persistedEntries, ...logEntries],
+        );
         const visible = merged
           .filter((entry) => !kw || entry.prompt.includes(kw) || entry.results.some((result) => result.modelId.includes(kw)))
           .slice(p * PAGE_SIZE, (p + 1) * PAGE_SIZE)
