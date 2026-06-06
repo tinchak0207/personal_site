@@ -22,21 +22,21 @@ export interface StylePresetMeta {
 export const STYLE_PRESETS: StylePresetMeta[] = [
   {
     key: "realistic",
-    label: "寫實攝影",
+    label: "写实摄影",
     icon: "Camera",
     suffix:
       "photorealistic, DSLR photography, natural lighting, sharp focus, 8K resolution, professional color grading",
   },
   {
     key: "anime",
-    label: "動漫插畫",
+    label: "动漫插画",
     icon: "Sparkles",
     suffix:
       "anime style illustration, vibrant colors, clean linework, studio ghibli inspired, detailed background",
   },
   {
     key: "street",
-    label: "網感街拍",
+    label: "网感街拍",
     icon: "Zap",
     suffix:
       "street photography aesthetic, film grain, candid moment, urban environment, trendy composition, social media ready",
@@ -50,14 +50,14 @@ export const STYLE_PRESETS: StylePresetMeta[] = [
   },
   {
     key: "poster",
-    label: "海報設計",
+    label: "海报设计",
     icon: "Layout",
     suffix:
       "graphic design poster, bold typography space, strong visual hierarchy, modern design, print quality",
   },
   {
     key: "watercolor",
-    label: "水彩插畫",
+    label: "水彩插画",
     icon: "Droplets",
     suffix:
       "watercolor illustration, soft washes, delicate brushstrokes, pastel tones, artistic texture, hand-painted feel",

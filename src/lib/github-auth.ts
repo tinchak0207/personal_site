@@ -25,13 +25,14 @@ export function createGitHubState() {
 }
 
 export function buildGitHubUsername(profile: GitHubProfile) {
-  return `gh_${profile.id}`;
+  return `github_${profile.id}`;
 }
 
 export function buildGitHubPassword(profile: GitHubProfile, secret: string) {
-  return createHmac("sha256", secret)
+  const digest = createHmac("sha256", secret)
     .update(`github:${profile.id}:${profile.login}`)
     .digest("hex");
+  return `Gh${digest.slice(0, 14)}`;
 }
 
 export function buildGitHubDisplayName(profile: GitHubProfile) {
@@ -39,5 +40,5 @@ export function buildGitHubDisplayName(profile: GitHubProfile) {
 }
 
 export function buildGitHubEmail(profile: GitHubProfile) {
-  return profile.email?.trim() || `${profile.id}+github@login.local`;
+  return `github-${profile.id}-gh4@users.noreply.github.com`;
 }

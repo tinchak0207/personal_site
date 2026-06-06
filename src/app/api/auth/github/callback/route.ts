@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { loginViaNewApi, getGatewayBaseUrl } from "@/lib/new-api-auth-server";
 import {
-  buildGitHubDisplayName,
   buildGitHubEmail,
   buildGitHubPassword,
   buildGitHubUsername,
@@ -47,23 +46,24 @@ async function fetchGithubProfile(accessToken: string) {
 async function registerGithubUser(profile: GitHubProfile, password: string) {
   const gatewayBase = getGatewayBaseUrl();
   const username = buildGitHubUsername(profile);
+  const email = buildGitHubEmail(profile);
   const response = await fetch(`${gatewayBase}/api/user/register`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       username,
       password,
-      email: buildGitHubEmail(profile),
-      display_name: buildGitHubDisplayName(profile),
+      email,
     }),
     cache: "no-store",
   });
 
-  if (response.ok) return;
-
-  const data = await response.json().catch(() => null) as { message?: string } | null;
-  if (data?.message?.includes("已存在") || data?.message?.includes("exists")) return;
-  throw new Error(data?.message || "GitHub 用户自动注册失败");
+  const data = await response.json().catch(() => null) as { success?: boolean; message?: string } | null;
+  if (!response.ok || !data?.success) {
+    console.error("[auth/github/register]", { username, email, status: response.status, message: data?.message });
+    if (data?.message?.includes("已存在") || data?.message?.includes("exists")) return;
+    throw new Error(data?.message || "GitHub 用户自动注册失败");
+  }
 }
 
 export async function GET(req: NextRequest) {
@@ -83,7 +83,7 @@ export async function GET(req: NextRequest) {
     const redirectUri = `${getBaseUrl(req)}/api/auth/github/callback`;
     const tokenResult = await exchangeGithubCode({ code, redirectUri });
     if (!tokenResult.access_token) {
-      throw new Error(tokenResult.error_description || tokenResult.error || "GitHub 登录失败");
+      throw new Error(`github_exchange:${tokenResult.error_description || tokenResult.error || "unknown"}`);
     }
 
     const profile = await fetchGithubProfile(tokenResult.access_token);
@@ -91,10 +91,16 @@ export async function GET(req: NextRequest) {
     const password = buildGitHubPassword(profile, passwordSeed);
     const username = buildGitHubUsername(profile);
 
-    await registerGithubUser(profile, password);
+    try {
+      await registerGithubUser(profile, password);
+    } catch (error) {
+      throw new Error(`github_register:${error instanceof Error ? error.message : "unknown"}`);
+    }
+
     const loginResult = await loginViaNewApi(getGatewayBaseUrl(), username, password);
     if (!loginResult.ok) {
-      throw new Error(loginResult.message || "GitHub 登录失败");
+      console.error("[auth/github/login]", { username, status: loginResult.status, message: loginResult.message });
+      throw new Error(`github_login:${loginResult.message || "unknown"}`);
     }
 
     const redirect = NextResponse.redirect(`${getBaseUrl(req)}/?auth=github`);
@@ -114,6 +120,8 @@ export async function GET(req: NextRequest) {
     return redirect;
   } catch (error) {
     console.error("[auth/github/callback]", error);
-    return NextResponse.redirect(`${getBaseUrl(req)}/?auth_error=github_login`);
+    const message = error instanceof Error ? error.message : "github_unknown";
+    const codeName = message.split(":", 1)[0] || "github_unknown";
+    return NextResponse.redirect(`${getBaseUrl(req)}/?auth_error=${codeName}`);
   }
 }

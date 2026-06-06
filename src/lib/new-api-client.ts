@@ -49,9 +49,39 @@ export function setStoredToken(token: string, user: NewApiUser): void {
   localStorage.setItem(USER_KEY, JSON.stringify(user));
 }
 
+function getCookieValue(name: string): string | null {
+  if (typeof document === "undefined") return null;
+  const prefix = `${name}=`;
+  const pair = document.cookie.split(";").map((item) => item.trim()).find((item) => item.startsWith(prefix));
+  return pair ? decodeURIComponent(pair.slice(prefix.length)) : null;
+}
+
+export function syncStoredAuthFromCookie(): boolean {
+  if (typeof window === "undefined") return false;
+  const token = getCookieValue(TOKEN_KEY);
+  const rawUser = getCookieValue(USER_KEY);
+  if (!token || !rawUser) return false;
+  try {
+    const user = JSON.parse(rawUser) as NewApiUser;
+    setStoredToken(token, user);
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("auth") === "github") {
+      url.searchParams.delete("auth");
+      window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function clearStoredToken(): void {
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(USER_KEY);
+  if (typeof document !== "undefined") {
+    document.cookie = `${TOKEN_KEY}=; path=/; max-age=0`;
+    document.cookie = `${USER_KEY}=; path=/; max-age=0`;
+  }
 }
 
 export function getStoredUser(): NewApiUser | null {
