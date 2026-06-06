@@ -108,6 +108,21 @@ export function AuthModal({ open, onClose, defaultTab = "login" }: AuthModalProp
           ))}
         </div>
 
+        <div className="mb-4 space-y-3">
+          <a
+            href="/api/auth/github/start"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-ios-xl border border-[rgba(0,0,0,0.10)] bg-[rgba(0,0,0,0.03)] px-5 py-3.5 text-ios-body font-semibold text-[rgba(0,0,0,0.78)] transition-all duration-200 hover:bg-[rgba(0,0,0,0.06)]"
+          >
+            <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true" fill="currentColor">
+              <path d="M12 2C6.48 2 2 6.58 2 12.24c0 4.53 2.87 8.37 6.84 9.73.5.1.68-.22.68-.49 0-.24-.01-1.03-.01-1.87-2.78.62-3.37-1.22-3.37-1.22-.45-1.18-1.11-1.49-1.11-1.49-.91-.64.07-.63.07-.63 1 .07 1.53 1.06 1.53 1.06.9 1.57 2.35 1.12 2.92.86.09-.67.35-1.12.64-1.38-2.22-.26-4.55-1.14-4.55-5.08 0-1.12.39-2.03 1.03-2.75-.1-.26-.45-1.3.1-2.72 0 0 .84-.28 2.75 1.05A9.3 9.3 0 0 1 12 6.84c.85 0 1.71.12 2.51.36 1.91-1.33 2.75-1.05 2.75-1.05.55 1.42.2 2.46.1 2.72.64.72 1.03 1.63 1.03 2.75 0 3.95-2.33 4.82-4.56 5.08.36.32.69.94.69 1.9 0 1.37-.01 2.47-.01 2.81 0 .27.18.6.69.49A10.07 10.07 0 0 0 22 12.24C22 6.58 17.52 2 12 2Z" />
+            </svg>
+            用 GitHub 登录
+          </a>
+          <p className="text-center text-ios-caption2 text-[rgba(0,0,0,0.36)]">
+            新用户可直接用 GitHub 登录，账号密码登录照常保留
+          </p>
+        </div>
+
         <form onSubmit={handleSubmit} className="space-y-3.5" noValidate>
           {/* Username */}
           <div className="space-y-1.5">
