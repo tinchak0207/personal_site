@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ArrowUpRight, RefreshCw, ChevronDown } from "lucide-react";
+import { ArrowUpRight, ChevronDown, RefreshCw } from "lucide-react";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import { StylePresets } from "@/components/StylePresets";
 import { getRandomSuggestions, Suggestion } from "@/lib/suggestions";
-import { type StylePreset } from "@/lib/prompt-enhancer";
+import { STYLE_PRESETS, type StylePreset } from "@/lib/prompt-enhancer";
 import { type ModelMode } from "@/lib/provider-config";
+import { insertPromptSnippet } from "@/lib/prompt-compose";
 
 interface PromptInputProps {
   onSubmit: (prompt: string) => void;
@@ -22,8 +23,13 @@ interface PromptInputProps {
 }
 
 const MODE_OPTIONS: { value: ModelMode; label: string; desc: string }[] = [
-  { value: "fast",    label: "快速出图",  desc: "速度优先，适合快速预览" },
-  { value: "quality", label: "高质感",    desc: "细节更丰富，但会稍慢一些" },
+  { value: "fast", label: "快速出图", desc: "速度优先，适合快速预览" },
+  { value: "quality", label: "高质感", desc: "细节更丰富，但会稍慢一些" },
+];
+
+const STYLE_OPTIONS = [
+  { value: "none" as const, label: "默认" },
+  ...STYLE_PRESETS.map((preset) => ({ value: preset.key, label: preset.label })),
 ];
 
 export function PromptInput({
@@ -41,15 +47,16 @@ export function PromptInput({
   const [suggestions, setSuggestions] = useState<Suggestion[]>(initialSuggestions);
 
   useEffect(() => {
-    if (externalPrompt) setInput(externalPrompt);
+    if (externalPrompt) {
+      setInput((current) => insertPromptSnippet(current, externalPrompt));
+    }
   }, [externalPrompt]);
 
-  const updateSuggestions = () => setSuggestions(getRandomSuggestions());
-
   const handleSuggestionSelect = (prompt: string) => {
-    setInput(prompt);
-    onSubmit(prompt);
+    setInput((current) => insertPromptSnippet(current, prompt));
   };
+
+  const updateSuggestions = () => setSuggestions(getRandomSuggestions());
 
   const handleSubmit = () => {
     // Not logged in: always allow click → parent will open auth modal
@@ -90,7 +97,71 @@ export function PromptInput({
         <div className="lg-divider" />
 
         {/* ── Settings row: 畫質 + 風格 ── */}
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
+        <div className="grid gap-3 md:hidden">
+          <div className="flex items-center gap-3">
+            <span className="w-12 shrink-0 text-ios-caption1 font-semibold uppercase tracking-widest text-[rgba(0,0,0,0.30)]">
+              画质
+            </span>
+            <div className="relative min-w-0 flex-1">
+              <select
+                value={mode}
+                onChange={(e) => onModeChange(e.target.value as ModelMode)}
+                className="appearance-none w-full cursor-pointer rounded-full bg-[rgba(0,0,0,0.05)] py-1.5 pl-3.5 pr-8 text-ios-footnote font-medium text-[rgba(0,0,0,0.72)] lg-transition hover:bg-[rgba(0,0,0,0.08)] focus:outline-none focus:ring-2 focus:ring-[rgba(0,122,255,0.20)]"
+              >
+                {MODE_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+              <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-3 w-3 -translate-y-1/2 text-[rgba(0,0,0,0.36)]" aria-hidden="true" />
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <span className="w-12 shrink-0 text-ios-caption1 font-semibold uppercase tracking-widest text-[rgba(0,0,0,0.30)]">
+              风格
+            </span>
+            <div className="relative min-w-0 flex-1">
+              <select
+                value={stylePreset}
+                onChange={(e) => onStyleChange(e.target.value as StylePreset)}
+                className="appearance-none w-full cursor-pointer rounded-full bg-[rgba(0,0,0,0.05)] py-1.5 pl-3.5 pr-8 text-ios-footnote font-medium text-[rgba(0,0,0,0.72)] lg-transition hover:bg-[rgba(0,0,0,0.08)] focus:outline-none focus:ring-2 focus:ring-[rgba(0,122,255,0.20)]"
+              >
+                {STYLE_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+              <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-3 w-3 -translate-y-1/2 text-[rgba(0,0,0,0.36)]" aria-hidden="true" />
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <span className="w-12 shrink-0 text-ios-caption1 font-semibold uppercase tracking-widest text-[rgba(0,0,0,0.30)]">
+              示例
+            </span>
+            <div className="relative min-w-0 flex-1">
+              <select
+                defaultValue=""
+                onChange={(e) => {
+                  if (e.target.value) {
+                    handleSuggestionSelect(e.target.value);
+                    e.currentTarget.value = "";
+                  }
+                }}
+                className="appearance-none w-full cursor-pointer rounded-full bg-[rgba(0,0,0,0.05)] py-1.5 pl-3.5 pr-8 text-ios-footnote font-medium text-[rgba(0,0,0,0.72)] lg-transition hover:bg-[rgba(0,0,0,0.08)] focus:outline-none focus:ring-2 focus:ring-[rgba(0,122,255,0.20)]"
+              >
+                <option value="">选择示例</option>
+                {suggestions.map((suggestion) => (
+                  <option key={suggestion.text} value={suggestion.prompt}>
+                    {suggestion.text}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-3 w-3 -translate-y-1/2 text-[rgba(0,0,0,0.36)]" aria-hidden="true" />
+            </div>
+          </div>
+        </div>
+
+        <div className="hidden flex-wrap items-center gap-x-4 gap-y-3 md:flex">
 
           {/* 畫質 dropdown */}
           <div className="flex items-center gap-2">
@@ -112,7 +183,7 @@ export function PromptInput({
           </div>
 
           {/* 風格 chips inline — label 固定不換行，chips 區域自由換行 */}
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-2">
+          <div className="hidden flex-wrap items-center gap-x-2 gap-y-2 md:flex">
             <span className="shrink-0 text-ios-caption1 font-semibold uppercase tracking-widest text-[rgba(0,0,0,0.30)]">
               风格
             </span>
@@ -126,11 +197,9 @@ export function PromptInput({
         {/* ── Divider ── */}
         <div className="lg-divider" />
 
-        {/* ── Suggestions + Submit ── */}
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-
-          {/* 範例 inline */}
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-2">
+        {/* ── Desktop suggestions + submit ── */}
+        <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+          <div className="hidden flex-wrap items-center gap-x-2 gap-y-2 md:flex">
             <span className="shrink-0 text-ios-caption1 font-semibold uppercase tracking-widest text-[rgba(0,0,0,0.30)]">
               示例
             </span>

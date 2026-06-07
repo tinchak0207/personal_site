@@ -51,6 +51,7 @@
     scroll-behavior: smooth;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    overflow-x: clip;
   }
 
   body {
@@ -79,6 +80,8 @@
         #f4fbff 100%
       );
     background-attachment: fixed;
+    overflow-x: clip;
+    max-width: 100%;
   }
 
   /* Subtle noise texture overlay — mimics Apple's material grain */
@@ -106,6 +109,17 @@
     background-clip: padding-box;
   }
   *::-webkit-scrollbar-track { background: transparent; }
+}
+
+@media (max-width: 767px) {
+  html,
+  body {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+    overscroll-behavior-x: none;
+    touch-action: pan-y;
+  }
 }
 
 @layer utilities {

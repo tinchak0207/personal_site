@@ -5,7 +5,6 @@ import {
   Download,
   ImageIcon,
   LoaderCircle,
-  Share,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Stopwatch } from "./Stopwatch";
@@ -75,12 +74,12 @@ export function ImageDisplay({
 
   const handleActionClick = (
     event: React.MouseEvent,
-    imageData: string,
+    imageSource: string,
     providerName: string,
   ) => {
     event.stopPropagation();
-    imageHelpers.shareOrDownload(imageData, providerName).catch((error) => {
-      console.error("Failed to share/download image:", error);
+    imageHelpers.download(imageSource, providerName).catch((error) => {
+      console.error("Failed to download image:", error);
     });
   };
 
@@ -121,7 +120,7 @@ export function ImageDisplay({
           </div>
         </div>
 
-        {hasImage && image ? (
+        {hasImage && resolvedImageSrc ? (
           <>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
@@ -135,14 +134,10 @@ export function ImageDisplay({
               size="icon"
               variant="outline"
               className="absolute bottom-4 left-4 h-11 w-11 rounded-full border-white/52 bg-white/64 shadow-[0_14px_30px_rgba(45,49,66,0.08)] transition-all duration-200 sm:translate-y-1 sm:opacity-0 sm:group-hover:translate-y-0 sm:group-hover:opacity-100"
-              onClick={(event) => image ? handleActionClick(event, image, provider) : event.stopPropagation()}
+              onClick={(event) => handleActionClick(event, resolvedImageSrc, provider)}
+              aria-label="下载图片"
             >
-              <span className="sm:hidden">
-                <Share className="h-4 w-4" />
-              </span>
-              <span className="hidden sm:block">
-                <Download className="h-4 w-4" />
-              </span>
+              <Download className="h-4 w-4" />
             </Button>
 
             <div className="absolute bottom-4 right-4 rounded-full bg-white/18 px-3 py-2 text-xs font-medium text-white/90 backdrop-blur-xl">
