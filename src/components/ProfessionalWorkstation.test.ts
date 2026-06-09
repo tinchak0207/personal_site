@@ -51,8 +51,16 @@ test("professional workstation is based on InvokeAI github workstation patterns"
   assert.match(source, /Queue Inspector/);
   assert.match(source, /Provenance/);
   assert.match(source, /copyProvenanceConfig/);
+  assert.match(source, /restoreProvenanceConfig/);
+  assert.match(source, /parseWorkflowRecallConfig/);
   assert.match(source, /navigator\.clipboard\.writeText/);
   assert.match(source, /复制配置/);
+  assert.match(source, /导入配置/);
+  assert.match(source, /配置召回/);
+  assert.match(source, /promptStats/);
+  assert.match(source, /Estimated tokens/);
+  assert.match(source, /pro-slot-list/);
+  assert.match(source, /data-slot-state/);
   assert.match(source, /applyWorkflowPreset/);
   assert.match(source, /Workflow Plan/);
   assert.match(pkg, /"@atlaskit\/pragmatic-drag-and-drop"/);

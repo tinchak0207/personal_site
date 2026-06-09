@@ -4,12 +4,13 @@ import { useEffect, useRef, useState } from "react";
 import { draggable } from "@atlaskit/pragmatic-drag-and-drop/element/adapter";
 import { useHotkeys } from "react-hotkeys-hook";
 import { Virtuoso } from "react-virtuoso";
-import { Bot, Braces, Clipboard, Gauge, Images, Layers3, Library, Play, RotateCcw, SlidersHorizontal, Sparkles } from "lucide-react";
+import { Bot, Braces, Clipboard, FileJson, Gauge, Images, Layers3, Library, Play, RotateCcw, SlidersHorizontal, Sparkles } from "lucide-react";
 import { ReferenceImageUpload } from "@/components/ReferenceImageUpload";
 import type { ImageResult, ReferenceImage, ReferenceImageRole } from "@/lib/image-types";
 import type { Suggestion } from "@/lib/suggestions";
 import { cn } from "@/lib/utils";
 import { WORKFLOW_SCHEMA_VERSION } from "@/lib/generation-workflow";
+import { parseWorkflowRecallConfig } from "@/lib/workflow-recall";
 import { WORKSTATION_SOURCES } from "./workstation-sources";
 
 export const INVOKE_AI_WORKSTATION_SOURCE = {
@@ -162,12 +163,37 @@ export function InvokeInspiredWorkstation({
   const [workflowPreset, setWorkflowPreset] = useState(WORKFLOW_PRESETS[0].id);
   const [copies, setCopies] = useState(2);
   const [concurrency, setConcurrency] = useState(2);
+  const [restoreConfigText, setRestoreConfigText] = useState("");
+  const [restoreConfigMessage, setRestoreConfigMessage] = useState("");
   const activePreset = WORKFLOW_PRESETS.find((preset) => preset.id === workflowPreset) ?? WORKFLOW_PRESETS[0];
   const completedSlots = images.filter((image) => image.image || image.imageUrl).length;
   const failedSlots = images.filter((image) => !isLoading && image.image === null && image.imageUrl === null).length;
   const fallbackSlots = images.filter((image) => image.endpointLabel === "fallback").length;
   const runningSlots = isLoading ? Math.max(0, copies - completedSlots - failedSlots) : 0;
   const estimatedCredits = Math.max(copies, activePreset.estimatedCredits);
+  const promptStats = {
+    chars: prompt.trim().length,
+    estimatedTokens: Math.ceil(prompt.trim().length / 4),
+    state: prompt.trim().length > 1200 ? "过长" : prompt.trim().length > 600 ? "充实" : "精简",
+  };
+  const slotItems = Array.from({ length: copies }, (_, index) => {
+    const image = images[index];
+    const hasResult = !!(image?.image || image?.imageUrl);
+    const isFailed = !!image && !isLoading && !hasResult;
+    const state = hasResult
+      ? "done"
+      : isFailed
+        ? "failed"
+        : isLoading && index < Math.min(copies, completedSlots + failedSlots + concurrency)
+          ? "running"
+          : "queued";
+    return {
+      id: image?.slotId ?? `slot-${index + 1}`,
+      label: `Slot ${index + 1}`,
+      state,
+      detail: image?.endpointLabel ?? image?.modelId ?? "waiting",
+    };
+  });
 
   const canRun = prompt.trim().length > 0 && !isLoading;
   const appendUniqueText = (current: string, next: string) => {
@@ -228,6 +254,31 @@ export function InvokeInspiredWorkstation({
       })),
     };
     await navigator.clipboard.writeText(JSON.stringify(config, null, 2));
+  };
+
+  const restoreProvenanceConfig = () => {
+    const result = parseWorkflowRecallConfig(restoreConfigText);
+    if (!result.ok) {
+      setRestoreConfigMessage(result.error);
+      return;
+    }
+
+    const { config } = result;
+    if (config.prompt !== undefined) setPrompt(config.prompt);
+    if (config.contextPrompt !== undefined) setContextPrompt(config.contextPrompt);
+    if (config.negativePrompt !== undefined) setNegativePrompt(config.negativePrompt);
+    if (config.workflowPreset && WORKFLOW_PRESETS.some((preset) => preset.id === config.workflowPreset)) {
+      setWorkflowPreset(config.workflowPreset);
+    }
+    if (config.copies) setCopies(config.copies);
+    if (config.concurrency) setConcurrency(config.concurrency);
+    if (config.referenceImageRolesByName) {
+      onReferenceImagesChange(referenceImages.map((image) => {
+        const role = config.referenceImageRolesByName?.[image.name];
+        return role ? { ...image, role } : image;
+      }));
+    }
+    setRestoreConfigMessage("配置已导入");
   };
 
   useHotkeys("mod+enter", run, { enableOnFormTags: true }, [
@@ -294,6 +345,30 @@ export function InvokeInspiredWorkstation({
           </div>
 
           <div className="pro-panel-title mt-4">
+            <FileJson className="h-4 w-4" />
+            配置召回
+          </div>
+          <textarea
+            value={restoreConfigText}
+            onChange={(event) => setRestoreConfigText(event.target.value)}
+            placeholder="粘贴“复制配置”得到的 JSON，恢复 prompt、preset、队列参数和参考图角色..."
+            className="min-h-[82px] w-full resize-none rounded-ios-2xl border-0 bg-white/38 px-3.5 py-3 text-[11px] text-[rgba(0,0,0,0.68)] outline-none ring-0 transition-all focus:bg-white/58 focus:ring-2 focus:ring-[rgba(0,122,255,0.16)]"
+          />
+          <div className="mt-2 flex items-center gap-2">
+            <button
+              type="button"
+              onClick={restoreProvenanceConfig}
+              className="inline-flex items-center gap-1.5 rounded-ios-xl bg-white/52 px-3 py-2 text-[11px] font-bold text-[rgba(0,0,0,0.58)] transition-colors hover:bg-white/74"
+            >
+              <FileJson className="h-3 w-3" />
+              导入配置
+            </button>
+            {restoreConfigMessage && (
+              <span className="truncate text-[11px] font-semibold text-[rgba(0,0,0,0.42)]">{restoreConfigMessage}</span>
+            )}
+          </div>
+
+          <div className="pro-panel-title mt-4">
             <Braces className="h-4 w-4" />
             Context
           </div>
@@ -347,6 +422,11 @@ export function InvokeInspiredWorkstation({
             placeholder="描述要生成的图像，参考图会作为 edits 输入一起发送..."
             className="min-h-[172px] w-full resize-none rounded-ios-3xl border-0 bg-white/42 px-4 py-3.5 text-ios-body text-[rgba(0,0,0,0.78)] outline-none ring-0 transition-all focus:bg-white/64 focus:ring-2 focus:ring-[rgba(0,122,255,0.18)]"
           />
+          <div className="pro-prompt-meter">
+            <span>{promptStats.chars} chars</span>
+            <span>Estimated tokens {promptStats.estimatedTokens}</span>
+            <strong>{promptStats.state}</strong>
+          </div>
 
           <div className="mt-4">
             <ReferenceImageUpload value={referenceImages} onChange={onReferenceImagesChange} compact />
@@ -399,6 +479,16 @@ export function InvokeInspiredWorkstation({
               <span>Failed</span>
               <strong>{failedSlots}</strong>
             </div>
+          </div>
+          <div className="pro-slot-list">
+            {slotItems.map((slot) => (
+              <div key={slot.id} className="pro-slot-row" data-slot-state={slot.state}>
+                <span className="pro-slot-dot" />
+                <span>{slot.label}</span>
+                <strong>{slot.state}</strong>
+                <em>{slot.detail}</em>
+              </div>
+            ))}
           </div>
           <div className="mt-2 flex items-center justify-between rounded-ios-2xl bg-white/34 px-3 py-2 text-[11px] font-semibold text-[rgba(0,0,0,0.50)]">
             <span>Fallback used</span>
