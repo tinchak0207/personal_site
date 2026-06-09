@@ -5,6 +5,7 @@ export interface GeneratedImage {
   image: string | null;
   imageUrl?: string | null;
   modelId?: string;
+  endpointLabel?: string;
 }
 
 export interface ImageResult {
@@ -12,6 +13,7 @@ export interface ImageResult {
   image: string | null;
   imageUrl?: string | null;
   modelId?: string;
+  endpointLabel?: string;
 }
 
 export interface ImageError {
@@ -23,4 +25,5 @@ export interface ProviderTiming {
   startTime?: number;
   completionTime?: number;
   elapsed?: number;
+  durationMs?: number;
 }

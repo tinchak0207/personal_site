@@ -1,10 +1,14 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { ModelSelect } from "@/components/ModelSelect";
 import { PromptInput } from "@/components/PromptInput";
 import { CaseShowcase } from "@/components/CaseShowcase";
 import { AuthModal } from "@/components/AuthModal";
+import {
+  FALLBACK_PROGRESS_DURATION_MS,
+  NORMAL_PROGRESS_DURATION_MS,
+} from "@/components/GenerationProgressBar";
 import { useImageGeneration } from "@/hooks/use-image-generation";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
@@ -30,6 +34,9 @@ export function ImagePlayground({ suggestions }: { suggestions: Suggestion[] }) 
   const [stylePreset, setStylePreset] = useState<StylePreset>("none");
   const [casePrompt, setCasePrompt] = useState("");
   const [authOpen, setAuthOpen] = useState(false);
+  const [progressStartedAt, setProgressStartedAt] = useState<number>();
+  const [progressDurationMs, setProgressDurationMs] = useState(NORMAL_PROGRESS_DURATION_MS);
+  const [showProgress, setShowProgress] = useState(false);
 
   const handleModeChange = (newMode: ModelMode) => {
     setMode(newMode);
@@ -52,14 +59,36 @@ export function ImagePlayground({ suggestions }: { suggestions: Suggestion[] }) 
       return;
     }
     const finalPrompt = enhancePrompt(rawPrompt, stylePreset);
-    startGeneration(finalPrompt, ["image_tinchak"], { image_tinchak: selectedModels.image_tinchak });
+    setProgressStartedAt(Date.now());
+    setProgressDurationMs(NORMAL_PROGRESS_DURATION_MS);
+    setShowProgress(true);
+    await startGeneration(finalPrompt, ["image_tinchak"], { image_tinchak: selectedModels.image_tinchak });
     if (!LOCAL_TEST_MODE) {
-      setTimeout(() => {
-        refresh().catch(() => {});
-      }, 3000);
+      refresh().catch(() => {});
     }
   }, [isLoggedIn, user, stylePreset, selectedModels, startGeneration, toast, refresh]);
 
+  const usedFallback = images.some((image) =>
+    image.endpointLabel === "fallback" && (image.image || image.imageUrl),
+  );
+
+  useEffect(() => {
+    if (usedFallback) setProgressDurationMs(FALLBACK_PROGRESS_DURATION_MS);
+  }, [usedFallback]);
+
+  useEffect(() => {
+    if (failedProviders.length > 0) {
+      setShowProgress(false);
+      return;
+    }
+    if (!showProgress || !progressStartedAt || isLoading) return;
+    const elapsed = Date.now() - progressStartedAt;
+    const remaining = Math.max(0, progressDurationMs - elapsed);
+    const timer = window.setTimeout(() => setShowProgress(false), remaining + 450);
+    return () => window.clearTimeout(timer);
+  }, [failedProviders.length, isLoading, progressDurationMs, progressStartedAt, showProgress]);
+
+  const revealGeneratedResult = !showProgress;
   const models = (Object.keys(PROVIDERS) as ProviderKey[]).map((key) => {
     const provider = PROVIDERS[key];
     const imageItem = images.find((img) => img.provider === key);
@@ -72,16 +101,18 @@ export function ImagePlayground({ suggestions }: { suggestions: Suggestion[] }) 
         setSelectedModels((cur) => ({ ...cur, [k]: model })),
       iconPath: provider.iconPath,
       color: provider.color,
-      image: imageItem?.image,
-      imageUrl: imageItem?.imageUrl,
+      image: revealGeneratedResult ? imageItem?.image : null,
+      imageUrl: revealGeneratedResult ? imageItem?.imageUrl : null,
       modelId: imageItem?.modelId ?? selectedModels[key],
-      timing: timings[key],
-      failed: failedProviders.includes(key),
+      timing: showProgress
+        ? { startTime: progressStartedAt ?? Date.now(), durationMs: progressDurationMs }
+        : timings[key],
+      failed: revealGeneratedResult && failedProviders.includes(key),
     };
   });
 
   const renderState = isLoading
-    ? "生成中"
+    ? "处理中"
     : failedProviders.length > 0
       ? "需要重试"
       : images.some((i) => i.image || i.imageUrl)
@@ -116,7 +147,7 @@ export function ImagePlayground({ suggestions }: { suggestions: Suggestion[] }) 
 
       <CaseShowcase onUsePrompt={handleUseCasePrompt} />
 
-      {(isLoading || failedProviders.length > 0) && (
+      {(!showProgress && (isLoading || failedProviders.length > 0)) && (
         <div className="pointer-events-none fixed inset-x-0 bottom-4 z-30 flex justify-center px-4 sm:bottom-6">
           <div className="pointer-events-auto lg-bar flex items-center gap-3 rounded-ios-4xl px-5 py-2.5">
             <span

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { ImageError, ImageResult, ProviderTiming } from "@/lib/image-types";
 import { initializeProviderRecord, ProviderKey } from "@/lib/provider-config";
-import { getStoredUser } from "@/lib/new-api-client";
+import { getStoredToken, getStoredUser } from "@/lib/new-api-client";
 import {
   readGenerationCache,
   recordGenerationResult,
@@ -21,6 +21,27 @@ interface UseImageGenerationReturn {
   ) => Promise<void>;
   resetState: () => void;
   activePrompt: string;
+}
+
+type GenerationResponse = {
+  image?: string | null;
+  imageUrl?: string | null;
+  endpointLabel?: string;
+  error?: string;
+};
+
+async function readGenerationResponse(response: Response): Promise<GenerationResponse> {
+  const text = await response.text();
+  if (!text) return {};
+
+  try {
+    return JSON.parse(text) as GenerationResponse;
+  } catch {
+    if (!response.ok) {
+      return { error: text.slice(0, 300) };
+    }
+    throw new Error("Server returned a non-JSON response.");
+  }
 }
 
 export function useImageGeneration(): UseImageGenerationReturn {
@@ -48,6 +69,7 @@ export function useImageGeneration(): UseImageGenerationReturn {
         image: result.image,
         imageUrl: result.imageUrl,
         modelId: result.modelId,
+        endpointLabel: result.endpointLabel,
       })),
     );
   }, []);
@@ -102,15 +124,27 @@ export function useImageGeneration(): UseImageGenerationReturn {
             provider,
             modelId,
           };
+          const token = getStoredToken();
+          const user = getStoredUser();
+          const headers = {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            ...(user?.id ? { "x-user-id": String(user.id) } : {}),
+          };
 
           const response = await fetch("/api/generate-images", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers,
             body: JSON.stringify(request),
           });
-          const data = await response.json();
+          const data = await readGenerationResponse(response);
           if (!response.ok) {
-            throw new Error(data.error || `Server error: ${response.status}`);
+            throw new Error(
+              data.error ||
+                (response.status === 504
+                  ? "生成超时，请稍后重试。"
+                  : `Server error: ${response.status}`),
+            );
           }
 
           const completionTime = Date.now();
@@ -134,6 +168,7 @@ export function useImageGeneration(): UseImageGenerationReturn {
             image: data.image ?? null,
             imageUrl: data.imageUrl ?? null,
             modelId,
+            endpointLabel: data.endpointLabel,
           };
           setImages((prevImages) =>
             prevImages.map((item) =>

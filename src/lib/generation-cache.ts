@@ -5,6 +5,7 @@ export interface PersistedGenerationResult {
   modelId: string;
   image: string | null;
   imageUrl: string | null;
+  endpointLabel?: string;
 }
 
 export interface PersistedGenerationEntry {
@@ -62,7 +63,32 @@ export function readGenerationCache(): PersistedGenerationCache {
 
 export function writeGenerationCache(cache: PersistedGenerationCache): void {
   if (!isBrowser()) return;
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(cache));
+  try {
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(cache));
+  } catch {
+    try {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(stripImagePayloads(cache)));
+    } catch {
+      // Cache is best-effort; generation must not fail because localStorage is full.
+    }
+  }
+}
+
+function stripImagePayloads(cache: PersistedGenerationCache): PersistedGenerationCache {
+  const stripEntry = <T extends PersistedGenerationEntry>(entry: T): T => ({
+    ...entry,
+    results: entry.results.map((result) => ({ ...result, image: null })),
+  });
+
+  return {
+    current: cache.current ? stripEntry(cache.current) : null,
+    historyByUser: Object.fromEntries(
+      Object.entries(cache.historyByUser).map(([userId, entries]) => [
+        userId,
+        entries.map(stripEntry),
+      ]),
+    ),
+  };
 }
 
 export function recordGenerationResult(

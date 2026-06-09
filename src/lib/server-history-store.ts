@@ -5,6 +5,7 @@ export interface ServerHistoryImageResult {
   modelId: string;
   image?: string | null;
   imageUrl?: string | null;
+  endpointLabel?: string;
 }
 
 export interface ServerHistoryEntry {

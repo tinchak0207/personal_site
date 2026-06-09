@@ -134,6 +134,8 @@ export interface QuotaDate {
 export interface CheckinStatus {
   can_checkin: boolean;
   quota?: number;           // quota awarded on last checkin
+  quota_awarded?: number;
+  checked_in_today?: boolean;
   last_checkin_time?: number;
 }
 
@@ -206,13 +208,13 @@ export async function fetchCheckinStatus(
 /** Do daily checkin */
 export async function doCheckin(
   token: string,
-): Promise<{ success: boolean; data?: { quota: number }; message?: string }> {
+): Promise<{ success: boolean; data?: { quota: number; quota_awarded?: number }; message?: string }> {
   const res = await fetch(`/api/checkin`, {
     method: "POST",
     headers: { ...bearerHeader(token), "Content-Type": "application/json" },
     body: JSON.stringify({}),
   });
-  return res.json() as Promise<{ success: boolean; data?: { quota: number }; message?: string }>;
+  return res.json() as Promise<{ success: boolean; data?: { quota: number; quota_awarded?: number }; message?: string }>;
 }
 
 /** Redeem a top-up code */
@@ -220,12 +222,17 @@ export async function redeemTopupCode(
   token: string,
   key: string,
 ): Promise<{ success: boolean; data?: { quota: number }; message?: string }> {
+  type TopupResponse = { success: boolean; data?: number | { quota: number }; message?: string };
   const res = await fetch(`/api/topup`, {
     method: "POST",
     headers: { ...bearerHeader(token), "Content-Type": "application/json" },
     body: JSON.stringify({ key }),
   });
-  return res.json() as Promise<{ success: boolean; data?: { quota: number }; message?: string }>;
+  const payload = await res.json() as TopupResponse;
+  return {
+    ...payload,
+    data: typeof payload.data === "number" ? { quota: payload.data } : payload.data,
+  };
 }
 
 /** Fetch models available to this user */

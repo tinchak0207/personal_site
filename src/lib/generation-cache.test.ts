@@ -6,6 +6,7 @@ import {
   mergePersistedHistory,
   recordGenerationResult,
   selectPersistedHistoryForUser,
+  writeGenerationCache,
 } from "./generation-cache.ts";
 
 test("recordGenerationResult keeps the latest generated images for the active account", () => {
@@ -81,4 +82,37 @@ test("mergePersistedHistory prefers cached image data when upstream history has 
   assert.equal(merged[0]?.prompt, "cached prompt");
   assert.equal(merged[0]?.results[0]?.image, "cached-b64");
   assert.equal(merged[1]?.source, "server");
+});
+
+test("writeGenerationCache does not let localStorage quota failures interrupt generation", () => {
+  const writes: string[] = [];
+  const localStorage = {
+    getItem: () => null,
+    setItem: (_key: string, value: string) => {
+      writes.push(value);
+      if (writes.length === 1) {
+        const error = new Error("quota exceeded");
+        error.name = "QuotaExceededError";
+        throw error;
+      }
+    },
+  };
+  globalThis.window = { localStorage } as Window & typeof globalThis;
+
+  const cache = recordGenerationResult(createEmptyGenerationCache(), {
+    userId: 7,
+    username: "alice",
+    prompt: "large image",
+    generatedAt: 3000,
+    results: [
+      { provider: "image_tinchak", modelId: "gpt-image-2", image: "x".repeat(1000), imageUrl: null },
+    ],
+  });
+
+  assert.doesNotThrow(() => writeGenerationCache(cache));
+  const saved = JSON.parse(writes.at(-1) ?? "{}");
+  assert.equal(saved.current.results[0].image, null);
+  assert.equal(saved.historyByUser["7"][0].results[0].image, null);
+
+  delete (globalThis as { window?: Window }).window;
 });

@@ -47,6 +47,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const result = await fetchMe(t);
     if (result.ok && result.user) {
+      setStoredToken(t, result.user);
       setUser(result.user);
       setToken(t);
     } else {
@@ -83,7 +84,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setIsLoading(false);
       // Refresh in background to get latest quota
       fetchMe(storedToken).then((result) => {
-        if (result.ok && result.user) setUser(result.user);
+        if (result.ok && result.user) { setStoredToken(storedToken, result.user); setUser(result.user); }
         else { clearStoredToken(); setUser(null); setToken(null); }
       });
     } else {

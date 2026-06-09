@@ -4,10 +4,9 @@ import {
   AlertCircle,
   Download,
   ImageIcon,
-  LoaderCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Stopwatch } from "./Stopwatch";
+import { GenerationProgressBar } from "@/components/GenerationProgressBar";
 import { ProviderTiming } from "@/lib/image-types";
 import { imageHelpers } from "@/lib/image-helpers";
 import { cn } from "@/lib/utils";
@@ -95,6 +94,7 @@ export function ImageDisplay({
         {/* fix #15: specular top edge */}
         <div className="pointer-events-none absolute inset-x-0 top-0 z-20 h-px bg-gradient-to-r from-transparent via-white to-transparent opacity-90" aria-hidden="true" />
 
+        {!isRendering && (
         <div className="absolute inset-x-0 top-0 z-10 flex items-start justify-end gap-3 p-4">
 
           {/* fix #16: unified iOS tint badges */}
@@ -105,20 +105,17 @@ export function ImageDisplay({
                 ? "lg-tint-red text-[#FF3B30]"
                 : hasImage
                   ? "bg-[rgba(0,0,0,0.52)] text-white"
-                  : isRendering
-                    ? "lg-tint-green text-[#34C759]"
-                    : "lg-float text-[rgba(0,0,0,0.44)]",
+                  : "lg-float text-[rgba(0,0,0,0.44)]",
             )}
           >
               {failed
                 ? "需要重试"
-                : timing?.elapsed
-                  ? `${(timing.elapsed / 1000).toFixed(1)}s`
-                  : isRendering
-                    ? "生成中"
-                    : "当前可用"}
+                : hasImage
+                  ? "已完成"
+                  : "当前可用"}
           </div>
         </div>
+        )}
 
         {hasImage && resolvedImageSrc ? (
           <>
@@ -144,6 +141,14 @@ export function ImageDisplay({
               点一下放大
             </div>
           </>
+        ) : isRendering ? (
+          <div className="absolute inset-0 flex items-center justify-center p-8">
+            <GenerationProgressBar
+              visible={isRendering}
+              startedAt={timing?.startTime}
+              durationMs={timing?.durationMs}
+            />
+          </div>
         ) : (
           <div className="absolute inset-0 flex items-center justify-center p-8">
             <div className="flex max-w-[20rem] flex-col items-center text-center">
@@ -151,8 +156,6 @@ export function ImageDisplay({
               <div className="lg-float flex h-20 w-20 items-center justify-center rounded-ios-2xl text-[rgba(0,0,0,0.36)]">
                 {failed ? (
                   fallbackIcon || <AlertCircle className="h-9 w-9" />
-                ) : isRendering ? (
-                  <LoaderCircle className="h-9 w-9 animate-spin text-[#34C759]" />
                 ) : (
                   <ImageIcon className="h-9 w-9" />
                 )}
@@ -161,24 +164,14 @@ export function ImageDisplay({
               <h4 className="mt-5 text-ios-title3 font-semibold tracking-tight text-[rgba(0,0,0,0.72)]">
                 {failed
                   ? "这次没有成功"
-                  : isRendering
-                    ? "正在做图"
-                    : "图片会出现在这里"}
+                  : "图片会出现在这里"}
               </h4>
 
               <p className="mt-2 text-ios-subhead leading-relaxed text-[rgba(0,0,0,0.40)]">
                 {failed
                   ? "换个说法再试一次，通常很快就会恢复。"
-                  : isRendering
-                    ? "不用一直盯着这里，完成后会直接显示。"
-                    : "提交需求后，右侧会开始生成第一版图片。"}
+                  : "提交需求后，右侧会开始生成第一版图片。"}
               </p>
-
-              {isRendering && timing?.startTime ? (
-                <div className="lg-float mt-4 rounded-full px-4 py-2">
-                  <Stopwatch startTime={timing.startTime} />
-                </div>
-              ) : null}
             </div>
           </div>
         )}

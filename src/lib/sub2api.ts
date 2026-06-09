@@ -6,15 +6,12 @@ export interface GatewayEndpoint {
 
 export type EnvLike = Record<string, string | undefined>;
 export const LOCAL_TEST_MODE = process.env.NEXT_PUBLIC_LOCAL_TEST_MODE === "true";
-const PROD_IMAGE_GATEWAY_BASE = "http://186.241.75.127/v1";
-const PROD_IMAGE_GATEWAY_TOKEN = "1i3vncVKNsJdicJdueR2a8IOHHQAWYswjpZPfdgusBXz8QW5";
 
 function normalizeBaseURL(baseURL: string): string {
   return baseURL.replace(/\/+$/, "");
 }
 
 export function buildGatewayEndpoints(env: EnvLike): GatewayEndpoint[] {
-  const forceProdImageGateway = env.NODE_ENV === "production";
   const fallbackEndpoint =
     normalizeBaseURL(env.IMAGE_API_BASE_URL_FALLBACK ?? "") && (env.IMAGE_API_KEY_FALLBACK ?? "")
       ? [{
@@ -25,13 +22,9 @@ export function buildGatewayEndpoints(env: EnvLike): GatewayEndpoint[] {
       : [];
 
   const primaryBaseURL = normalizeBaseURL(
-    forceProdImageGateway
-      ? PROD_IMAGE_GATEWAY_BASE
-      : (env.IMAGE_API_BASE_URL ?? env.IMAGE_API_BASE_URL_PRIMARY ?? ""),
+    env.IMAGE_API_BASE_URL ?? env.IMAGE_API_BASE_URL_PRIMARY ?? env.GATEWAY_BASE_URL ?? "",
   );
-  const primaryApiKey = forceProdImageGateway
-    ? PROD_IMAGE_GATEWAY_TOKEN
-    : (env.IMAGE_API_KEY ?? env.IMAGE_API_KEY_PRIMARY ?? "");
+  const primaryApiKey = env.IMAGE_API_KEY ?? env.IMAGE_API_KEY_PRIMARY ?? env.GATEWAY_API_KEY ?? "";
 
   if (env.SUB2API_ENABLED === "true") {
     const baseURL = normalizeBaseURL(env.SUB2API_BASE_URL ?? "");

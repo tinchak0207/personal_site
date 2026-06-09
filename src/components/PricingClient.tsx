@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Check, Coins, Gift, Copy, Ticket, Sparkles } from "lucide-react";
+import { ArrowLeft, Check, Coins, Gift, Copy, Ticket, Sparkles, BookOpen } from "lucide-react";
 import { PLANS, pricePerCoin } from "@/lib/plans";
 import { useAuth } from "@/hooks/use-auth";
 import { fetchAffCode, redeemTopupCode } from "@/lib/new-api-client";
@@ -11,7 +11,7 @@ import { AuthModal } from "@/components/AuthModal";
 import { cn } from "@/lib/utils";
 
 export function PricingClient() {
-  const { token, isLoggedIn } = useAuth();
+  const { token, isLoggedIn, refresh } = useAuth();
   const { toast } = useToast();
   const [authOpen, setAuthOpen] = useState(false);
   const [affCode, setAffCode] = useState<string | null>(null);
@@ -50,6 +50,7 @@ export function PricingClient() {
     try {
       const res = await redeemTopupCode(token, redeemCode.trim());
       if (res.success) {
+        await refresh();
         toast({ title: "兑换成功", description: `已到账 ${res.data?.quota ?? ""} 点额度` });
         setRedeemCode("");
       } else {
@@ -62,13 +63,13 @@ export function PricingClient() {
 
   return (
     <>
-      <div className="min-h-screen bg-transparent px-4 pb-24 pt-20 sm:px-6 lg:px-8">
+      <div className="mobile-pricing-compact min-h-screen bg-transparent px-4 pb-20 pt-20 sm:px-6 sm:pb-24 lg:px-8">
         <div className="mx-auto w-full max-w-5xl">
 
           {/* Back nav */}
           <Link
             href="/"
-            className="lg-float mb-8 inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-ios-footnote font-medium text-[rgba(0,0,0,0.56)] lg-transition hover:text-[rgba(0,0,0,0.82)] cursor-pointer"
+            className="lg-float mb-5 inline-flex items-center gap-2 rounded-full px-3.5 py-2 text-ios-footnote font-medium text-[rgba(0,0,0,0.56)] lg-transition hover:text-[rgba(0,0,0,0.82)] cursor-pointer sm:mb-8 sm:px-4 sm:py-2.5"
             aria-label="返回做图"
           >
             <ArrowLeft className="h-3.5 w-3.5" />
@@ -76,27 +77,27 @@ export function PricingClient() {
           </Link>
 
           {/* Header */}
-          <div className="mb-10 text-center">
-            <div className="mb-4 flex justify-center">
+          <div className="mb-5 text-left sm:mb-10 sm:text-center">
+            <div className="mb-4 hidden justify-center sm:flex">
               <div className="flex h-12 w-12 items-center justify-center rounded-ios-2xl bg-[rgba(0,122,255,0.10)]">
                 <Sparkles className="h-5 w-5 text-[#007AFF]" />
               </div>
             </div>
-            <h1 className="text-ios-large-title font-bold tracking-tight text-[rgba(0,0,0,0.85)]">
+            <h1 className="text-ios-title1 font-bold tracking-tight text-[rgba(0,0,0,0.85)] sm:text-ios-large-title">
               选择你的方案
             </h1>
-            <p className="mt-2 text-ios-body text-[rgba(0,0,0,0.44)]">
+            <p className="mt-1 max-w-[22rem] text-ios-footnote leading-relaxed text-[rgba(0,0,0,0.46)] sm:mx-auto sm:mt-2 sm:max-w-none sm:text-ios-body">
               所有方案都支持全部模型，到期前会提醒，没用完会退等值折扣券
             </p>
           </div>
 
           {/* Plan cards */}
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="mobile-pricing-plans grid gap-3 sm:grid-cols-3 sm:gap-4">
             {PLANS.map((plan) => (
               <section
                 key={plan.id}
                 className={cn(
-                  "lg-card relative overflow-hidden rounded-ios-4xl p-6 flex flex-col",
+                  "lg-card relative flex flex-col overflow-hidden rounded-ios-3xl p-4 sm:rounded-ios-4xl sm:p-6",
                   plan.highlight && "ring-2 ring-[rgba(0,122,255,0.28)]",
                 )}
               >
@@ -105,19 +106,19 @@ export function PricingClient() {
 
                 {/* Badge */}
                 {plan.badge && (
-                  <span className="mb-3 inline-flex w-fit items-center rounded-full bg-[#007AFF] px-3 py-1 text-ios-caption1 font-semibold text-white">
+                  <span className="mb-2 inline-flex w-fit items-center rounded-full bg-[#007AFF] px-2.5 py-0.5 text-ios-caption1 font-semibold text-white sm:mb-3 sm:px-3 sm:py-1">
                     {plan.badge}
                   </span>
                 )}
 
                 {/* Name + tagline */}
-                <h2 className="text-ios-title2 font-bold text-[rgba(0,0,0,0.85)]">{plan.name}</h2>
-                <p className="mt-1 text-ios-footnote text-[rgba(0,0,0,0.44)]">{plan.tagline}</p>
+                <h2 className="text-ios-title3 font-bold text-[rgba(0,0,0,0.85)] sm:text-ios-title2">{plan.name}</h2>
+                <p className="mt-1 hidden text-ios-footnote text-[rgba(0,0,0,0.44)] sm:block">{plan.tagline}</p>
 
                 {/* Price block */}
-                <div className="mt-4">
+                <div className="mt-3 sm:mt-4">
                   <div className="flex items-baseline gap-2">
-                    <span className="text-[2rem] font-bold leading-none text-[rgba(0,0,0,0.85)]">
+                    <span className="text-[1.75rem] font-bold leading-none text-[rgba(0,0,0,0.85)] sm:text-[2rem]">
                       ¥{plan.price}
                     </span>
                     <span className="text-ios-footnote text-[rgba(0,0,0,0.30)] line-through">
@@ -139,7 +140,7 @@ export function PricingClient() {
                 </div>
 
                 {/* Features */}
-                <ul className="mt-5 flex-1 space-y-2">
+                <ul className="mt-4 hidden sm:flex-1 sm:block sm:space-y-2">
                   {plan.features.map((f) => (
                     <li key={f} className="flex items-start gap-2 text-ios-footnote text-[rgba(0,0,0,0.60)]">
                       <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#34C759]" />
@@ -153,7 +154,7 @@ export function PricingClient() {
                   type="button"
                   onClick={() => handleBuy(plan.purchaseUrl)}
                   className={cn(
-                    "mt-6 w-full rounded-ios-xl py-3 text-ios-body font-semibold transition-all duration-200 cursor-pointer",
+                    "mt-4 w-full rounded-ios-xl py-3 text-ios-body font-semibold transition-all duration-200 cursor-pointer sm:mt-6",
                     plan.highlight
                       ? "bg-[#007AFF] text-white shadow-[0_6px_24px_rgba(0,122,255,0.40)] hover:bg-[#0066DD] hover:scale-[1.02] active:scale-[0.98]"
                       : "lg-float text-[rgba(0,0,0,0.65)] hover:text-[rgba(0,0,0,0.85)]",
@@ -166,26 +167,35 @@ export function PricingClient() {
           </div>
 
           {/* Redeem code + Invite — two-col on desktop */}
-          <div className="mt-8 grid gap-4 sm:grid-cols-2">
+          <div className="mobile-pricing-tools mt-5 grid gap-3 sm:mt-8 sm:grid-cols-2 sm:gap-4">
 
             {/* Redeem code */}
-            <section className="lg-card relative overflow-hidden rounded-ios-4xl p-6">
+            <section id="redeem" className="lg-card relative overflow-hidden rounded-ios-3xl p-4 sm:rounded-ios-4xl sm:p-6">
               <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white to-transparent opacity-80" />
-              <div className="flex items-center gap-2 mb-4">
-                <Ticket className="h-4 w-4 text-[rgba(0,0,0,0.44)]" />
-                <h3 className="text-ios-subhead font-semibold text-[rgba(0,0,0,0.85)]">兑换码</h3>
+              <div className="mb-3 flex items-center justify-between gap-3 sm:mb-4">
+                <div className="flex items-center gap-2">
+                  <Ticket className="h-4 w-4 text-[rgba(0,0,0,0.44)]" />
+                  <h3 className="text-ios-subhead font-semibold text-[rgba(0,0,0,0.85)]">兑换码</h3>
+                </div>
+                <Link
+                  href="/docs"
+                  className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-[rgba(0,0,0,0.04)] px-2.5 py-1 text-ios-caption1 font-medium text-[rgba(0,0,0,0.56)] transition-colors hover:text-[rgba(0,0,0,0.82)]"
+                >
+                  <BookOpen className="h-3.5 w-3.5" />
+                  教程
+                </Link>
               </div>
-              <p className="mb-4 text-ios-footnote text-[rgba(0,0,0,0.44)]">
+              <p className="mb-3 text-ios-footnote text-[rgba(0,0,0,0.44)] sm:mb-4">
                 输入兑换码，额度会立即到账。
               </p>
-              <div className="flex gap-2">
+              <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
                 <input
                   type="text"
                   value={redeemCode}
                   onChange={(e) => setRedeemCode(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handleRedeem()}
                   placeholder="输入兑换码"
-                  className="flex-1 rounded-ios-xl border-0 bg-[rgba(0,0,0,0.04)] px-4 py-2.5 text-ios-footnote text-[rgba(0,0,0,0.85)] placeholder:text-[rgba(0,0,0,0.24)] focus:outline-none focus:ring-2 focus:ring-[rgba(0,122,255,0.20)] [background-image:none]"
+                  className="min-w-0 rounded-ios-xl border-0 bg-[rgba(0,0,0,0.04)] px-4 py-2.5 text-ios-footnote text-[rgba(0,0,0,0.85)] placeholder:text-[rgba(0,0,0,0.24)] focus:outline-none focus:ring-2 focus:ring-[rgba(0,122,255,0.20)] [background-image:none]"
                 />
                 <button
                   type="button"
@@ -199,7 +209,7 @@ export function PricingClient() {
             </section>
 
             {/* Invite / referral */}
-            <section className="lg-card relative overflow-hidden rounded-ios-4xl p-6">
+            <section className="hidden sm:block lg-card relative overflow-hidden rounded-ios-4xl p-6">
               <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white to-transparent opacity-80" />
               <div className="flex items-center gap-2 mb-4">
                 <Gift className="h-4 w-4 text-[rgba(0,0,0,0.44)]" />
@@ -234,7 +244,7 @@ export function PricingClient() {
           </div>
 
           {/* FAQ strip */}
-          <div className="mt-8 lg-card relative overflow-hidden rounded-ios-4xl p-6">
+          <div className="hidden sm:block mt-8 lg-card relative overflow-hidden rounded-ios-4xl p-6">
             <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white to-transparent opacity-80" />
             <h3 className="mb-4 text-ios-subhead font-semibold text-[rgba(0,0,0,0.85)]">常见问题</h3>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

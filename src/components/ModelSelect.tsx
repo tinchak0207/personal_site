@@ -1,4 +1,4 @@
-import { AlertTriangle, CheckCircle2, LoaderCircle } from "lucide-react";
+import { AlertTriangle, CheckCircle2 } from "lucide-react";
 import { ImageDisplay } from "./ImageDisplay";
 import { OpenAIIcon } from "@/lib/logos";
 import { ProviderTiming } from "@/lib/image-types";
@@ -48,7 +48,7 @@ export function ModelSelect({
   modelId,
 }: ModelSelectProps) {
   const Icon = PROVIDER_ICONS[providerKey];
-  const isRendering = Boolean(timing?.startTime) && !timing?.elapsed && !failed;
+  const hasImage = (Boolean(image) || Boolean(imageUrl)) && !failed;
 
   const status = failed
     ? {
@@ -56,15 +56,9 @@ export function ModelSelect({
         className: "lg-tint-red text-[#FF3B30]",
         icon: <AlertTriangle className="h-3.5 w-3.5" />,
       }
-    : isRendering
-      ? {
-          label: "生成中",
-          className: "lg-tint-green text-[#34C759]",
-          icon: <LoaderCircle className="h-3.5 w-3.5 animate-spin" />,
-        }
-      : timing?.elapsed
+    : hasImage
         ? {
-            label: `${(timing.elapsed / 1000).toFixed(1)}s`,
+            label: "已完成",
             className: "lg-tint-green text-[#34C759]",
             icon: <CheckCircle2 className="h-3.5 w-3.5" />,
           }

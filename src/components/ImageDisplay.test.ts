@@ -14,3 +14,20 @@ test("image display download button never invokes native share", () => {
   assert.doesNotMatch(displaySource, /Share/);
   assert.doesNotMatch(helperSource, /navigator\.share/);
 });
+
+test("image display renders progress inside the result card without elapsed time", () => {
+  const displaySource = read("src/components/ImageDisplay.tsx");
+  const modelSource = read("src/components/ModelSelect.tsx");
+  const playgroundSource = read("src/components/ImagePlayground.tsx");
+  const progressSource = read("src/components/GenerationProgressBar.tsx");
+  const elapsedSecondsPattern = /timing\.elapsed\s*\/\s*1000|toFixed\(1\).*s/;
+  const generationLabelCount = [displaySource, modelSource, playgroundSource, progressSource]
+    .join("\n")
+    .match(/生成中/g)?.length ?? 0;
+  assert.match(displaySource, /GenerationProgressBar/);
+  assert.match(displaySource, /isRendering \? \(/);
+  assert.doesNotMatch(displaySource, /Stopwatch/);
+  assert.doesNotMatch(displaySource, elapsedSecondsPattern);
+  assert.doesNotMatch(modelSource, elapsedSecondsPattern);
+  assert.equal(generationLabelCount, 1);
+});

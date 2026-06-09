@@ -11,9 +11,10 @@ import { cn } from "@/lib/utils";
 interface WalletBadgeProps {
   className?: string;
   showTopUp?: boolean;
+  showCheckin?: boolean;
 }
 
-export function WalletBadge({ className, showTopUp = true }: WalletBadgeProps) {
+export function WalletBadge({ className, showTopUp = true, showCheckin = true }: WalletBadgeProps) {
   const { user, token, isLoggedIn, refresh } = useAuth();
   const [canCheckin, setCanCheckin] = useState(false);
   const [checkinLoading, setCheckinLoading] = useState(false);
@@ -22,6 +23,7 @@ export function WalletBadge({ className, showTopUp = true }: WalletBadgeProps) {
 
   // Check checkin status on mount
   useEffect(() => {
+    if (!showCheckin) return;
     if (!token) return;
     fetchCheckinStatus(token)
       .then((res) => {
@@ -31,7 +33,7 @@ export function WalletBadge({ className, showTopUp = true }: WalletBadgeProps) {
         }
       })
       .catch(() => {});
-  }, [token]);
+  }, [showCheckin, token]);
 
   if (!isLoggedIn || !user) return null;
 
@@ -54,19 +56,19 @@ export function WalletBadge({ className, showTopUp = true }: WalletBadgeProps) {
   };
 
   return (
-    <div className={cn("flex items-center gap-1.5", className)}>
+    <div className={cn("flex min-w-0 items-center gap-1.5", className)}>
       {/* Coin balance — muted amber, no harsh yellow */}
       <div
-        className="inline-flex items-center gap-1.5 rounded-full bg-[rgba(0,0,0,0.05)] px-3 py-1.5 text-ios-footnote font-semibold text-[rgba(120,90,20,0.72)] cursor-default select-none"
+        className="inline-flex max-w-full shrink items-center gap-1.5 whitespace-nowrap rounded-full bg-[rgba(0,0,0,0.05)] px-3 py-1.5 text-ios-footnote font-semibold text-[rgba(120,90,20,0.72)] cursor-default select-none"
         aria-label={`余额 ${coins} 币`}
       >
         <Coins className="h-3.5 w-3.5 text-[rgba(160,120,30,0.60)]" aria-hidden="true" />
-        <span className="tabular-nums">{coins.toLocaleString()}</span>
+        <span className="min-w-0 truncate tabular-nums">{coins.toLocaleString()}</span>
         <span className="text-[rgba(120,90,20,0.45)] text-[0.7rem]">币</span>
       </div>
 
       {/* Daily checkin button */}
-      {canCheckin && !checkinDone && (
+      {showCheckin && canCheckin && !checkinDone && (
         <div className="inline-flex items-center gap-2">
           <button
             type="button"
@@ -79,13 +81,13 @@ export function WalletBadge({ className, showTopUp = true }: WalletBadgeProps) {
             <Gift className="h-3 w-3" aria-hidden="true" />
             签到
           </button>
-          <span className="text-ios-caption2 text-[rgba(0,0,0,0.38)]">{formatCheckinRewardText()}</span>
+          <span className="hidden text-ios-caption2 text-[rgba(0,0,0,0.38)] sm:inline">{formatCheckinRewardText()}</span>
         </div>
       )}
 
       {/* Checkin done indicator (fades after 3s) */}
-      {checkinDone && (
-        <span className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-ios-caption2 text-[#34C759]">
+      {showCheckin && checkinDone && (
+        <span className="inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-1 text-ios-caption2 text-[#34C759]">
           <CheckCircle2 className="h-3 w-3" aria-hidden="true" />
           {formatCheckinRewardText(checkinRewardCount ?? undefined)}
         </span>
@@ -95,7 +97,7 @@ export function WalletBadge({ className, showTopUp = true }: WalletBadgeProps) {
       {showTopUp && (
         <Link
           href="/pricing"
-          className="lg-float inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-ios-footnote font-medium text-[rgba(0,0,0,0.52)] lg-transition hover:text-[rgba(0,0,0,0.78)] no-underline"
+          className="lg-float inline-flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-1.5 text-ios-footnote font-medium text-[rgba(0,0,0,0.52)] lg-transition hover:text-[rgba(0,0,0,0.78)] no-underline"
           aria-label="前往充值页面"
         >
           <CreditCard className="h-3.5 w-3.5" aria-hidden="true" />

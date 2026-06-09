@@ -7,6 +7,7 @@ export interface PricingPlan {
   couponNote?: string;
   coins: number;
   validDays: number;
+  purchaseUrl: string;
   features: string[];
   highlight?: boolean;
   badge?: string;
@@ -15,56 +16,61 @@ export interface PricingPlan {
 export const PLANS: PricingPlan[] = [
   {
     id: "starter",
-    name: "嘗鮮包",
-    tagline: "第一次上手最便宜，先測風格、測 prompt、測成片率。",
+    name: "轻度尝鲜包",
+    tagline: "20元 / 100张，适合少量试用和快速验证风格。",
     price: 9.9,
-    anchorPrice: 19.9,
-    coins: 200,
-    validDays: 15,
+    anchorPrice: 20,
+    couponNote: "用无门槛券",
+    coins: 100,
+    validDays: 30,
+    purchaseUrl: "https://m.tb.cn/h.R8hnjYn?tk=98pJg1LCwU5",
     features: [
-      "全部模型可用",
-      "適合首次測試 prompt 與風格",
-      "到期前提醒",
-      "未用完退折扣券",
+      "100张图片额度",
+      "无门槛券后 9.9 元",
+      "折合 0.099 元/张",
+      "适合轻量尝鲜和小批量出图",
     ],
-    badge: "嘗鮮",
+    badge: "尝鲜",
   },
   {
     id: "popular",
-    name: "常用包",
-    tagline: "適合穩定產出社群圖、海報和商品視覺。",
-    price: 99,
-    anchorPrice: 129,
-    couponNote: "最受歡迎 · 成本最低",
-    coins: 2400,
-    validDays: 90,
+    name: "主力月度会员",
+    tagline: "50元 / 500张，适合月度稳定出图和日常素材生产。",
+    price: 29.9,
+    anchorPrice: 50,
+    couponNote: "用满减券",
+    coins: 500,
+    validDays: 30,
+    purchaseUrl: "https://m.tb.cn/h.RRNPSt8?tk=Jwqvg1LCmYc",
     features: [
-      "全部模型可用",
-      "平均單張成本更低",
-      "適合小店與工作室日常使用",
-      "未用完退折扣券",
+      "500张图片额度",
+      "满减券后 29.9 元",
+      "折合 0.059 元/张",
+      "适合主力月度使用",
     ],
     highlight: true,
-    badge: "推薦",
+    badge: "主力",
   },
   {
     id: "pro",
-    name: "重度包",
-    tagline: "給高頻生成、批量出圖和長期運營帳號。",
-    price: 299,
-    anchorPrice: 399,
-    coins: 9000,
-    validDays: 180,
+    name: "季度无限畅画",
+    tagline: "120元 / 1500张，适合季度高频创作和批量出图。",
+    price: 69,
+    anchorPrice: 120,
+    couponNote: "限时折扣",
+    coins: 1500,
+    validDays: 90,
+    purchaseUrl: "https://m.tb.cn/h.RQl1F4Y?tk=FtGeg1LCZ7X",
     features: [
-      "全部模型可用",
-      "適合高頻商業使用",
-      "長有效期",
-      "未用完退折扣券",
+      "1500张图片额度",
+      "限时折扣 69 元",
+      "折合 0.046 元/张",
+      "适合季度高频畅画",
     ],
-    badge: "高頻使用",
+    badge: "季度",
   },
 ];
 
 export function pricePerCoin(plan: PricingPlan): string {
-  return (plan.price / plan.coins).toFixed(2);
+  return (Math.floor((plan.price / plan.coins) * 1000) / 1000).toFixed(3);
 }

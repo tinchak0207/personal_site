@@ -40,6 +40,7 @@
     "archived-custom-ui",
     "backup-current",
     "open-source-base",
+    "tmp",
     "**/*.test.ts",
     "**/*.test.tsx"
   ]
