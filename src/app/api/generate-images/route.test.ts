@@ -108,6 +108,9 @@ test("generate image route supports reference image edits without breaking text-
   assert.match(source, /referenceImages/);
   assert.match(source, /readWorkflowMetadata/);
   assert.match(source, /buildWorkflowPrompt/);
+  assert.match(source, /schemaVersion/);
+  assert.match(source, /estimatedCredits/);
+  assert.match(source, /workflow,/);
   assert.match(source, /form\.get\("workflow"\)/);
   assert.match(source, /\/images\/edits/);
   assert.match(source, /\/images\/generations/);

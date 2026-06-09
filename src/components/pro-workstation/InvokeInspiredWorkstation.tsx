@@ -4,11 +4,12 @@ import { useEffect, useRef, useState } from "react";
 import { draggable } from "@atlaskit/pragmatic-drag-and-drop/element/adapter";
 import { useHotkeys } from "react-hotkeys-hook";
 import { Virtuoso } from "react-virtuoso";
-import { Bot, Braces, Images, Layers3, Library, Play, SlidersHorizontal } from "lucide-react";
+import { Bot, Braces, Clipboard, Gauge, Images, Layers3, Library, Play, RotateCcw, SlidersHorizontal, Sparkles } from "lucide-react";
 import { ReferenceImageUpload } from "@/components/ReferenceImageUpload";
 import type { ImageResult, ReferenceImage, ReferenceImageRole } from "@/lib/image-types";
 import type { Suggestion } from "@/lib/suggestions";
 import { cn } from "@/lib/utils";
+import { WORKFLOW_SCHEMA_VERSION } from "@/lib/generation-workflow";
 import { WORKSTATION_SOURCES } from "./workstation-sources";
 
 export const INVOKE_AI_WORKSTATION_SOURCE = {
@@ -16,11 +17,53 @@ export const INVOKE_AI_WORKSTATION_SOURCE = {
   patterns: WORKSTATION_SOURCES[0].capabilities,
 };
 
-export const WORKFLOW_PRESETS: Array<{ id: string; label: string; note: string }> = [
-  { id: "product-shot", label: "商品主图", note: "产品清晰、标签可读、背景干净" },
-  { id: "character-consistency", label: "角色一致", note: "保留人物身份、服装和面部特征" },
-  { id: "poster-variants", label: "海报变体", note: "适合批量出封面、banner 和社媒图" },
-  { id: "style-transfer", label: "风格迁移", note: "把参考图风格转移到新构图" },
+interface WorkstationPreset {
+  id: string;
+  label: string;
+  note: string;
+  promptHint: string;
+  negativeHint: string;
+  defaultRole: ReferenceImageRole;
+  estimatedCredits: number;
+}
+
+export const WORKFLOW_PRESETS: WorkstationPreset[] = [
+  {
+    id: "product-shot",
+    label: "商品主图",
+    note: "产品清晰、标签可读、背景干净",
+    promptHint: "premium ecommerce product hero, clean studio lighting, readable packaging label, realistic shadows",
+    negativeHint: "distorted label, broken logo, watermark, low resolution, cluttered background",
+    defaultRole: "product",
+    estimatedCredits: 2,
+  },
+  {
+    id: "character-consistency",
+    label: "角色一致",
+    note: "保留人物身份、服装和面部特征",
+    promptHint: "consistent character identity, same face structure, same outfit details, production still quality",
+    negativeHint: "face drift, asymmetrical eyes, different clothing, extra fingers, plastic skin",
+    defaultRole: "character",
+    estimatedCredits: 3,
+  },
+  {
+    id: "poster-variants",
+    label: "海报变体",
+    note: "适合批量出封面、banner 和社媒图",
+    promptHint: "campaign key visual, strong focal point, clean copy space, premium layout, variant-ready composition",
+    negativeHint: "busy composition, unreadable text, poor hierarchy, muddy contrast",
+    defaultRole: "composition",
+    estimatedCredits: 4,
+  },
+  {
+    id: "style-transfer",
+    label: "风格迁移",
+    note: "把参考图风格转移到新构图",
+    promptHint: "preserve the reference image style language, color grading, lighting rhythm, material texture",
+    negativeHint: "style mismatch, overprocessed texture, low fidelity, noisy artifacts",
+    defaultRole: "style",
+    estimatedCredits: 2,
+  },
 ];
 
 export const REFERENCE_IMAGE_ROLES: Array<{ id: ReferenceImageRole; label: string }> = [
@@ -45,7 +88,11 @@ export interface ProfessionalRunConfig {
   prompt: string;
   contextPrompt: string;
   negativePrompt: string;
+  negativeHint: string;
   workflowPreset: string;
+  workflowPresetLabel: string;
+  promptHint: string;
+  estimatedCredits: number;
   referenceImageRoles: Record<string, ReferenceImageRole>;
   copies: number;
   concurrency: number;
@@ -115,15 +162,39 @@ export function InvokeInspiredWorkstation({
   const [workflowPreset, setWorkflowPreset] = useState(WORKFLOW_PRESETS[0].id);
   const [copies, setCopies] = useState(2);
   const [concurrency, setConcurrency] = useState(2);
+  const activePreset = WORKFLOW_PRESETS.find((preset) => preset.id === workflowPreset) ?? WORKFLOW_PRESETS[0];
+  const completedSlots = images.filter((image) => image.image || image.imageUrl).length;
+  const failedSlots = images.filter((image) => !isLoading && image.image === null && image.imageUrl === null).length;
+  const fallbackSlots = images.filter((image) => image.endpointLabel === "fallback").length;
+  const runningSlots = isLoading ? Math.max(0, copies - completedSlots - failedSlots) : 0;
+  const estimatedCredits = Math.max(copies, activePreset.estimatedCredits);
 
   const canRun = prompt.trim().length > 0 && !isLoading;
+  const appendUniqueText = (current: string, next: string) => {
+    const currentText = current.trim();
+    if (!next.trim()) return current;
+    if (currentText.includes(next.trim())) return current;
+    return currentText ? `${currentText}\n${next.trim()}` : next.trim();
+  };
+
+  const applyWorkflowPreset = (preset: WorkstationPreset) => {
+    setWorkflowPreset(preset.id);
+    setPrompt((current) => appendUniqueText(current, preset.promptHint));
+    setNegativePrompt((current) => appendUniqueText(current, preset.negativeHint));
+    onReferenceImagesChange(referenceImages.map((image) => ({ ...image, role: image.role ?? preset.defaultRole })));
+  };
+
   const run = () => {
     if (!canRun) return;
     onRun({
       prompt: prompt.trim(),
       contextPrompt,
       negativePrompt,
+      negativeHint: activePreset.negativeHint,
       workflowPreset,
+      workflowPresetLabel: activePreset.label,
+      promptHint: activePreset.promptHint,
+      estimatedCredits,
       referenceImageRoles: Object.fromEntries(
         referenceImages.map((image) => [image.id, image.role ?? "general"]),
       ) as Record<string, ReferenceImageRole>,
@@ -136,6 +207,29 @@ export function InvokeInspiredWorkstation({
     onReferenceImagesChange(referenceImages.map((image) => image.id === id ? { ...image, role } : image));
   };
 
+  const copyProvenanceConfig = async (image?: ImageResult) => {
+    const config = {
+      schemaVersion: WORKFLOW_SCHEMA_VERSION,
+      prompt: prompt.trim(),
+      contextPrompt: contextPrompt.trim(),
+      negativePrompt: negativePrompt.trim(),
+      workflowPreset,
+      workflowPresetLabel: activePreset.label,
+      promptHint: activePreset.promptHint,
+      negativeHint: activePreset.negativeHint,
+      copies,
+      concurrency,
+      modelId: image?.modelId,
+      endpointLabel: image?.endpointLabel,
+      referenceImages: referenceImages.map((ref) => ({
+        name: ref.name,
+        role: ref.role ?? activePreset.defaultRole,
+        size: ref.size,
+      })),
+    };
+    await navigator.clipboard.writeText(JSON.stringify(config, null, 2));
+  };
+
   useHotkeys("mod+enter", run, { enableOnFormTags: true }, [
     canRun,
     prompt,
@@ -143,6 +237,7 @@ export function InvokeInspiredWorkstation({
     negativePrompt,
     workflowPreset,
     referenceImages,
+    estimatedCredits,
     copies,
     concurrency,
   ]);
@@ -155,6 +250,7 @@ export function InvokeInspiredWorkstation({
           <h2 className="truncate text-ios-title2 font-bold text-[rgba(0,0,0,0.84)]">专业生图工作站</h2>
         </div>
         <div className="flex items-center gap-2">
+          <span className="rounded-full bg-white/48 px-3 py-1.5 text-ios-caption1 font-semibold text-[rgba(0,0,0,0.42)]">schema v{WORKFLOW_SCHEMA_VERSION}</span>
           <span className="rounded-full bg-white/56 px-3 py-1.5 text-ios-caption1 font-semibold text-[rgba(0,0,0,0.50)]">⌘ Enter</span>
           <button
             type="button"
@@ -179,7 +275,7 @@ export function InvokeInspiredWorkstation({
               <button
                 key={preset.id}
                 type="button"
-                onClick={() => setWorkflowPreset(preset.id)}
+                onClick={() => applyWorkflowPreset(preset)}
                 className={cn(
                   "rounded-ios-xl px-3 py-2 text-left text-[11px] font-semibold transition-all",
                   workflowPreset === preset.id
@@ -191,6 +287,10 @@ export function InvokeInspiredWorkstation({
                 {preset.label}
               </button>
             ))}
+          </div>
+          <div className="mt-2 rounded-ios-2xl bg-white/32 px-3 py-2 text-[11px] font-medium leading-relaxed text-[rgba(0,0,0,0.50)]">
+            <Sparkles className="mr-1.5 inline h-3 w-3 text-[#007AFF]" />
+            {activePreset.note}
           </div>
 
           <div className="pro-panel-title mt-4">
@@ -275,7 +375,36 @@ export function InvokeInspiredWorkstation({
             <strong>{copies}</strong>
           </label>
           <div className="mt-3 rounded-ios-2xl bg-white/38 px-3 py-2 text-ios-caption1 font-semibold text-[rgba(0,0,0,0.54)]">
-            预计消耗 {copies} 张
+            预计消耗 {estimatedCredits} 张
+          </div>
+
+          <div className="pro-panel-title mt-4">
+            <Gauge className="h-4 w-4" />
+            Queue Inspector
+          </div>
+          <div className="pro-metric-grid">
+            <div className="pro-metric-card">
+              <span>Slots</span>
+              <strong>{copies}</strong>
+            </div>
+            <div className="pro-metric-card">
+              <span>Running</span>
+              <strong>{runningSlots}</strong>
+            </div>
+            <div className="pro-metric-card">
+              <span>Done</span>
+              <strong>{completedSlots}</strong>
+            </div>
+            <div className="pro-metric-card">
+              <span>Failed</span>
+              <strong>{failedSlots}</strong>
+            </div>
+          </div>
+          <div className="mt-2 flex items-center justify-between rounded-ios-2xl bg-white/34 px-3 py-2 text-[11px] font-semibold text-[rgba(0,0,0,0.50)]">
+            <span>Fallback used</span>
+            <span className={cn("rounded-full px-2 py-0.5", fallbackSlots ? "bg-[#FF9500]/18 text-[#B45F00]" : "bg-[#34C759]/14 text-[#207A37]")}>
+              {fallbackSlots}
+            </span>
           </div>
 
           <div className="pro-panel-title mt-4">
@@ -295,20 +424,53 @@ export function InvokeInspiredWorkstation({
 
           <div className="pro-panel-title mt-4">
             <Images className="h-4 w-4" />
-            Board & Gallery Management
+            Board & Gallery Management / Provenance
           </div>
           <div className="grid max-h-[320px] grid-cols-2 gap-2 overflow-y-auto pr-1">
             {images.map((image, index) => (
-              <div key={image.slotId ?? index} className={cn("aspect-square overflow-hidden rounded-ios-xl bg-white/42", !image.image && !image.imageUrl && "flex items-center justify-center")}>
-                {image.image || image.imageUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={image.image ? `data:image/png;base64,${image.image}` : image.imageUrl ?? undefined} alt="生成结果" className="h-full w-full object-cover" />
-                ) : (
-                  <Bot className="h-5 w-5 text-[rgba(0,0,0,0.28)]" />
-                )}
-              </div>
-            ))}
+              <div key={image.slotId ?? index} className="pro-provenance-card">
+                <div className={cn("aspect-square overflow-hidden rounded-ios-xl bg-white/42", !image.image && !image.imageUrl && "flex items-center justify-center")}>
+                  {image.image || image.imageUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={image.image ? `data:image/png;base64,${image.image}` : image.imageUrl ?? undefined} alt="生成结果" className="h-full w-full object-cover" />
+                  ) : (
+                    <Bot className="h-5 w-5 text-[rgba(0,0,0,0.28)]" />
+                  )}
+                </div>
+                <div className="mt-2 space-y-1 text-[10px] font-semibold text-[rgba(0,0,0,0.46)]">
+                  <div className="flex items-center gap-1">
+                    <Clipboard className="h-3 w-3" />
+                    <span className="truncate">Provenance</span>
+                  </div>
+                      <p className="truncate">{image.workflow?.workflowPresetLabel ?? activePreset.label}</p>
+                      <p className="truncate">{image.endpointLabel ?? "queued"} · {image.modelId}</p>
+                      <p className="truncate">{image.referenceImageNames?.join(", ") || "no refs"}</p>
+                      <button
+                        type="button"
+                        onClick={() => copyProvenanceConfig(image)}
+                        className="mt-1 inline-flex w-full items-center justify-center gap-1 rounded-lg bg-white/46 px-2 py-1 text-[10px] font-bold text-[rgba(0,0,0,0.56)] transition-colors hover:bg-white/70"
+                      >
+                        <Clipboard className="h-3 w-3" />
+                        复制配置
+                      </button>
+                    </div>
+                  </div>
+                ))}
           </div>
+          {images.length === 0 && (
+            <div className="mt-2 rounded-ios-2xl bg-white/34 px-3 py-3 text-[11px] font-medium leading-relaxed text-[rgba(0,0,0,0.46)]">
+                  <RotateCcw className="mr-1.5 inline h-3 w-3" />
+                  生成后这里会记录模型、端点、preset、参考图和可召回参数。
+                  <button
+                    type="button"
+                    onClick={() => copyProvenanceConfig()}
+                    className="mt-2 inline-flex w-full items-center justify-center gap-1 rounded-ios-xl bg-white/46 px-3 py-2 text-[11px] font-bold text-[rgba(0,0,0,0.56)] transition-colors hover:bg-white/70"
+                  >
+                    <Clipboard className="h-3 w-3" />
+                    复制配置
+                  </button>
+                </div>
+              )}
         </aside>
       </div>
     </section>

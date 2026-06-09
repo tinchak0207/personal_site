@@ -5,7 +5,11 @@ import { buildGatewayEndpoints } from "@/lib/sub2api";
 import { publicImageUrl } from "@/lib/image-url";
 import { saveGeneratedHistoryEntry } from "@/lib/server-history-store";
 import { authenticateImageUser, refundImageQuota, reserveImageQuota } from "@/lib/image-billing";
-import { buildWorkflowPrompt } from "@/lib/generation-workflow";
+import {
+  WORKFLOW_SCHEMA_VERSION,
+  buildWorkflowPrompt,
+  normalizeGenerationWorkflowMetadata,
+} from "@/lib/generation-workflow";
 import type { GenerationWorkflowMetadata } from "@/lib/image-types";
 
 export const maxDuration = 120;
@@ -58,7 +62,10 @@ function readWorkflowMetadata(value: unknown): GenerationWorkflowMetadata | unde
     : value;
 
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return undefined;
-  return parsed as GenerationWorkflowMetadata;
+  return normalizeGenerationWorkflowMetadata({
+    schemaVersion: WORKFLOW_SCHEMA_VERSION,
+    ...(parsed as GenerationWorkflowMetadata),
+  });
 }
 
 async function readGenerateImageRequest(req: NextRequest): Promise<ParsedGenerateImageRequest> {
@@ -156,6 +163,7 @@ async function requestImageGeneration(
 export async function POST(req: NextRequest) {
   const requestId = Math.random().toString(36).slice(2);
   const { prompt, modelId, referenceImages, workflow } = await readGenerateImageRequest(req);
+  const estimatedCredits = workflow?.estimatedCredits;
   const finalPrompt = buildWorkflowPrompt(prompt, workflow);
 
   if (!prompt || !modelId) {
@@ -225,7 +233,7 @@ export async function POST(req: NextRequest) {
           console.error(`Failed to save history [requestId=${requestId}]`, error);
         });
       }
-      console.log(`Completed [requestId=${requestId}, model=${modelId}, endpoint=${endpoint.label}, upstreamElapsedMs=${result.upstreamElapsedMs}]`);
+      console.log(`Completed [requestId=${requestId}, model=${modelId}, endpoint=${endpoint.label}, estimatedCredits=${estimatedCredits ?? 1}, upstreamElapsedMs=${result.upstreamElapsedMs}]`);
       return NextResponse.json({
         provider: "image_tinchak",
         image: result.image,

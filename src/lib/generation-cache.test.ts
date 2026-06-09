@@ -37,9 +37,14 @@ test("recordGenerationResult preserves professional workflow metadata", () => {
     prompt: "make product variants",
     generatedAt: 1000,
     workflow: {
+      schemaVersion: 2,
       contextPrompt: "brand: clean skincare",
       negativePrompt: "no distorted labels",
       workflowPreset: "product-shot",
+      workflowPresetLabel: "商品主图",
+      promptHint: "clean product studio",
+      negativeHint: "no broken labels",
+      estimatedCredits: 3,
       referenceImages: [{ name: "bottle.png", role: "product", size: 1234 }],
       copies: 3,
       concurrency: 2,
@@ -50,6 +55,9 @@ test("recordGenerationResult preserves professional workflow metadata", () => {
   });
 
   assert.equal(next.current.workflow?.workflowPreset, "product-shot");
+  assert.equal(next.current.workflow?.schemaVersion, 2);
+  assert.equal(next.current.workflow?.workflowPresetLabel, "商品主图");
+  assert.equal(next.current.workflow?.estimatedCredits, 3);
   assert.equal(next.current.workflow?.referenceImages?.[0]?.role, "product");
   assert.equal(next.historyByUser["7"]?.[0]?.workflow?.negativePrompt, "no distorted labels");
 });

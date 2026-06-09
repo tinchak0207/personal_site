@@ -13,7 +13,11 @@ import {
   recordGenerationResult,
   writeGenerationCache,
 } from "@/lib/generation-cache";
-import { buildWorkflowPrompt, createGenerationWorkflow } from "@/lib/generation-workflow";
+import {
+  WORKFLOW_SCHEMA_VERSION,
+  buildWorkflowPrompt,
+  createGenerationWorkflow,
+} from "@/lib/generation-workflow";
 
 interface UseImageGenerationReturn {
   images: ImageResult[];
@@ -44,7 +48,11 @@ interface GenerationOptions {
   concurrency?: number;
   contextPrompt?: string;
   negativePrompt?: string;
+  negativeHint?: string;
   workflowPreset?: string;
+  workflowPresetLabel?: string;
+  promptHint?: string;
+  estimatedCredits?: number;
   referenceImageRoles?: Record<string, ReferenceImageRole>;
 }
 
@@ -110,7 +118,13 @@ export function useImageGeneration(): UseImageGenerationReturn {
     const referenceImages = options.referenceImages ?? [];
     const copies = Math.max(1, Math.min(8, options.copies ?? 1));
     const concurrency = Math.max(1, Math.min(4, options.concurrency ?? providers.length));
-    const workflow = createGenerationWorkflow({ ...options, copies, concurrency }, referenceImages);
+    const workflow = createGenerationWorkflow({
+      ...options,
+      schemaVersion: WORKFLOW_SCHEMA_VERSION,
+      estimatedCredits: options.estimatedCredits ?? copies,
+      copies,
+      concurrency,
+    }, referenceImages);
     const workflowPrompt = buildWorkflowPrompt(prompt, workflow);
     setActivePrompt(workflowPrompt);
     try {

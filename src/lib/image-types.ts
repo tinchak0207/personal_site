@@ -24,10 +24,15 @@ export interface ReferenceImageMetadata {
 }
 
 export interface GenerationWorkflowMetadata {
+  schemaVersion?: number;
   contextPrompt?: string;
   negativePrompt?: string;
+  negativeHint?: string;
   workflowPreset?: string;
+  workflowPresetLabel?: string;
+  promptHint?: string;
   referenceImages?: ReferenceImageMetadata[];
+  estimatedCredits?: number;
   copies?: number;
   concurrency?: number;
 }

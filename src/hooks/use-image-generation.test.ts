@@ -50,6 +50,9 @@ test("image generation hook persists professional workflow metadata", () => {
 
   assert.match(hook, /negativePrompt/);
   assert.match(hook, /workflowPreset/);
+  assert.match(hook, /workflowPresetLabel/);
+  assert.match(hook, /WORKFLOW_SCHEMA_VERSION/);
+  assert.match(hook, /estimatedCredits/);
   assert.match(hook, /workflow,/);
   assert.match(cache, /workflow\?: GenerationWorkflowMetadata/);
   assert.match(cache, /workflow: input\.workflow/);
