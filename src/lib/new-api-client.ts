@@ -2,6 +2,7 @@
  * new-api gateway client
  * All calls go through Next.js server-side proxy — never expose GATEWAY_KEY to browser.
  */
+import type { GenerationWorkflowMetadata } from "./image-types";
 
 export interface NewApiUser {
   id: number;
@@ -156,6 +157,7 @@ export interface StoredHistoryEntry {
     image?: string | null;
     imageUrl?: string | null;
   }>;
+  workflow?: GenerationWorkflowMetadata;
 }
 
 // ─── Client-side API helpers (all go through /api/* proxy) ───────────────────

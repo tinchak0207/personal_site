@@ -7,10 +7,18 @@ import {
   ReferenceImageRole,
 } from "@/lib/image-types";
 import { initializeProviderRecord, ProviderKey } from "@/lib/provider-config";
-import { getStoredToken, getStoredUser } from "@/lib/new-api-client";
 import {
+  fetchStoredHistory,
+  getStoredToken,
+  getStoredUser,
+  type StoredHistoryEntry,
+} from "@/lib/new-api-client";
+import {
+  mergePersistedHistory,
+  type PersistedGenerationEntry,
   readGenerationCache,
   recordGenerationResult,
+  selectPersistedHistoryForUser,
   writeGenerationCache,
 } from "@/lib/generation-cache";
 import {
@@ -18,6 +26,7 @@ import {
   buildWorkflowPrompt,
   createGenerationWorkflow,
 } from "@/lib/generation-workflow";
+import { LOCAL_TEST_MODE } from "@/lib/sub2api";
 
 interface UseImageGenerationReturn {
   images: ImageResult[];
@@ -25,6 +34,7 @@ interface UseImageGenerationReturn {
   timings: Record<ProviderKey, ProviderTiming>;
   failedProviders: ProviderKey[];
   isLoading: boolean;
+  recentWorkflows: PersistedGenerationEntry[];
   startGeneration: (
     prompt: string,
     providers: ProviderKey[],
@@ -56,6 +66,41 @@ interface GenerationOptions {
   referenceImageRoles?: Record<string, ReferenceImageRole>;
 }
 
+const MAX_RECENT_WORKFLOWS = 6;
+
+function selectRecentWorkflowEntries(entries: PersistedGenerationEntry[]) {
+  return entries.filter((entry) => entry.workflow).slice(0, MAX_RECENT_WORKFLOWS);
+}
+
+function getGenerationCacheUser() {
+  const storedUser = getStoredUser();
+  if (storedUser) return { id: storedUser.id, username: storedUser.username };
+  if (LOCAL_TEST_MODE) return { id: 0, username: "local-test" };
+  return null;
+}
+
+function selectLocalHistory(cache: ReturnType<typeof readGenerationCache>, userId?: number) {
+  if (userId !== undefined) return selectPersistedHistoryForUser(cache, userId);
+  if (!LOCAL_TEST_MODE) return [];
+  return Object.values(cache.historyByUser).flat().sort((a, b) => b.generatedAt - a.generatedAt);
+}
+
+function mapStoredHistoryEntry(entry: StoredHistoryEntry): PersistedGenerationEntry {
+  return {
+    id: entry.id,
+    prompt: entry.prompt,
+    generatedAt: entry.generatedAt,
+    results: entry.results.map((result) => ({
+      provider: result.provider as ProviderKey,
+      modelId: result.modelId,
+      image: result.image ?? null,
+      imageUrl: result.imageUrl ?? null,
+    })),
+    source: "server",
+    workflow: entry.workflow,
+  };
+}
+
 async function readGenerationResponse(response: Response): Promise<GenerationResponse> {
   const text = await response.text();
   if (!text) return {};
@@ -79,14 +124,29 @@ export function useImageGeneration(): UseImageGenerationReturn {
   const [failedProviders, setFailedProviders] = useState<ProviderKey[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [activePrompt, setActivePrompt] = useState("");
+  const [recentWorkflows, setRecentWorkflows] = useState<PersistedGenerationEntry[]>([]);
 
   useEffect(() => {
-    const user = getStoredUser();
+    const cache = readGenerationCache();
+    const user = getGenerationCacheUser();
+    setRecentWorkflows(selectRecentWorkflowEntries(selectLocalHistory(cache, user?.id)));
     if (!user) return;
 
-    const cache = readGenerationCache();
+    const token = getStoredToken();
+    let cancelled = false;
+    if (token) {
+      fetchStoredHistory(token)
+        .then((storedHistory) => {
+          if (cancelled || !Array.isArray(storedHistory.data)) return;
+          setRecentWorkflows(selectRecentWorkflowEntries(
+            mergePersistedHistory(cache, user.id, storedHistory.data.map(mapStoredHistoryEntry)),
+          ));
+        })
+        .catch(() => {});
+    }
+
     const current = cache.current;
-    if (!current || current.userId !== user.id) return;
+    if (!current || current.userId !== user.id) return () => { cancelled = true; };
 
     setActivePrompt(current.prompt);
     setImages(
@@ -99,6 +159,7 @@ export function useImageGeneration(): UseImageGenerationReturn {
         workflow: current.workflow,
       })),
     );
+    return () => { cancelled = true; };
   }, []);
 
   const resetState = () => {
@@ -291,7 +352,7 @@ export function useImageGeneration(): UseImageGenerationReturn {
         completedResults.push(...await Promise.all(tasks.slice(index, index + concurrency).map((task) => task())));
       }
 
-      const user = getStoredUser();
+      const user = getGenerationCacheUser();
       if (user) {
         const updatedCache = recordGenerationResult(readGenerationCache(), {
           userId: user.id,
@@ -302,6 +363,7 @@ export function useImageGeneration(): UseImageGenerationReturn {
           workflow,
         });
         writeGenerationCache(updatedCache);
+        setRecentWorkflows(selectRecentWorkflowEntries(selectPersistedHistoryForUser(updatedCache, user.id)));
       }
       return completedResults;
     } catch (error) {
@@ -318,6 +380,7 @@ export function useImageGeneration(): UseImageGenerationReturn {
     timings,
     failedProviders,
     isLoading,
+    recentWorkflows,
     startGeneration,
     resetState,
     activePrompt,

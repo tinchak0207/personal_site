@@ -613,6 +613,46 @@ body {
   accent-color: #007aff;
 }
 
+.pro-recent-list {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.pro-recent-item {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+  border-radius: 0.9rem;
+  background: rgba(255, 255, 255, 0.34);
+  padding: 0.55rem 0.65rem;
+  text-align: left;
+  color: rgba(0, 0, 0, 0.56);
+  transition: background 180ms ease, transform 180ms ease;
+}
+
+.pro-recent-item:hover {
+  background: rgba(255, 255, 255, 0.58);
+  transform: translateY(-1px);
+}
+
+.pro-recent-item span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.7rem;
+  font-weight: 760;
+}
+
+.pro-recent-item small {
+  flex-shrink: 0;
+  color: rgba(0, 0, 0, 0.34);
+  font-size: 0.62rem;
+  font-weight: 700;
+}
+
 .pro-prompt-meter {
   display: flex;
   flex-wrap: wrap;

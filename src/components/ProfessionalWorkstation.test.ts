@@ -52,11 +52,16 @@ test("professional workstation is based on InvokeAI github workstation patterns"
   assert.match(source, /Provenance/);
   assert.match(source, /copyProvenanceConfig/);
   assert.match(source, /restoreProvenanceConfig/);
+  assert.match(source, /restoreHistoryEntry/);
   assert.match(source, /parseWorkflowRecallConfig/);
+  assert.match(source, /extractPromptSection/);
+  assert.match(source, /recentWorkflows/);
   assert.match(source, /navigator\.clipboard\.writeText/);
   assert.match(source, /复制配置/);
   assert.match(source, /导入配置/);
   assert.match(source, /配置召回/);
+  assert.match(source, /Recent Runs/);
+  assert.match(source, /最近任务/);
   assert.match(source, /promptStats/);
   assert.match(source, /Estimated tokens/);
   assert.match(source, /pro-slot-list/);
@@ -73,5 +78,6 @@ test("professional workstation is based on InvokeAI github workstation patterns"
   assert.match(source, /contextPrompt/);
   assert.match(playground, /dynamic\(\(\) => import\("@\/components\/pro-workstation\/InvokeInspiredWorkstation"\)/);
   assert.match(playground, /showProfessionalMode/);
+  assert.match(playground, /recentWorkflows=\{recentWorkflows\}/);
   assert.match(playground, /hidden md:inline-flex/);
 });

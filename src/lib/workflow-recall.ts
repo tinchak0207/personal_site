@@ -57,18 +57,31 @@ export function parseWorkflowRecallConfig(raw: string): WorkflowRecallParseResul
   }
 
   if (!isRecord(payload)) return { ok: false, error: "没有可导入的工作站配置" };
+  const prompt = cleanText(payload.prompt);
+  const contextPrompt = cleanText(payload.contextPrompt);
+  const negativePrompt = cleanText(payload.negativePrompt);
+  const workflowPreset = cleanText(payload.workflowPreset);
+  const copies = clampRange(payload.copies, 1, 8);
+  const concurrency = clampRange(payload.concurrency, 1, 4);
+  const referenceImageRolesByName = readReferenceRoles(payload.referenceImages);
 
   const config: WorkflowRecallConfig = {
-    ...(cleanText(payload.prompt) ? { prompt: cleanText(payload.prompt) } : {}),
-    ...(cleanText(payload.contextPrompt) ? { contextPrompt: cleanText(payload.contextPrompt) } : {}),
-    ...(cleanText(payload.negativePrompt) ? { negativePrompt: cleanText(payload.negativePrompt) } : {}),
-    ...(cleanText(payload.workflowPreset) ? { workflowPreset: cleanText(payload.workflowPreset) } : {}),
-    ...(clampRange(payload.copies, 1, 8) ? { copies: clampRange(payload.copies, 1, 8) } : {}),
-    ...(clampRange(payload.concurrency, 1, 4) ? { concurrency: clampRange(payload.concurrency, 1, 4) } : {}),
-    ...(readReferenceRoles(payload.referenceImages) ? { referenceImageRolesByName: readReferenceRoles(payload.referenceImages) } : {}),
+    ...(prompt ? { prompt } : {}),
+    ...(contextPrompt ? { contextPrompt } : {}),
+    ...(negativePrompt ? { negativePrompt } : {}),
+    ...(workflowPreset ? { workflowPreset } : {}),
+    ...(copies ? { copies } : {}),
+    ...(concurrency ? { concurrency } : {}),
+    ...(referenceImageRolesByName ? { referenceImageRolesByName } : {}),
   };
 
   return Object.keys(config).length
     ? { ok: true, config }
     : { ok: false, error: "没有可导入的工作站配置" };
+}
+
+export function extractPromptSection(prompt: string) {
+  const trimmed = prompt.trim();
+  const match = trimmed.match(/(?:^|\n\n)Prompt:\n([\s\S]*?)(?:\n\n(?:Workflow preset:|Preset guidance:|Reference images:|Avoid:)|$)/);
+  return (match?.[1] ?? trimmed).trim();
 }

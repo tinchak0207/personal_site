@@ -38,7 +38,7 @@ const ReferenceImageUpload = dynamic(() => import("@/components/ReferenceImageUp
 });
 
 export function ImagePlayground({ suggestions }: { suggestions: Suggestion[] }) {
-  const { images, timings, failedProviders, isLoading, startGeneration } = useImageGeneration();
+  const { images, timings, failedProviders, isLoading, recentWorkflows, startGeneration } = useImageGeneration();
   const { user, isLoggedIn, refresh } = useAuth();
   const { toast } = useToast();
   const initialSuggestions = getInitialSuggestions(suggestions);
@@ -186,6 +186,7 @@ export function ImagePlayground({ suggestions }: { suggestions: Suggestion[] }) 
               onReferenceImagesChange={setReferenceImages}
               images={images}
               isLoading={isLoading}
+              recentWorkflows={recentWorkflows}
               onRun={handleProfessionalRun}
             />
           ) : (

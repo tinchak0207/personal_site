@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { parseWorkflowRecallConfig } from "./workflow-recall.ts";
+import { extractPromptSection, parseWorkflowRecallConfig } from "./workflow-recall.ts";
 
 test("parseWorkflowRecallConfig restores copied workstation config safely", () => {
   const result = parseWorkflowRecallConfig(JSON.stringify({
@@ -31,4 +31,20 @@ test("parseWorkflowRecallConfig restores copied workstation config safely", () =
 test("parseWorkflowRecallConfig rejects malformed or empty recall payloads", () => {
   assert.deepEqual(parseWorkflowRecallConfig("{"), { ok: false, error: "配置 JSON 无法解析" });
   assert.deepEqual(parseWorkflowRecallConfig("{}"), { ok: false, error: "没有可导入的工作站配置" });
+});
+
+test("extractPromptSection restores raw prompt from a workflow prompt", () => {
+  assert.equal(extractPromptSection([
+    "Project context:",
+    "brand system",
+    "",
+    "Prompt:",
+    "product poster",
+    "",
+    "Workflow preset: 海报变体",
+    "",
+    "Avoid:",
+    "bad text",
+  ].join("\n")), "product poster");
+  assert.equal(extractPromptSection("plain prompt"), "plain prompt");
 });

@@ -47,6 +47,7 @@ test("image generation hook sends reference images as multipart form data", () =
 test("image generation hook persists professional workflow metadata", () => {
   const hook = read("src/hooks/use-image-generation.ts");
   const cache = read("src/lib/generation-cache.ts");
+  const client = read("src/lib/new-api-client.ts");
 
   assert.match(hook, /negativePrompt/);
   assert.match(hook, /workflowPreset/);
@@ -54,6 +55,11 @@ test("image generation hook persists professional workflow metadata", () => {
   assert.match(hook, /WORKFLOW_SCHEMA_VERSION/);
   assert.match(hook, /estimatedCredits/);
   assert.match(hook, /workflow,/);
+  assert.match(hook, /recentWorkflows/);
+  assert.match(hook, /fetchStoredHistory/);
+  assert.match(hook, /selectPersistedHistoryForUser/);
+  assert.match(hook, /setRecentWorkflows/);
   assert.match(cache, /workflow\?: GenerationWorkflowMetadata/);
   assert.match(cache, /workflow: input\.workflow/);
+  assert.match(client, /workflow\?: GenerationWorkflowMetadata/);
 });

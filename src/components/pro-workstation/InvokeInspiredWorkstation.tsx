@@ -7,10 +7,11 @@ import { Virtuoso } from "react-virtuoso";
 import { Bot, Braces, Clipboard, FileJson, Gauge, Images, Layers3, Library, Play, RotateCcw, SlidersHorizontal, Sparkles } from "lucide-react";
 import { ReferenceImageUpload } from "@/components/ReferenceImageUpload";
 import type { ImageResult, ReferenceImage, ReferenceImageRole } from "@/lib/image-types";
+import type { PersistedGenerationEntry } from "@/lib/generation-cache";
 import type { Suggestion } from "@/lib/suggestions";
 import { cn } from "@/lib/utils";
 import { WORKFLOW_SCHEMA_VERSION } from "@/lib/generation-workflow";
-import { parseWorkflowRecallConfig } from "@/lib/workflow-recall";
+import { extractPromptSection, parseWorkflowRecallConfig } from "@/lib/workflow-recall";
 import { WORKSTATION_SOURCES } from "./workstation-sources";
 
 export const INVOKE_AI_WORKSTATION_SOURCE = {
@@ -105,6 +106,7 @@ interface InvokeInspiredWorkstationProps {
   onReferenceImagesChange: (images: ReferenceImage[]) => void;
   images: ImageResult[];
   isLoading: boolean;
+  recentWorkflows: PersistedGenerationEntry[];
   onRun: (config: ProfessionalRunConfig) => void;
 }
 
@@ -155,6 +157,7 @@ export function InvokeInspiredWorkstation({
   onReferenceImagesChange,
   images,
   isLoading,
+  recentWorkflows,
   onRun,
 }: InvokeInspiredWorkstationProps) {
   const [prompt, setPrompt] = useState("");
@@ -281,6 +284,26 @@ export function InvokeInspiredWorkstation({
     setRestoreConfigMessage("配置已导入");
   };
 
+  const restoreHistoryEntry = (entry: PersistedGenerationEntry) => {
+    const workflow = entry.workflow;
+    setPrompt(extractPromptSection(entry.prompt));
+    setContextPrompt(workflow?.contextPrompt ?? "");
+    setNegativePrompt(workflow?.negativePrompt ?? "");
+    if (workflow?.workflowPreset && WORKFLOW_PRESETS.some((preset) => preset.id === workflow.workflowPreset)) {
+      setWorkflowPreset(workflow.workflowPreset);
+    }
+    if (workflow?.copies) setCopies(workflow.copies);
+    if (workflow?.concurrency) setConcurrency(workflow.concurrency);
+    if (workflow?.referenceImages?.length) {
+      const rolesByName = Object.fromEntries(workflow.referenceImages.map((image) => [image.name, image.role]));
+      onReferenceImagesChange(referenceImages.map((image) => {
+        const role = rolesByName[image.name];
+        return role ? { ...image, role } : image;
+      }));
+    }
+    setRestoreConfigMessage("已召回最近任务");
+  };
+
   useHotkeys("mod+enter", run, { enableOnFormTags: true }, [
     canRun,
     prompt,
@@ -365,6 +388,26 @@ export function InvokeInspiredWorkstation({
             </button>
             {restoreConfigMessage && (
               <span className="truncate text-[11px] font-semibold text-[rgba(0,0,0,0.42)]">{restoreConfigMessage}</span>
+            )}
+          </div>
+
+          <div className="pro-panel-title mt-4">
+            <RotateCcw className="h-4 w-4" />
+            Recent Runs / 最近任务
+          </div>
+          <div className="pro-recent-list">
+            {recentWorkflows.length > 0 ? recentWorkflows.map((entry) => (
+              <button
+                key={entry.id}
+                type="button"
+                onClick={() => restoreHistoryEntry(entry)}
+                className="pro-recent-item"
+              >
+                <span>{entry.workflow?.workflowPresetLabel ?? "历史配置"}</span>
+                <small>{new Date(entry.generatedAt).toLocaleString("zh-CN", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })}</small>
+              </button>
+            )) : (
+              <p className="rounded-ios-xl bg-white/30 px-3 py-2 text-[11px] font-semibold text-[rgba(0,0,0,0.38)]">暂无可召回记录</p>
             )}
           </div>
 
