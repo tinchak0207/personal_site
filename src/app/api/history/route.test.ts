@@ -17,7 +17,11 @@ test("history api route exposes both GET and POST handlers", () => {
 
 test("generate images route persists successful generations to server history", () => {
   const source = read("src/app/api/generate-images/route.ts");
+  const history = read("src/lib/server-history-store.ts");
+
   assert.match(source, /saveGeneratedHistoryEntry/);
+  assert.match(source, /workflow/);
+  assert.match(history, /workflow\?: GenerationWorkflowMetadata/);
 });
 
 test("server history store uses vercel blob-backed persistence", () => {

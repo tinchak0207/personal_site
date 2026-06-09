@@ -28,6 +28,32 @@ test("recordGenerationResult keeps the latest generated images for the active ac
   assert.equal(next.historyByUser["7"]?.length, 1);
 });
 
+test("recordGenerationResult preserves professional workflow metadata", () => {
+  const cache = createEmptyGenerationCache();
+
+  const next = recordGenerationResult(cache, {
+    userId: 7,
+    username: "alice",
+    prompt: "make product variants",
+    generatedAt: 1000,
+    workflow: {
+      contextPrompt: "brand: clean skincare",
+      negativePrompt: "no distorted labels",
+      workflowPreset: "product-shot",
+      referenceImages: [{ name: "bottle.png", role: "product", size: 1234 }],
+      copies: 3,
+      concurrency: 2,
+    },
+    results: [
+      { provider: "image_tinchak", modelId: "gpt-image-2", image: "b64-a", imageUrl: null },
+    ],
+  });
+
+  assert.equal(next.current.workflow?.workflowPreset, "product-shot");
+  assert.equal(next.current.workflow?.referenceImages?.[0]?.role, "product");
+  assert.equal(next.historyByUser["7"]?.[0]?.workflow?.negativePrompt, "no distorted labels");
+});
+
 test("recordGenerationResult keeps history isolated by account", () => {
   const cache = createEmptyGenerationCache();
 

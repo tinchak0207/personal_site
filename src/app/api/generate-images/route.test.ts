@@ -97,6 +97,25 @@ test("generate image route allows long-running image requests on vercel", () => 
   assert.ok(fallbackTimeout > primaryTimeout);
 });
 
+test("generate image route supports reference image edits without breaking text-only generation", () => {
+  const source = read("src/app/api/generate-images/route.ts");
+  const apiTypes = read("src/lib/api-types.ts");
+
+  assert.match(apiTypes, /referenceImages\?:/);
+  assert.match(apiTypes, /workflow\?: GenerationWorkflowMetadata/);
+  assert.match(source, /content-type/);
+  assert.match(source, /req\.formData\(\)/);
+  assert.match(source, /referenceImages/);
+  assert.match(source, /readWorkflowMetadata/);
+  assert.match(source, /buildWorkflowPrompt/);
+  assert.match(source, /form\.get\("workflow"\)/);
+  assert.match(source, /\/images\/edits/);
+  assert.match(source, /\/images\/generations/);
+  assert.match(source, /body\.append\("image"/);
+  assert.match(source, /FormData/);
+  assert.ok(source.indexOf("/images/edits") < source.indexOf("/images/generations"));
+});
+
 test("generate image route bills authenticated users server-side", () => {
   const source = read("src/app/api/generate-images/route.ts");
 

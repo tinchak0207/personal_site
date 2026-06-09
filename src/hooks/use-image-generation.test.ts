@@ -28,3 +28,29 @@ test("image generation hook sends user auth and refreshes balance after completi
   assert.match(playground, /await startGeneration/);
   assert.doesNotMatch(playground, /setTimeout\(\(\) => \{\s*refresh\(\)/);
 });
+
+test("image generation hook sends reference images as multipart form data", () => {
+  const hook = read("src/hooks/use-image-generation.ts");
+  const imageTypes = read("src/lib/image-types.ts");
+
+  assert.match(imageTypes, /ReferenceImage/);
+  assert.match(hook, /referenceImages/);
+  assert.match(hook, /buildWorkflowPrompt/);
+  assert.match(hook, /createGenerationWorkflow/);
+  assert.match(hook, /new FormData\(\)/);
+  assert.match(hook, /body\.append\("referenceImages"/);
+  assert.match(hook, /body\.append\("workflow"/);
+  assert.match(hook, /body:\s*requestBody/);
+  assert.doesNotMatch(hook, /JSON\.stringify\(\{[\s\S]{0,120}referenceImages/);
+});
+
+test("image generation hook persists professional workflow metadata", () => {
+  const hook = read("src/hooks/use-image-generation.ts");
+  const cache = read("src/lib/generation-cache.ts");
+
+  assert.match(hook, /negativePrompt/);
+  assert.match(hook, /workflowPreset/);
+  assert.match(hook, /workflow,/);
+  assert.match(cache, /workflow\?: GenerationWorkflowMetadata/);
+  assert.match(cache, /workflow: input\.workflow/);
+});

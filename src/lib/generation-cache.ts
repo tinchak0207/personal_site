@@ -1,4 +1,5 @@
 import type { ProviderKey } from "./provider-config";
+import type { GenerationWorkflowMetadata } from "./image-types";
 
 export interface PersistedGenerationResult {
   provider: ProviderKey;
@@ -14,6 +15,7 @@ export interface PersistedGenerationEntry {
   generatedAt: number;
   results: PersistedGenerationResult[];
   source: "local" | "server";
+  workflow?: GenerationWorkflowMetadata;
 }
 
 export interface PersistedGenerationCurrent extends PersistedGenerationEntry {
@@ -32,6 +34,7 @@ interface RecordGenerationInput {
   prompt: string;
   generatedAt: number;
   results: PersistedGenerationResult[];
+  workflow?: GenerationWorkflowMetadata;
 }
 
 const MAX_HISTORY_PER_USER = 20;
@@ -101,6 +104,7 @@ export function recordGenerationResult(
     generatedAt: input.generatedAt,
     results: input.results,
     source: "local",
+    workflow: input.workflow,
   };
 
   const userKey = String(input.userId);

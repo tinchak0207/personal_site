@@ -5,11 +5,15 @@ import { buildGatewayEndpoints } from "@/lib/sub2api";
 import { publicImageUrl } from "@/lib/image-url";
 import { saveGeneratedHistoryEntry } from "@/lib/server-history-store";
 import { authenticateImageUser, refundImageQuota, reserveImageQuota } from "@/lib/image-billing";
+import { buildWorkflowPrompt } from "@/lib/generation-workflow";
+import type { GenerationWorkflowMetadata } from "@/lib/image-types";
 
 export const maxDuration = 120;
 export const preferredRegion = "hkg1";
 
 const DEFAULT_IMAGE_SIZE = "1024x1024";
+const IMAGE_EDITS_PATH = "/images/edits";
+const IMAGE_GENERATIONS_PATH = "/images/generations";
 const PRIMARY_UPSTREAM_TIMEOUT_MS = 20_000;
 const FALLBACK_UPSTREAM_TIMEOUT_MS = 100_000;
 
@@ -17,6 +21,10 @@ type UpstreamSuccess = {
   created?: number;
   data?: Array<{ b64_json?: string; url?: string }>;
   error?: { message?: string };
+};
+
+type ParsedGenerateImageRequest = GenerateImageRequest & {
+  referenceImages: File[];
 };
 
 async function readUpstreamPayload(response: Response): Promise<UpstreamSuccess | null> {
@@ -37,24 +45,84 @@ function upstreamTimeoutForEndpoint(label: string): number {
   return label === "fallback" ? FALLBACK_UPSTREAM_TIMEOUT_MS : PRIMARY_UPSTREAM_TIMEOUT_MS;
 }
 
+function readWorkflowMetadata(value: unknown): GenerationWorkflowMetadata | undefined {
+  if (!value) return undefined;
+  const parsed = typeof value === "string"
+    ? (() => {
+        try {
+          return JSON.parse(value) as unknown;
+        } catch {
+          return undefined;
+        }
+      })()
+    : value;
+
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return undefined;
+  return parsed as GenerationWorkflowMetadata;
+}
+
+async function readGenerateImageRequest(req: NextRequest): Promise<ParsedGenerateImageRequest> {
+  const contentType = req.headers.get("content-type") ?? "";
+  if (!contentType.includes("multipart/form-data")) {
+    const body = (await req.json()) as GenerateImageRequest;
+    return { ...body, workflow: readWorkflowMetadata(body.workflow), referenceImages: [] };
+  }
+
+  const form = await req.formData();
+  const prompt = String(form.get("prompt") ?? "");
+  const provider = String(form.get("provider") ?? "") as GenerateImageRequest["provider"];
+  const modelId = String(form.get("modelId") ?? "");
+  const workflow = readWorkflowMetadata(form.get("workflow"));
+  const referenceImages = form
+    .getAll("referenceImages")
+    .filter((item): item is File => item instanceof File && item.size > 0);
+
+  return { prompt, provider, modelId, workflow, referenceImages };
+}
+
+function buildUpstreamImageRequestBody(
+  prompt: string,
+  modelId: string,
+  referenceImages: File[],
+): { path: string; body: BodyInit; headers: Record<string, string> } {
+  if (referenceImages.length > 0) {
+    const body = new FormData();
+    body.append("model", modelId);
+    body.append("prompt", prompt);
+    body.append("size", DEFAULT_IMAGE_SIZE);
+    for (const image of referenceImages) {
+      body.append("image", image, image.name || "reference-image.png");
+    }
+    return { path: IMAGE_EDITS_PATH, body, headers: {} };
+  }
+
+  return {
+    path: IMAGE_GENERATIONS_PATH,
+    body: JSON.stringify({ model: modelId, prompt, size: DEFAULT_IMAGE_SIZE }),
+    headers: { "Content-Type": "application/json" },
+  };
+}
+
 async function requestImageGeneration(
   endpoint: { apiKey: string; baseURL: string; label: string },
   prompt: string,
   modelId: string,
+  referenceImages: File[],
 ) {
   const startedAt = Date.now();
   const timeoutMs = upstreamTimeoutForEndpoint(endpoint.label);
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  const upstreamRequest = buildUpstreamImageRequestBody(prompt, modelId, referenceImages);
 
   try {
-    const response = await fetch(`${endpoint.baseURL}/images/generations`, {
+    const response = await fetch(`${endpoint.baseURL}${upstreamRequest.path}`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${endpoint.apiKey}`,
-        "Content-Type": "application/json",
+        ...upstreamRequest.headers,
       },
-      body: JSON.stringify({ model: modelId, prompt, size: DEFAULT_IMAGE_SIZE }),
+      body: upstreamRequest.body,
       signal: controller.signal,
     });
     const payload = await readUpstreamPayload(response);
@@ -87,7 +155,8 @@ async function requestImageGeneration(
 
 export async function POST(req: NextRequest) {
   const requestId = Math.random().toString(36).slice(2);
-  const { prompt, modelId } = (await req.json()) as GenerateImageRequest;
+  const { prompt, modelId, referenceImages, workflow } = await readGenerateImageRequest(req);
+  const finalPrompt = buildWorkflowPrompt(prompt, workflow);
 
   if (!prompt || !modelId) {
     return NextResponse.json({ error: "Invalid request parameters" }, { status: 400 });
@@ -135,13 +204,14 @@ export async function POST(req: NextRequest) {
 
   for (const endpoint of endpoints) {
     try {
-      const result = await requestImageGeneration(endpoint, prompt, modelId);
+      const result = await requestImageGeneration(endpoint, finalPrompt, modelId, referenceImages);
       if (authenticatedUser.id) {
         saveGeneratedHistoryEntry({
           id: `${authenticatedUser.id}-${Date.now()}`,
           userId: authenticatedUser.id,
-          prompt,
+          prompt: finalPrompt,
           generatedAt: Date.now(),
+          workflow,
           results: [
             {
               provider: "image_tinchak",

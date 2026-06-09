@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
+import dynamic from "next/dynamic";
 import { ModelSelect } from "@/components/ModelSelect";
 import { PromptInput } from "@/components/PromptInput";
 import { CaseShowcase } from "@/components/CaseShowcase";
@@ -23,6 +24,18 @@ import { hasEnoughQuota } from "@/lib/new-api-client";
 import { LOCAL_TEST_MODE } from "@/lib/sub2api";
 import { cn } from "@/lib/utils";
 import { getInitialSuggestions, type Suggestion } from "@/lib/suggestions";
+import type { ReferenceImage } from "@/lib/image-types";
+import type { ProfessionalRunConfig } from "@/components/pro-workstation/InvokeInspiredWorkstation";
+
+const InvokeInspiredWorkstation = dynamic(() => import("@/components/pro-workstation/InvokeInspiredWorkstation").then((mod) => mod.InvokeInspiredWorkstation), {
+  ssr: false,
+  loading: () => <div className="lg-card rounded-ios-4xl p-5 text-ios-footnote text-[rgba(0,0,0,0.46)]">加载专业工作站...</div>,
+});
+
+const ReferenceImageUpload = dynamic(() => import("@/components/ReferenceImageUpload").then((mod) => mod.ReferenceImageUpload), {
+  ssr: false,
+  loading: () => <div className="rounded-ios-2xl bg-white/38 px-4 py-3 text-ios-footnote text-[rgba(0,0,0,0.42)]">加载参考图上传...</div>,
+});
 
 export function ImagePlayground({ suggestions }: { suggestions: Suggestion[] }) {
   const { images, timings, failedProviders, isLoading, startGeneration } = useImageGeneration();
@@ -34,6 +47,8 @@ export function ImagePlayground({ suggestions }: { suggestions: Suggestion[] }) 
   const [stylePreset, setStylePreset] = useState<StylePreset>("none");
   const [casePrompt, setCasePrompt] = useState("");
   const [authOpen, setAuthOpen] = useState(false);
+  const [showProfessionalMode, setShowProfessionalMode] = useState(false);
+  const [referenceImages, setReferenceImages] = useState<ReferenceImage[]>([]);
   const [progressStartedAt, setProgressStartedAt] = useState<number>();
   const [progressDurationMs, setProgressDurationMs] = useState(NORMAL_PROGRESS_DURATION_MS);
   const [showProgress, setShowProgress] = useState(false);
@@ -62,11 +77,38 @@ export function ImagePlayground({ suggestions }: { suggestions: Suggestion[] }) 
     setProgressStartedAt(Date.now());
     setProgressDurationMs(NORMAL_PROGRESS_DURATION_MS);
     setShowProgress(true);
-    await startGeneration(finalPrompt, ["image_tinchak"], { image_tinchak: selectedModels.image_tinchak });
+    await startGeneration(finalPrompt, ["image_tinchak"], { image_tinchak: selectedModels.image_tinchak }, { referenceImages });
     if (!LOCAL_TEST_MODE) {
       refresh().catch(() => {});
     }
-  }, [isLoggedIn, user, stylePreset, selectedModels, startGeneration, toast, refresh]);
+  }, [isLoggedIn, user, stylePreset, selectedModels, startGeneration, toast, refresh, referenceImages]);
+
+  const handleProfessionalRun = useCallback(async (config: ProfessionalRunConfig) => {
+    if (!LOCAL_TEST_MODE && (!isLoggedIn || !user)) {
+      setAuthOpen(true);
+      return;
+    }
+    if (!LOCAL_TEST_MODE && user && !hasEnoughQuota(user)) {
+      toast({ title: "余额不足", description: "请先充值再继续做图", variant: "destructive" });
+      return;
+    }
+    const finalPrompt = enhancePrompt(config.prompt, stylePreset);
+    setProgressStartedAt(Date.now());
+    setProgressDurationMs(NORMAL_PROGRESS_DURATION_MS);
+    setShowProgress(true);
+    await startGeneration(finalPrompt, ["image_tinchak"], { image_tinchak: selectedModels.image_tinchak }, {
+      referenceImages,
+      contextPrompt: config.contextPrompt,
+      negativePrompt: config.negativePrompt,
+      workflowPreset: config.workflowPreset,
+      referenceImageRoles: config.referenceImageRoles,
+      copies: config.copies,
+      concurrency: config.concurrency,
+    });
+    if (!LOCAL_TEST_MODE) {
+      refresh().catch(() => {});
+    }
+  }, [isLoggedIn, user, stylePreset, selectedModels, startGeneration, toast, refresh, referenceImages]);
 
   const usedFallback = images.some((image) =>
     image.endpointLabel === "fallback" && (image.image || image.imageUrl),
@@ -123,18 +165,43 @@ export function ImagePlayground({ suggestions }: { suggestions: Suggestion[] }) 
     <>
       <div className="min-h-screen bg-transparent px-4 pb-28 pt-20 sm:px-6 sm:pb-32 lg:px-8">
         <div className="mx-auto w-full max-w-[1440px]">
-          <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(380px,460px)]">
-            <PromptInput
-              onSubmit={handlePromptSubmit}
-              isLoading={isLoading}
-              isLoggedIn={LOCAL_TEST_MODE ? true : isLoggedIn}
+          <div className="mb-4 flex justify-end">
+            <button
+              type="button"
+              onClick={() => setShowProfessionalMode((current) => !current)}
+              className="hidden md:inline-flex items-center gap-2 rounded-full bg-white/56 px-4 py-2 text-ios-footnote font-semibold text-[rgba(0,0,0,0.62)] shadow-[0_10px_30px_rgba(45,49,66,0.06)] backdrop-blur-[28px] transition-all hover:bg-white/72"
+            >
+              {showProfessionalMode ? "普通模式" : "专业模式"}
+            </button>
+          </div>
+
+          {showProfessionalMode ? (
+            <InvokeInspiredWorkstation
               suggestions={initialSuggestions}
-              stylePreset={stylePreset}
-              onStyleChange={setStylePreset}
-              mode={mode}
-              onModeChange={handleModeChange}
-              externalPrompt={casePrompt}
+              referenceImages={referenceImages}
+              onReferenceImagesChange={setReferenceImages}
+              images={images}
+              isLoading={isLoading}
+              onRun={handleProfessionalRun}
             />
+          ) : (
+          <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(380px,460px)]">
+            <div className="space-y-3">
+              <PromptInput
+                onSubmit={handlePromptSubmit}
+                isLoading={isLoading}
+                isLoggedIn={LOCAL_TEST_MODE ? true : isLoggedIn}
+                suggestions={initialSuggestions}
+                stylePreset={stylePreset}
+                onStyleChange={setStylePreset}
+                mode={mode}
+                onModeChange={handleModeChange}
+                externalPrompt={casePrompt}
+              />
+              <section className="lg-card rounded-ios-3xl p-4 sm:p-5">
+                <ReferenceImageUpload value={referenceImages} onChange={setReferenceImages} />
+              </section>
+            </div>
 
             <div className="space-y-3">
               {models.map((props) => (
@@ -142,6 +209,7 @@ export function ImagePlayground({ suggestions }: { suggestions: Suggestion[] }) 
               ))}
             </div>
           </div>
+          )}
         </div>
       </div>
 

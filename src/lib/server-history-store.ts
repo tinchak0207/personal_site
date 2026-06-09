@@ -1,4 +1,5 @@
 import { put } from "@vercel/blob";
+import type { GenerationWorkflowMetadata } from "./image-types";
 
 export interface ServerHistoryImageResult {
   provider: string;
@@ -14,6 +15,7 @@ export interface ServerHistoryEntry {
   prompt: string;
   generatedAt: number;
   results: ServerHistoryImageResult[];
+  workflow?: GenerationWorkflowMetadata;
 }
 
 const memoryStore = new Map<number, ServerHistoryEntry[]>();
