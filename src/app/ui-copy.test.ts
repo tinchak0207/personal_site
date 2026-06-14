@@ -106,6 +106,14 @@ test("pricing page exposes docs link and redeem anchor for cdk delivery", () => 
   assert.match(pricing, /href="\/docs"/);
 });
 
+test("pricing page keeps taobao purchase and adds mapay as a second channel", () => {
+  const pricing = read("src/components/PricingClient.tsx");
+
+  assert.match(pricing, /淘宝购买/);
+  assert.match(pricing, /码支付/);
+  assert.match(pricing, /\/api\/payments\/mapay\/checkout\?plan=/);
+});
+
 test("pricing redeem refreshes the displayed quota after successful cdk redemption", () => {
   const pricing = read("src/components/PricingClient.tsx");
 

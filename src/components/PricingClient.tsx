@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Check, Coins, Gift, Copy, Ticket, Sparkles, BookOpen } from "lucide-react";
+import { ArrowLeft, Check, Coins, Gift, Copy, Ticket, Sparkles, BookOpen, ShoppingBag, QrCode } from "lucide-react";
 import { PLANS, pricePerCoin } from "@/lib/plans";
 import { useAuth } from "@/hooks/use-auth";
 import { fetchAffCode, redeemTopupCode } from "@/lib/new-api-client";
@@ -21,6 +21,10 @@ export function PricingClient() {
 
   const handleBuy = (purchaseUrl: string) => {
     window.open(purchaseUrl, "_blank");
+  };
+
+  const handleMapayBuy = (planId: string) => {
+    window.open(`/api/payments/mapay/checkout?plan=${encodeURIComponent(planId)}`, "_blank");
   };
 
   const handleFetchAff = async () => {
@@ -150,18 +154,29 @@ export function PricingClient() {
                 </ul>
 
                 {/* CTA */}
-                <button
-                  type="button"
-                  onClick={() => handleBuy(plan.purchaseUrl)}
-                  className={cn(
-                    "mt-4 w-full rounded-ios-xl py-3 text-ios-body font-semibold transition-all duration-200 cursor-pointer sm:mt-6",
-                    plan.highlight
-                      ? "bg-[#007AFF] text-white shadow-[0_6px_24px_rgba(0,122,255,0.40)] hover:bg-[#0066DD] hover:scale-[1.02] active:scale-[0.98]"
-                      : "lg-float text-[rgba(0,0,0,0.65)] hover:text-[rgba(0,0,0,0.85)]",
-                  )}
-                >
-                  立即购买
-                </button>
+                <div className="mt-4 grid grid-cols-2 gap-2 sm:mt-6">
+                  <button
+                    type="button"
+                    onClick={() => handleBuy(plan.purchaseUrl)}
+                    className={cn(
+                      "inline-flex min-w-0 items-center justify-center gap-1.5 rounded-ios-xl py-3 text-ios-footnote font-semibold transition-all duration-200 cursor-pointer",
+                      plan.highlight
+                        ? "bg-[#007AFF] text-white shadow-[0_6px_24px_rgba(0,122,255,0.40)] hover:bg-[#0066DD] hover:scale-[1.02] active:scale-[0.98]"
+                        : "lg-float text-[rgba(0,0,0,0.65)] hover:text-[rgba(0,0,0,0.85)]",
+                    )}
+                  >
+                    <ShoppingBag className="h-3.5 w-3.5 shrink-0" />
+                    <span className="truncate">淘宝购买</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleMapayBuy(plan.id)}
+                    className="lg-float inline-flex min-w-0 items-center justify-center gap-1.5 rounded-ios-xl py-3 text-ios-footnote font-semibold text-[rgba(0,0,0,0.65)] transition-all duration-200 hover:text-[rgba(0,0,0,0.85)] cursor-pointer"
+                  >
+                    <QrCode className="h-3.5 w-3.5 shrink-0" />
+                    <span className="truncate">码支付</span>
+                  </button>
+                </div>
               </section>
             ))}
           </div>
