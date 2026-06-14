@@ -118,98 +118,88 @@ export interface GraphProps {
   isBooting?: boolean;
 }
 
-const Starfield = React.memo(({ 
+const Starfield = React.memo(({
   unfoldProgress,
   reducedMotion
-}: { 
+}: {
   unfoldProgress: number;
   reducedMotion: boolean;
 }) => {
-  // Pre-calculate all star data to prevent heavy math on every render tick
-  const starData = React.useMemo(() => {
-    const w = typeof window !== 'undefined' ? window.innerWidth : 1920;
-    const h = typeof window !== 'undefined' ? window.innerHeight : 1080;
-    
-    const baseStars = Array.from({ length: 140 }).map((_, i) => {
-      const x = ((Math.sin(i * 12.345) + 1) / 2) * (w + 800) - 400;
-      const y = ((Math.cos(i * 54.321) + 1) / 2) * (h + 800) - 400;
-      const size = ((Math.sin(i * 98.765) + 1) / 2) * 1 + 0.5;
-      const fill = i % 3 === 0 ? "#8FBC8F" : "#A5D6B7";
-      const opacityMult = (Math.sin(i) + 1) / 2 * 0.4 + 0.1;
-      return (
-        <rect 
-          key={`base-${i}`} x={x} y={y} width={size} height={size} 
-          fill={fill} 
-          opacity={opacityMult}
-        />
-      );
-    });
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
-    const mwStars = Array.from({ length: 220 }).map((_, i) => {
-      const t = ((Math.sin(i * 3.14159) + 1) / 2); 
-      const baseX = t * (w + 800) - 400;
-      const baseY = h - (t * (h + 800) - 400) + Math.sin(t * Math.PI * 3) * 150; 
-      const spread = (Math.pow(Math.sin(i * 7.777), 3)) * 250;
-      const x = baseX + Math.cos(i * 11.11) * spread;
-      const y = baseY + Math.sin(i * 11.11) * spread;
-      const distFromCenter = Math.abs(spread) / 250;
-      const size = distFromCenter < 0.2 ? 0.8 : (distFromCenter < 0.6 ? 1.2 : 1.5);
-      const baseOpacity = (1 - Math.pow(distFromCenter, 0.5)) * 0.7;
-      const fill = distFromCenter < 0.15 ? "#E8F5E9" : (i % 4 === 0 ? "#7da38a" : "#366B4E");
-      return (
-        <rect 
-          key={`mw-${i}`} x={x} y={y} width={size} height={size} 
-          fill={fill} 
-          opacity={baseOpacity}
-        />
-      );
-    });
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || typeof window === 'undefined') return;
 
-    const crossStars = Array.from({ length: 8 }).map((_, i) => {
-      const x = ((Math.sin(i * 33.33) + 1) / 2) * w;
-      const y = ((Math.cos(i * 44.44) + 1) / 2) * h;
-      const isYellowish = i % 3 === 0;
-      const fill = isYellowish ? "#F5DEB3" : "#E8F5E9";
-      return (
-        <g 
-          key={`cross-${i}`} 
-          transform={`translate(${x}, ${y})`} 
-        >
-          <rect x="-1" y="-4" width="2" height="8" fill={fill} />
-          <rect x="-4" y="-1" width="8" height="2" fill={fill} />
-          <rect x="-1" y="-1" width="2" height="2" fill="#FFF" />
-        </g>
-      );
-    });
+    const draw = () => {
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
 
-    return { baseStars, mwStars, crossStars };
-  }, [reducedMotion]); // Only recalculates when motion preference changes
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+      canvas.width = Math.floor(w * dpr);
+      canvas.height = Math.floor(h * dpr);
+      canvas.style.width = `${w}px`;
+      canvas.style.height = `${h}px`;
 
-  const baseOpacityScale = unfoldProgress < 0.5 ? 0 : Math.max(0, Math.min(1, Math.pow((unfoldProgress - 0.5) * 2, 3)));
-  const mwOpacityScale = unfoldProgress < 0.5 ? 0 : Math.max(0, Math.min(1, Math.pow((unfoldProgress - 0.5) * 2, 4)));
-  const crossOpacityScale = unfoldProgress < 0.6 ? 0 : Math.max(0, Math.min(1, Math.pow((unfoldProgress - 0.6) * 2.5, 3) * 0.8));
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, w, h);
+
+      for (let i = 0; i < 140; i++) {
+        const x = ((Math.sin(i * 12.345) + 1) / 2) * (w + 800) - 400;
+        const y = ((Math.cos(i * 54.321) + 1) / 2) * (h + 800) - 400;
+        const size = ((Math.sin(i * 98.765) + 1) / 2) * 1 + 0.5;
+        ctx.globalAlpha = (Math.sin(i) + 1) / 2 * 0.4 + 0.1;
+        ctx.fillStyle = i % 3 === 0 ? '#8FBC8F' : '#A5D6B7';
+        ctx.fillRect(x, y, size, size);
+      }
+
+      for (let i = 0; i < 220; i++) {
+        const t = ((Math.sin(i * 3.14159) + 1) / 2);
+        const baseX = t * (w + 800) - 400;
+        const baseY = h - (t * (h + 800) - 400) + Math.sin(t * Math.PI * 3) * 150;
+        const spread = Math.pow(Math.sin(i * 7.777), 3) * 250;
+        const x = baseX + Math.cos(i * 11.11) * spread;
+        const y = baseY + Math.sin(i * 11.11) * spread;
+        const distFromCenter = Math.abs(spread) / 250;
+        const size = distFromCenter < 0.2 ? 0.8 : (distFromCenter < 0.6 ? 1.2 : 1.5);
+        ctx.globalAlpha = (1 - Math.pow(distFromCenter, 0.5)) * 0.7;
+        ctx.fillStyle = distFromCenter < 0.15 ? '#E8F5E9' : (i % 4 === 0 ? '#7da38a' : '#366B4E');
+        ctx.fillRect(x, y, size, size);
+      }
+
+      ctx.globalAlpha = 0.85;
+      for (let i = 0; i < 8; i++) {
+        const x = ((Math.sin(i * 33.33) + 1) / 2) * w;
+        const y = ((Math.cos(i * 44.44) + 1) / 2) * h;
+        ctx.fillStyle = i % 3 === 0 ? '#F5DEB3' : '#E8F5E9';
+        ctx.fillRect(x - 1, y - 4, 2, 8);
+        ctx.fillRect(x - 4, y - 1, 8, 2);
+        ctx.fillStyle = '#FFF';
+        ctx.fillRect(x - 1, y - 1, 2, 2);
+      }
+      ctx.globalAlpha = 1;
+    };
+
+    draw();
+    window.addEventListener('resize', draw);
+    return () => window.removeEventListener('resize', draw);
+  }, []);
+
+  const opacityScale = unfoldProgress < 0.5 ? 0 : Math.max(0, Math.min(1, Math.pow((unfoldProgress - 0.5) * 2, 3)));
 
   return (
-    <g style={{
-      transform: reducedMotion ? 'none' : 'translate(calc(var(--mouse-x, 0px) * -0.015), calc(var(--mouse-y, 0px) * -0.015))',
-      transition: reducedMotion ? 'none' : 'transform 0.1s ease-out',
-      willChange: 'transform'
-    }}>
-      {/* Base scattered tiny stars */}
-      <g opacity={baseOpacityScale}>
-        {starData.baseStars}
-      </g>
-
-      {/* Milky Way Band */}
-      <g opacity={mwOpacityScale}>
-        {starData.mwStars}
-      </g>
-
-      {/* Large cross-shaped twinkling stars */}
-      <g opacity={crossOpacityScale}>
-        {starData.crossStars}
-      </g>
-    </g>
+    <canvas
+      ref={canvasRef}
+      className="absolute inset-0 z-0 pointer-events-none"
+      style={{
+        opacity: opacityScale,
+        transform: reducedMotion ? 'none' : 'translate(calc(var(--mouse-x, 0px) * -0.015), calc(var(--mouse-y, 0px) * -0.015))',
+        transition: reducedMotion ? 'none' : 'opacity 0.2s ease, transform 0.1s ease-out',
+        willChange: 'opacity, transform'
+      }}
+    />
   );
 });
 
@@ -251,6 +241,82 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
   // Refs for direct DOM manipulation to bypass React render cycle on every tick
   const nodeRefs = useRef<{ [key: string]: SVGGElement | null }>({});
   const linkRefs = useRef<{ [key: number]: SVGLineElement | null }>({});
+  const dragFrameRef = useRef<number | null>(null);
+  const mouseFrameRef = useRef<number | null>(null);
+  const didDragRef = useRef(false);
+  const dragStartPointRef = useRef({ x: 0, y: 0 });
+  const latestMouseRef = useRef({ mx: 0, my: 0, rawX: 0, rawY: 0 });
+
+  const syncGraphToDom = React.useCallback((syncNodes: NodeData[], syncLinks: LinkData[]) => {
+    syncNodes.forEach((node) => {
+      const el = nodeRefs.current[node.id];
+      if (el) {
+        el.setAttribute('transform', `translate(${node.x || 0},${node.y || 0})`);
+      }
+    });
+
+    syncLinks.forEach((link, i) => {
+      const el = linkRefs.current[i];
+      if (!el) return;
+      const source = link.source as NodeData;
+      const target = link.target as NodeData;
+      el.setAttribute('x1', String(source.x || 0));
+      el.setAttribute('y1', String(source.y || 0));
+      el.setAttribute('x2', String(target.x || 0));
+      el.setAttribute('y2', String(target.y || 0));
+    });
+  }, []);
+
+  const syncNodeAndConnectedLinks = React.useCallback((node: NodeData, currentLinks: LinkData[]) => {
+    const el = nodeRefs.current[node.id];
+    if (el) {
+      el.setAttribute('transform', `translate(${node.x || 0},${node.y || 0})`);
+    }
+
+    currentLinks.forEach((link, i) => {
+      const source = link.source as NodeData;
+      const target = link.target as NodeData;
+      if (source.id !== node.id && target.id !== node.id) return;
+      const linkEl = linkRefs.current[i];
+      if (!linkEl) return;
+      linkEl.setAttribute('x1', String(source.x || 0));
+      linkEl.setAttribute('y1', String(source.y || 0));
+      linkEl.setAttribute('x2', String(target.x || 0));
+      linkEl.setAttribute('y2', String(target.y || 0));
+    });
+  }, []);
+
+  const scheduleMouseVars = React.useCallback((clientX: number, clientY: number) => {
+    latestMouseRef.current = {
+      mx: clientX - window.innerWidth / 2,
+      my: clientY - window.innerHeight / 2,
+      rawX: clientX,
+      rawY: clientY
+    };
+
+    if (mouseFrameRef.current !== null) return;
+    mouseFrameRef.current = requestAnimationFrame(() => {
+      mouseFrameRef.current = null;
+      const container = containerRef.current;
+      if (!container) return;
+      const latest = latestMouseRef.current;
+      container.style.setProperty('--mouse-x', `${latest.mx}px`);
+      container.style.setProperty('--mouse-y', `${latest.my}px`);
+      container.style.setProperty('--raw-mouse-x', `${latest.rawX}px`);
+      container.style.setProperty('--raw-mouse-y', `${latest.rawY}px`);
+    });
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (dragFrameRef.current !== null) {
+        cancelAnimationFrame(dragFrameRef.current);
+      }
+      if (mouseFrameRef.current !== null) {
+        cancelAnimationFrame(mouseFrameRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -263,53 +329,57 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
 
   // Fetch data from Supabase
   useEffect(() => {
+    let cancelled = false;
     const fetchData = async () => {
       try {
-        // Fetch Graph Nodes and Edges
-        const [{ data: graphNodes, error: graphNodesError }, { data: graphEdges, error: graphEdgesError }] = await Promise.all([
+        const settled = await Promise.allSettled([
           supabase.from('graph_nodes').select('*'),
-          supabase.from('graph_edges').select('*')
+          supabase.from('graph_edges').select('*'),
+          supabase.from('posts').select('id, title, slug, tags').eq('published', true),
+          supabase.from('projects').select('id, title, description, url, tags').eq('published', true),
+          supabase.from('external_links').select('id, title, url, tags').eq('published', true),
+          supabase.from('graph_subnodes').select('*')
         ]);
-        
+
+        if (cancelled) return;
+
+        const readSettled = (result: PromiseSettledResult<any>) => (
+          result.status === 'fulfilled' ? result.value : { data: null, error: result.reason }
+        );
+
+        const { data: graphNodes, error: graphNodesError } = readSettled(settled[0]);
+        const { data: graphEdges } = readSettled(settled[1]);
+        const { data: posts, error: postsError } = readSettled(settled[2]);
+        const { data: projects, error: projectsError } = readSettled(settled[3]);
+        const { data: externalLinks, error: linksError } = readSettled(settled[4]);
+        const { data: dbSubNodes } = readSettled(settled[5]);
+
+        let nextNodes = INITIAL_NODES;
         if (graphNodesError) {
           console.warn('Supabase graph_nodes table not found. Using default nodes:', graphNodesError.message);
         } else if (graphNodes && graphNodes.length > 0) {
-          const formattedNodes: NodeData[] = graphNodes.map(n => ({
+          nextNodes = graphNodes.map((n: any) => ({
             id: n.id,
             label: n.label,
             address: n.address,
             group: n.group_type as 'center' | 'node',
             radius: n.radius,
           }));
-          setDynamicNodes(formattedNodes);
         } else if (graphNodes && graphNodes.length === 0) {
           console.warn('No nodes found in DB. Falling back to INITIAL_NODES.');
-          setDynamicNodes(INITIAL_NODES);
         }
 
-        // Handle dynamic edges
+        let nextLinks = INITIAL_LINKS;
         if (graphEdges && graphEdges.length > 0) {
-          const formattedEdges: LinkData[] = graphEdges.map(e => ({
+          nextLinks = graphEdges.map((e: any) => ({
             source: e.source,
             target: e.target
           }));
-          setDynamicLinks(formattedEdges);
-        } else {
-          setDynamicLinks(INITIAL_LINKS);
         }
 
-        // Fetch Posts (Ramblings)
-        const { data: posts, error: postsError } = await supabase.from('posts').select('id, title, slug, tags').eq('published', true);
         if (postsError) console.error('Error fetching posts:', postsError);
-        // Fetch Projects
-        const { data: projects, error: projectsError } = await supabase.from('projects').select('id, title, description, url, tags').eq('published', true);
         if (projectsError) console.error('Error fetching projects:', projectsError);
-        // Fetch Links
-        const { data: links, error: linksError } = await supabase.from('external_links').select('id, title, url, tags').eq('published', true);
         if (linksError) console.error('Error fetching links:', linksError);
-
-        // Fetch DB SubNodes
-        const { data: dbSubNodes } = await supabase.from('graph_subnodes').select('*');
 
         // Build SubNodes map
         const newSubNodes = { ...SUB_NODES_MAP }; // Keep initial static ones or replace? Let's merge.
@@ -356,8 +426,8 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
             desc: 'Project'
           }));
         }
-        if (links) {
-          links.forEach(l => addToSubNodes(l.tags, {
+        if (externalLinks) {
+          externalLinks.forEach((l: any) => addToSubNodes(l.tags, {
             id: `link-${l.id}`,
             label: l.title,
             link: l.url || '#',
@@ -365,12 +435,19 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
           }));
         }
 
+        setDynamicNodes(nextNodes);
+        setDynamicLinks(nextLinks);
         setDynamicSubNodes(newSubNodes);
       } catch (err) {
         console.error('Failed to fetch graph data:', err);
       }
     };
-    fetchData();
+
+    const timeoutId = window.setTimeout(fetchData, 700);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeoutId);
+    };
   }, []);
 
   // Handle window resize
@@ -489,10 +566,7 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
     setHoveredNode(null);
     setIsZoomMode(false);
     setZoomTransform({ x: 0, y: 0, k: 1 });
-    if (simulationRef.current && interactionMode === 'explore' && !prefersReducedMotion) {
-      simulationRef.current.alpha(0.12).alphaTarget(0).restart();
-    }
-  }, [interactionMode, prefersReducedMotion]);
+  }, []);
 
   const goBackFocus = React.useCallback(() => {
     const previousNodeId = focusHistory[focusHistory.length - 1];
@@ -508,11 +582,7 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
   const isBootingRef = useRef(isBooting);
   useEffect(() => {
     isBootingRef.current = isBooting;
-    if (!isBooting && simulationRef.current) {
-      // Wake up the simulation when booting finishes
-      simulationRef.current.alpha(prefersReducedMotion ? 0.03 : 0.15).alphaTarget(0).restart();
-    }
-  }, [isBooting, prefersReducedMotion]);
+  }, [isBooting]);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -585,30 +655,12 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
     simulation.on('tick', () => {
       // If we are booting, skip the expensive React re-renders to save CPU for the terminal typing animation.
       if (!isBootingRef.current) {
-        // Bypass React state updates completely to eliminate massive re-renders
-        simulation.nodes().forEach((node) => {
-          const el = nodeRefs.current[node.id];
-          if (el) {
-            el.setAttribute('transform', `translate(${node.x || 0},${node.y || 0})`);
-          }
-        });
-
-        simLinks.forEach((link, i) => {
-          const el = linkRefs.current[i];
-          if (el) {
-            const source = link.source as NodeData;
-            const target = link.target as NodeData;
-            el.setAttribute('x1', String(source.x || 0));
-            el.setAttribute('y1', String(source.y || 0));
-            el.setAttribute('x2', String(target.x || 0));
-            el.setAttribute('y2', String(target.y || 0));
-          }
-        });
+        syncGraphToDom(simulation.nodes(), simLinks);
       }
     });
 
-    // Remove the synchronous fast-forward loop to let the graph explode dynamically on screen
-    // for (let i = 0; i < 50; ++i) simulation.tick();
+    simulation.stop();
+    for (let i = 0; i < 90; i++) simulation.tick();
     
     // Set initial positions even if booting
     setNodes([...simulation.nodes()]);
@@ -624,7 +676,7 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
     return () => {
       simulation.stop();
     };
-  }, [dynamicNodes, dynamicLinks]);
+  }, [dynamicNodes, dynamicLinks, syncGraphToDom]);
 
   useEffect(() => {
     if (!simulationRef.current) return;
@@ -640,8 +692,11 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
     // Update centering force
     (sim.force('center') as d3.ForceCenter<NodeData>).x(dimensions.width / 2).y(dimensions.height / 2);
     
-    sim.alpha(prefersReducedMotion || interactionMode === 'read' ? 0.03 : 0.18).alphaTarget(0).restart();
-  }, [dimensions, interactionMode, prefersReducedMotion]);
+    sim.stop();
+    sim.alpha(prefersReducedMotion || interactionMode === 'read' ? 0.03 : 0.12).alphaTarget(0);
+    for (let i = 0; i < 12; i++) sim.tick();
+    syncGraphToDom(sim.nodes(), links);
+  }, [dimensions, interactionMode, prefersReducedMotion, links, syncGraphToDom]);
 
   useEffect(() => {
     if (!simulationRef.current) return;
@@ -695,11 +750,17 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
     });
 
     const restartAlpha = interactionMode === 'explore' && !prefersReducedMotion
-      ? (easeProgress < 0.1 ? 0.8 : 0.28)
+      ? (easeProgress < 0.1 ? 0.6 : 0.18)
       : 0.03;
+    const tickCount = interactionMode === 'explore' && !prefersReducedMotion
+      ? (easeProgress < 0.1 ? 18 : 8)
+      : 3;
+    sim.stop();
     sim.alphaTarget(0);
-    sim.alpha(restartAlpha).restart();
-  }, [unfoldProgress, dimensions, interactionMode, prefersReducedMotion]);
+    sim.alpha(restartAlpha);
+    for (let i = 0; i < tickCount; i++) sim.tick();
+    syncGraphToDom(sim.nodes(), links);
+  }, [unfoldProgress, dimensions, interactionMode, prefersReducedMotion, links, syncGraphToDom]);
 
   const isZoomModeRef = useRef(isZoomMode);
   useEffect(() => {
@@ -798,33 +859,58 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
   const handleDragStart = (e: React.MouseEvent | React.TouchEvent, node: NodeData) => {
     if (!simulationRef.current) return;
     if (isZoomMode) return;
-    const sim = simulationRef.current;
+    simulationRef.current.stop();
     
     draggingNodeIdRef.current = node.id;
+    didDragRef.current = false;
+    setHoveredNode(null);
     
     if (e.type === 'touchstart') {
       const touch = (e as React.TouchEvent).touches[0];
+      dragStartPointRef.current = { x: touch.clientX, y: touch.clientY };
       node.fx = touch.clientX;
       node.fy = touch.clientY;
+      node.x = touch.clientX;
+      node.y = touch.clientY;
     } else {
       const mouse = e as React.MouseEvent;
+      dragStartPointRef.current = { x: mouse.clientX, y: mouse.clientY };
       node.fx = mouse.clientX;
       node.fy = mouse.clientY;
+      node.x = mouse.clientX;
+      node.y = mouse.clientY;
     }
-    sim.alphaTarget(prefersReducedMotion ? 0.08 : 0.18).restart();
+    syncNodeAndConnectedLinks(node, links);
   };
 
   const handleDrag = (e: React.MouseEvent | React.TouchEvent, node: NodeData) => {
     if (draggingNodeIdRef.current !== node.id) return;
+    let nextX: number;
+    let nextY: number;
     
     if (e.type === 'touchmove') {
       const touch = (e as React.TouchEvent).touches[0];
-      node.fx = touch.clientX;
-      node.fy = touch.clientY;
+      nextX = touch.clientX;
+      nextY = touch.clientY;
     } else {
       const mouse = e as React.MouseEvent;
-      node.fx = mouse.clientX;
-      node.fy = mouse.clientY;
+      nextX = mouse.clientX;
+      nextY = mouse.clientY;
+    }
+
+    if (Math.hypot(nextX - dragStartPointRef.current.x, nextY - dragStartPointRef.current.y) > 4) {
+      didDragRef.current = true;
+    }
+    node.fx = nextX;
+    node.fy = nextY;
+    node.x = nextX;
+    node.y = nextY;
+
+    if (dragFrameRef.current === null) {
+      dragFrameRef.current = requestAnimationFrame(() => {
+        dragFrameRef.current = null;
+        syncNodeAndConnectedLinks(node, links);
+      });
     }
   };
 
@@ -836,9 +922,13 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
     // We let ALL nodes float now, no hard fixing on drag end
     node.fx = null;
     node.fy = null;
+    simulationRef.current.stop();
     
-    // Restore the baseline alpha for the current mode
-    simulationRef.current.alphaTarget(0);
+    if (dragFrameRef.current !== null) {
+      cancelAnimationFrame(dragFrameRef.current);
+      dragFrameRef.current = null;
+    }
+    syncNodeAndConnectedLinks(node, links);
   };
 
   // Calculate hint color interpolating from Green to Cyan to Purple over the full 0-2.8 progress
@@ -912,13 +1002,9 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
         }
       }}
       onMouseMove={(e) => {
-        const mx = e.clientX - window.innerWidth / 2;
-        const my = e.clientY - window.innerHeight / 2;
-        if (containerRef.current) {
-          containerRef.current.style.setProperty('--mouse-x', `${mx}px`);
-          containerRef.current.style.setProperty('--mouse-y', `${my}px`);
-          containerRef.current.style.setProperty('--raw-mouse-x', `${e.clientX}px`);
-          containerRef.current.style.setProperty('--raw-mouse-y', `${e.clientY}px`);
+        const isDraggingNode = draggingNodeIdRef.current && !isZoomMode;
+        if (!isDraggingNode) {
+          scheduleMouseVars(e.clientX, e.clientY);
         }
 
         if (isZoomMode && isPanning) {
@@ -930,7 +1016,7 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
             y: prev.y + dy
           }));
           panStartRef.current = { x: e.clientX, y: e.clientY };
-        } else if (draggingNodeIdRef.current && !isZoomMode) {
+        } else if (isDraggingNode) {
           const draggedNode = nodes.find(n => n.id === draggingNodeIdRef.current);
           if (draggedNode) {
             handleDrag(e, draggedNode);
@@ -1185,16 +1271,15 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
         </div>
       </div>
 
-      <svg width="100%" height="100%" className="overflow-visible pointer-events-none absolute inset-0 z-0">
-        {/* Starfield Background Layer (Dense Pixel Art Milky Way) */}
-        <Starfield unfoldProgress={unfoldProgress} reducedMotion={prefersReducedMotion || interactionMode === 'read'} />
+      <Starfield unfoldProgress={unfoldProgress} reducedMotion={prefersReducedMotion || interactionMode === 'read'} />
 
+      <svg width="100%" height="100%" className="overflow-visible pointer-events-none absolute inset-0 z-10">
         {/* Foreground Graph Layer */}
         <g style={{
           transformOrigin: isZoomMode ? '0 0' : (zoomTarget ? `${zoomTarget.x}px ${zoomTarget.y}px` : '50% 50%'),
           transform: isZoomMode 
             ? `translate(${zoomTransform.x}px, ${zoomTransform.y}px) scale(${zoomTransform.k})`
-            : `${prefersReducedMotion ? 'translate(0px, 0px)' : 'translate(calc(var(--mouse-x, 0px) * -0.05), calc(var(--mouse-y, 0px) * -0.05))'} scale(${activeNodeId && activeNodeId !== 'ME' && unfoldProgress >= 1 ? 2.2 : 1})`,
+            : `scale(${activeNodeId && activeNodeId !== 'ME' && unfoldProgress >= 1 ? 2.2 : 1})`,
           opacity: 1, // Graph stays visible, never fades out
           pointerEvents: 'auto', // Graph always interactive
           transition: (isZoomMode && isPanning) || prefersReducedMotion ? 'none' : 'transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), transform-origin 0.28s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease',
@@ -1202,10 +1287,10 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
         }}>
           {/* Subtle background grid for parallax reference */}
           <g stroke="#1B3B2B" strokeOpacity={0.15} strokeWidth={1} strokeDasharray="2 10">
-            {Array.from({ length: 30 }).map((_, i) => (
+            {Array.from({ length: 18 }).map((_, i) => (
               <line key={`v-${i}`} x1={i * 100 - 1000} y1={-1000} x2={i * 100 - 1000} y2={window.innerHeight + 1000} />
             ))}
-            {Array.from({ length: 30 }).map((_, i) => (
+            {Array.from({ length: 18 }).map((_, i) => (
               <line key={`h-${i}`} x1={-1000} y1={i * 100 - 1000} x2={window.innerWidth + 1000} y2={i * 100 - 1000} />
             ))}
           </g>
@@ -1279,12 +1364,16 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
                     className={`pointer-events-auto ${unfoldProgress >= 1 ? 'cursor-grab active:cursor-grabbing' : ''}`}
                     style={{ opacity: nodeOpacity, transition: 'opacity 0.3s ease' }}
                     onMouseEnter={() => {
+                      if (draggingNodeIdRef.current) return;
                       if (unfoldProgress >= 1) {
                         setHoveredNode(node.id);
                         setZoomTarget({ x: node.x || 0, y: node.y || 0 });
                       }
                     }}
-                    onMouseLeave={() => setHoveredNode(null)}
+                    onMouseLeave={() => {
+                      if (draggingNodeIdRef.current) return;
+                      setHoveredNode(null);
+                    }}
                     onMouseDown={(e) => {
                       if (unfoldProgress >= 1 && !isZoomMode) {
                         handleDragStart(e, node);
@@ -1296,6 +1385,11 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
                       }
                     }}
                     onClick={(e) => {
+                      if (didDragRef.current) {
+                        e.stopPropagation();
+                        didDragRef.current = false;
+                        return;
+                      }
                       if (unfoldProgress >= 1 && !isZoomMode && node.group !== 'center') {
                         e.stopPropagation();
                         focusGraphNode(node, true, true);
