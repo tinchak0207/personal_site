@@ -111,15 +111,19 @@ const INITIAL_LINKS: LinkData[] = [
   { source: '10', target: 'Otaku' },
 ];
 
+const getLinkNodeId = (node: NodeData | string) => typeof node === 'string' ? node : node.id;
+
 export interface GraphProps {
   onReady?: () => void;
   isBooting?: boolean;
 }
 
 const Starfield = React.memo(({ 
-  unfoldProgress 
+  unfoldProgress,
+  reducedMotion
 }: { 
-  unfoldProgress: number 
+  unfoldProgress: number;
+  reducedMotion: boolean;
 }) => {
   // Pre-calculate all star data to prevent heavy math on every render tick
   const starData = React.useMemo(() => {
@@ -138,7 +142,7 @@ const Starfield = React.memo(({
           key={`base-${i}`} x={x} y={y} width={size} height={size} 
           fill={fill} 
           opacity={opacityMult}
-          className={isPulse ? "animate-pulse" : ""}
+          className={isPulse && !reducedMotion ? "animate-pulse" : ""}
         />
       );
     });
@@ -160,7 +164,7 @@ const Starfield = React.memo(({
           key={`mw-${i}`} x={x} y={y} width={size} height={size} 
           fill={fill} 
           opacity={baseOpacity}
-          className={isPulse ? "animate-pulse" : ""}
+          className={isPulse && !reducedMotion ? "animate-pulse" : ""}
         />
       );
     });
@@ -175,7 +179,7 @@ const Starfield = React.memo(({
         <g 
           key={`cross-${i}`} 
           transform={`translate(${x}, ${y})`} 
-          className="animate-pulse"
+          className={reducedMotion ? "" : "animate-pulse"}
           style={{ animationDuration: animDuration }}
         >
           <rect x="-1" y="-4" width="2" height="8" fill={fill} />
@@ -186,7 +190,7 @@ const Starfield = React.memo(({
     });
 
     return { baseStars, mwStars, crossStars };
-  }, []); // Only recalculates on mount
+  }, [reducedMotion]); // Only recalculates when motion preference changes
 
   const baseOpacityScale = unfoldProgress < 0.5 ? 0 : Math.max(0, Math.min(1, Math.pow((unfoldProgress - 0.5) * 2, 3)));
   const mwOpacityScale = unfoldProgress < 0.5 ? 0 : Math.max(0, Math.min(1, Math.pow((unfoldProgress - 0.5) * 2, 4)));
@@ -194,8 +198,8 @@ const Starfield = React.memo(({
 
   return (
     <g style={{
-      transform: 'translate(calc(var(--mouse-x, 0px) * -0.015), calc(var(--mouse-y, 0px) * -0.015))',
-      transition: 'transform 0.1s ease-out',
+      transform: reducedMotion ? 'none' : 'translate(calc(var(--mouse-x, 0px) * -0.015), calc(var(--mouse-y, 0px) * -0.015))',
+      transition: reducedMotion ? 'none' : 'transform 0.1s ease-out',
       willChange: 'transform'
     }}>
       {/* Base scattered tiny stars */}
@@ -218,10 +222,17 @@ const Starfield = React.memo(({
 
 export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
   const containerRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
   const [nodes, setNodes] = useState<NodeData[]>([]);
   const [links, setLinks] = useState<LinkData[]>([]);
   const [hoveredNode, setHoveredNode] = useState<string | null>(null);
+  const [focusedNodeId, setFocusedNodeId] = useState<string | null>(null);
+  const [focusHistory, setFocusHistory] = useState<string[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [interactionMode, setInteractionMode] = useState<'explore' | 'read'>('explore');
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
   const [zoomTarget, setZoomTarget] = useState<{x: number, y: number} | null>(null);
   const [isZoomMode, setIsZoomMode] = useState(false);
   const [zoomTransform, setZoomTransform] = useState({ x: 0, y: 0, k: 1 });
@@ -247,6 +258,15 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
   // Refs for direct DOM manipulation to bypass React render cycle on every tick
   const nodeRefs = useRef<{ [key: string]: SVGGElement | null }>({});
   const linkRefs = useRef<{ [key: number]: SVGLineElement | null }>({});
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const media = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const updateMotion = () => setPrefersReducedMotion(media.matches);
+    updateMotion();
+    media.addEventListener('change', updateMotion);
+    return () => media.removeEventListener('change', updateMotion);
+  }, []);
 
   // Fetch data from Supabase
   useEffect(() => {
@@ -404,14 +424,102 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
     setComputedSubNodes(newComputedSubNodes);
   }, [nodes, dimensions, dynamicSubNodes]); // Recalculate when nodes, screen size or raw dynamicSubNodes change
 
+  const activeNodeId = focusedNodeId || hoveredNode;
+  const focusedNode = React.useMemo(
+    () => nodes.find(node => node.id === focusedNodeId) || null,
+    [nodes, focusedNodeId]
+  );
+  const connectedNodeIds = React.useMemo(() => {
+    const connected = new Set<string>();
+    if (!activeNodeId) return connected;
+    connected.add(activeNodeId);
+    links.forEach(link => {
+      const sourceId = getLinkNodeId(link.source);
+      const targetId = getLinkNodeId(link.target);
+      if (sourceId === activeNodeId) connected.add(targetId);
+      if (targetId === activeNodeId) connected.add(sourceId);
+    });
+    return connected;
+  }, [activeNodeId, links]);
+  const normalizedSearchQuery = searchQuery.trim().toLowerCase();
+  const searchResults = React.useMemo(() => {
+    if (!normalizedSearchQuery) return [];
+    return nodes.filter(node => {
+      const subText = (dynamicSubNodes[node.id] || [])
+        .map(sub => `${sub.label} ${sub.desc || ''}`)
+        .join(' ');
+      return `${node.id} ${node.label} ${subText}`.toLowerCase().includes(normalizedSearchQuery);
+    }).slice(0, 8);
+  }, [nodes, dynamicSubNodes, normalizedSearchQuery]);
+  const searchMatchIds = React.useMemo(
+    () => new Set(searchResults.map(node => node.id)),
+    [searchResults]
+  );
+
+  const focusGraphNode = React.useCallback((node: NodeData, pushHistory = true, zoom = true) => {
+    if (node.group === 'center') {
+      setFocusedNodeId(null);
+      setFocusHistory([]);
+      setHoveredNode(null);
+      setIsZoomMode(false);
+      setZoomTransform({ x: 0, y: 0, k: 1 });
+      return;
+    }
+
+    if (pushHistory && focusedNodeId && focusedNodeId !== node.id) {
+      setFocusHistory(prev => [...prev.slice(-7), focusedNodeId]);
+    }
+
+    setFocusedNodeId(node.id);
+    setHoveredNode(node.id);
+    setZoomTarget({ x: node.x || dimensions.width / 2, y: node.y || dimensions.height / 2 });
+    setUnfoldProgress(prev => Math.max(prev, 1));
+
+    if (zoom) {
+      const k = dimensions.width < 768 ? 1.8 : 2.2;
+      setIsZoomMode(true);
+      setZoomTransform({
+        x: dimensions.width / 2 - (node.x || dimensions.width / 2) * k,
+        y: dimensions.height / 2 - (node.y || dimensions.height / 2) * k,
+        k
+      });
+    }
+
+    if (simulationRef.current && (interactionMode === 'read' || prefersReducedMotion)) {
+      simulationRef.current.alphaTarget(0);
+    }
+  }, [dimensions, focusedNodeId, interactionMode, prefersReducedMotion]);
+
+  const clearGraphFocus = React.useCallback(() => {
+    setFocusedNodeId(null);
+    setFocusHistory([]);
+    setHoveredNode(null);
+    setIsZoomMode(false);
+    setZoomTransform({ x: 0, y: 0, k: 1 });
+    if (simulationRef.current && interactionMode === 'explore' && !prefersReducedMotion) {
+      simulationRef.current.alphaTarget(0.02).restart();
+    }
+  }, [interactionMode, prefersReducedMotion]);
+
+  const goBackFocus = React.useCallback(() => {
+    const previousNodeId = focusHistory[focusHistory.length - 1];
+    if (!previousNodeId) {
+      clearGraphFocus();
+      return;
+    }
+    const previousNode = nodes.find(node => node.id === previousNodeId);
+    setFocusHistory(prev => prev.slice(0, -1));
+    if (previousNode) focusGraphNode(previousNode, false, true);
+  }, [clearGraphFocus, focusGraphNode, focusHistory, nodes]);
+
   const isBootingRef = useRef(isBooting);
   useEffect(() => {
     isBootingRef.current = isBooting;
     if (!isBooting && simulationRef.current) {
       // Wake up the simulation when booting finishes
-      simulationRef.current.alpha(0.3).restart();
+      simulationRef.current.alpha(prefersReducedMotion ? 0.05 : 0.3).restart();
     }
-  }, [isBooting]);
+  }, [isBooting, prefersReducedMotion]);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -537,8 +645,8 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
     // Update centering force
     (sim.force('center') as d3.ForceCenter<NodeData>).x(dimensions.width / 2).y(dimensions.height / 2);
     
-    sim.alpha(0.3).restart();
-  }, [dimensions]);
+    sim.alpha(prefersReducedMotion || interactionMode === 'read' ? 0.05 : 0.3).restart();
+  }, [dimensions, interactionMode, prefersReducedMotion]);
 
   useEffect(() => {
     if (!simulationRef.current) return;
@@ -591,10 +699,10 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
       }
     });
 
-    // Never let alpha hit exactly 0 so the graph has a permanent tiny breathing movement
-    sim.alphaTarget(0.02).restart();
-    sim.alpha(easeProgress < 0.1 ? 1 : 0.6).restart(); 
-  }, [unfoldProgress, dimensions]);
+    const shouldKeepMoving = interactionMode === 'explore' && !prefersReducedMotion;
+    sim.alphaTarget(shouldKeepMoving ? 0.02 : 0);
+    sim.alpha(shouldKeepMoving ? (easeProgress < 0.1 ? 1 : 0.6) : 0.05).restart();
+  }, [unfoldProgress, dimensions, interactionMode, prefersReducedMotion]);
 
   const isZoomModeRef = useRef(isZoomMode);
   useEffect(() => {
@@ -605,6 +713,33 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
   useEffect(() => {
     zoomTransformRef.current = zoomTransform;
   }, [zoomTransform]);
+
+  useEffect(() => {
+    if (isSearchOpen) {
+      requestAnimationFrame(() => searchInputRef.current?.focus());
+    }
+  }, [isSearchOpen]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setIsSearchOpen(true);
+        return;
+      }
+      if (e.key === 'Escape') {
+        if (isSearchOpen) {
+          setIsSearchOpen(false);
+          setSearchQuery('');
+          return;
+        }
+        if (focusedNodeId || isZoomModeRef.current) clearGraphFocus();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [clearGraphFocus, focusedNodeId, isSearchOpen]);
 
   useEffect(() => {
     const handleWheel = (e: WheelEvent) => {
@@ -679,7 +814,7 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
       node.fx = mouse.clientX;
       node.fy = mouse.clientY;
     }
-    sim.alphaTarget(0.3).restart();
+    sim.alphaTarget(prefersReducedMotion ? 0.12 : 0.3).restart();
   };
 
   const handleDrag = (e: React.MouseEvent | React.TouchEvent, node: NodeData) => {
@@ -705,8 +840,8 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
     node.fx = null;
     node.fy = null;
     
-    // Restore the tiny baseline alpha to keep breathing
-    simulationRef.current.alphaTarget(0.02);
+    // Restore the baseline alpha for the current mode
+    simulationRef.current.alphaTarget(interactionMode === 'explore' && !prefersReducedMotion ? 0.02 : 0);
   };
 
   // Calculate hint color interpolating from Green to Cyan to Purple over the full 0-2.8 progress
@@ -739,7 +874,7 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
   }, [unfoldProgress]);
 
   useEffect(() => {
-    if (unfoldProgress <= 0.6) {
+    if (unfoldProgress <= 0.6 || prefersReducedMotion || interactionMode === 'read') {
       setGlitchText(defaultText);
       return;
     }
@@ -753,7 +888,7 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
       }
     }, 500);
     return () => clearInterval(interval);
-  }, [unfoldProgress, defaultText, isMobile]);
+  }, [unfoldProgress, defaultText, isMobile, prefersReducedMotion, interactionMode]);
 
   // Opacities and progressions for HUD modules
   // Since graph unfolding is 2x faster (finishes around unfoldProgress=0.5),
@@ -858,6 +993,122 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
         }
       }}
     >
+      {unfoldProgress >= 0.6 && (
+        <div
+          className="absolute left-4 top-4 z-40 w-[calc(100vw-2rem)] max-w-[320px] font-pixel text-[#A5D6B7] pointer-events-auto"
+          onMouseDown={(e) => e.stopPropagation()}
+          onTouchStart={(e) => e.stopPropagation()}
+        >
+          <div className="border border-[#1B3B2B] bg-[#030a07]/90 shadow-[0_0_20px_rgba(74,222,128,0.12)] backdrop-blur-sm">
+            <form
+              className="flex items-center border-b border-[#1B3B2B]"
+              onSubmit={(e) => {
+                e.preventDefault();
+                const firstResult = searchResults[0];
+                if (firstResult) {
+                  focusGraphNode(firstResult, true, true);
+                  setIsSearchOpen(false);
+                }
+              }}
+            >
+              <span className="px-3 text-[10px] tracking-[0.25em] text-[#4a6b57] whitespace-nowrap">CTRL K</span>
+              <input
+                ref={searchInputRef}
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setIsSearchOpen(true);
+                }}
+                onFocus={() => setIsSearchOpen(true)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && searchResults[0]) {
+                    e.preventDefault();
+                    focusGraphNode(searchResults[0], true, true);
+                    setIsSearchOpen(false);
+                  }
+                }}
+                aria-label="Search graph"
+                placeholder="SEARCH_GRAPH"
+                className="h-10 min-w-0 flex-1 bg-transparent px-2 text-xs tracking-[0.16em] text-[#E8F5E9] outline-none placeholder:text-[#366B4E]"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  className="px-3 text-xs text-[#8b949e] hover:text-[#E8F5E9]"
+                  onClick={() => {
+                    setSearchQuery('');
+                    setIsSearchOpen(false);
+                  }}
+                >
+                  X
+                </button>
+              )}
+            </form>
+
+            {isSearchOpen && normalizedSearchQuery && (
+              <div className="max-h-56 overflow-y-auto border-b border-[#1B3B2B] bg-[#07110c]/95">
+                {searchResults.length > 0 ? (
+                  searchResults.map(node => (
+                    <button
+                      key={node.id}
+                      type="button"
+                      className="flex w-full items-center justify-between gap-3 border-b border-[#1B3B2B]/60 px-3 py-2 text-left text-xs hover:bg-[#1B3B2B]/50"
+                      onClick={() => {
+                        focusGraphNode(node, true, true);
+                        setIsSearchOpen(false);
+                      }}
+                    >
+                      <span className="truncate text-[#E8F5E9]">{node.label}</span>
+                      <span className="shrink-0 text-[10px] text-[#4a6b57]">{node.id}</span>
+                    </button>
+                  ))
+                ) : (
+                  <div className="px-3 py-3 text-xs tracking-[0.16em] text-[#4a6b57]">NO_MATCH</div>
+                )}
+              </div>
+            )}
+
+            <div className="flex flex-wrap items-center gap-2 p-2">
+              <button
+                type="button"
+                className={`border px-3 py-1.5 text-[10px] tracking-[0.18em] transition-colors ${interactionMode === 'explore' ? 'border-[#4ADE80] bg-[#1B3B2B]/70 text-[#E8F5E9]' : 'border-[#1B3B2B] text-[#4a6b57] hover:text-[#A5D6B7]'}`}
+                onClick={() => setInteractionMode('explore')}
+              >
+                EXPLORE
+              </button>
+              <button
+                type="button"
+                className={`border px-3 py-1.5 text-[10px] tracking-[0.18em] transition-colors ${interactionMode === 'read' ? 'border-[#F5DEB3] bg-[#3b2f1b]/70 text-[#F5DEB3]' : 'border-[#1B3B2B] text-[#4a6b57] hover:text-[#F5DEB3]'}`}
+                onClick={() => {
+                  setInteractionMode('read');
+                  setUnfoldProgress(prev => Math.max(prev, 1));
+                }}
+              >
+                READ
+              </button>
+              {focusedNode && (
+                <>
+                  <button
+                    type="button"
+                    className="ml-auto border border-[#30363d] px-3 py-1.5 text-[10px] tracking-[0.18em] text-[#8b949e] hover:text-[#E8F5E9]"
+                    onClick={goBackFocus}
+                  >
+                    BACK
+                  </button>
+                  <button
+                    type="button"
+                    className="border border-[#EF4444]/60 px-3 py-1.5 text-[10px] tracking-[0.18em] text-[#EF4444] hover:bg-[#EF4444]/10"
+                    onClick={clearGraphFocus}
+                  >
+                    RESET
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Scroll Hint */}
       <div 
         className={`absolute bottom-16 left-1/2 -translate-x-1/2 font-pixel text-sm opacity-80 tracking-[0.3em] pointer-events-none transition-all duration-700 flex flex-col items-center gap-3 ${unfoldProgress >= 2.8 ? 'opacity-0 translate-y-10' : ''}`}
@@ -868,7 +1119,7 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
           color: hintColor
         }}
       >
-        <div className="flex flex-col items-center gap-1 animate-bounce">
+        <div className={`flex flex-col items-center gap-1 ${prefersReducedMotion ? '' : 'animate-bounce'}`}>
           {isMobile ? (
             <svg width="28" height="40" viewBox="0 0 28 40" fill="none" xmlns="http://www.w3.org/2000/svg" className="opacity-80">
               {/* Smartphone Body Outline */}
@@ -880,13 +1131,13 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
               <path d="M10 8H18V10H10V8ZM10 12H16V14H10V12Z" fill="currentColor" fillOpacity="0.3"/>
               
               {/* Hand/Thumb swiping up */}
-              <path d="M12 18H16V22H12V18Z" fill="currentColor" className="animate-[pulse_1.5s_ease-in-out_infinite]"/>
+              <path d="M12 18H16V22H12V18Z" fill="currentColor" className={prefersReducedMotion ? '' : 'animate-[pulse_1.5s_ease-in-out_infinite]'}/>
               <path d="M14 22H18V28H14V22Z" fill="currentColor" />
               <path d="M16 28H22V36H16V28Z" fill="currentColor" />
               <path d="M22 30H26V38H22V30Z" fill="currentColor" />
               
               {/* Swipe Up Arrow (Animated) */}
-              <path d="M14 10H16V12H14V10ZM12 12H14V14H12V12ZM16 12H18V14H16V12ZM14 14H16V18H14V14Z" fill="#4ADE80" className="animate-[bounce_1.5s_infinite]"/>
+              <path d="M14 10H16V12H14V10ZM12 12H14V14H12V12ZM16 12H18V14H16V12ZM14 14H16V18H14V14Z" fill="#4ADE80" className={prefersReducedMotion ? '' : 'animate-[bounce_1.5s_infinite]'}/>
             </svg>
           ) : (
             <svg width="24" height="36" viewBox="0 0 24 36" fill="none" xmlns="http://www.w3.org/2000/svg" className="opacity-80">
@@ -896,7 +1147,7 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
               <path d="M10 0H14V2H10V0ZM6 2H10V4H6V2ZM14 2H18V4H14V2ZM4 4H6V6H4V4ZM18 4H20V6H18V4ZM2 6H4V20H2V6ZM20 6H22V20H20V6ZM4 20H6V24H4V20ZM18 20H20V24H18V20ZM6 24H8V28H6V24ZM16 24H18V28H16V24ZM8 28H16V30H8V28Z" fill="currentColor"/>
               
               {/* Pixel Scroll Wheel */}
-              <path d="M10 8H14V14H10V8Z" fill="currentColor" className="animate-pulse"/>
+              <path d="M10 8H14V14H10V8Z" fill="currentColor" className={prefersReducedMotion ? '' : 'animate-pulse'}/>
               
               {/* Inner Details */}
               <path d="M11 20H13V22H11V20Z" fill="currentColor" fillOpacity="0.5"/>
@@ -939,17 +1190,17 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
 
       <svg width="100%" height="100%" className="overflow-visible pointer-events-none absolute inset-0 z-0">
         {/* Starfield Background Layer (Dense Pixel Art Milky Way) */}
-        <Starfield unfoldProgress={unfoldProgress} />
+        <Starfield unfoldProgress={unfoldProgress} reducedMotion={prefersReducedMotion || interactionMode === 'read'} />
 
         {/* Foreground Graph Layer */}
         <g style={{
           transformOrigin: isZoomMode ? '0 0' : (zoomTarget ? `${zoomTarget.x}px ${zoomTarget.y}px` : '50% 50%'),
           transform: isZoomMode 
             ? `translate(${zoomTransform.x}px, ${zoomTransform.y}px) scale(${zoomTransform.k})`
-            : `translate(calc(var(--mouse-x, 0px) * -0.05), calc(var(--mouse-y, 0px) * -0.05)) scale(${hoveredNode && hoveredNode !== 'ME' && unfoldProgress >= 1 ? 2.5 : 1})`,
+            : `${prefersReducedMotion ? 'translate(0px, 0px)' : 'translate(calc(var(--mouse-x, 0px) * -0.05), calc(var(--mouse-y, 0px) * -0.05))'} scale(${activeNodeId && activeNodeId !== 'ME' && unfoldProgress >= 1 ? 2.2 : 1})`,
           opacity: 1, // Graph stays visible, never fades out
           pointerEvents: 'auto', // Graph always interactive
-          transition: (isZoomMode && isPanning) ? 'none' : 'transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), transform-origin 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease',
+          transition: (isZoomMode && isPanning) || prefersReducedMotion ? 'none' : 'transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), transform-origin 0.28s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease',
           willChange: 'transform'
         }}>
           {/* Subtle background grid for parallax reference */}
@@ -967,8 +1218,10 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
             {links.map((link, i) => {
               const source = link.source as NodeData;
               const target = link.target as NodeData;
-              const isHoveredNode = hoveredNode === source.id || hoveredNode === target.id;
-              const isAnyHovered = hoveredNode !== null;
+              const sourceId = getLinkNodeId(link.source);
+              const targetId = getLinkNodeId(link.target);
+              const isActiveLink = activeNodeId ? sourceId === activeNodeId || targetId === activeNodeId : false;
+              const isSearchLink = normalizedSearchQuery ? searchMatchIds.has(sourceId) || searchMatchIds.has(targetId) : false;
               
               // Only show center links after unfoldProgress starts
               // When unfoldProgress <= 0.1 (booting just finished), center links should be invisible
@@ -976,9 +1229,9 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
               const baseOpacity = isCenterLink && unfoldProgress <= 0.1 ? 0 : 0.3;
               
               // Obsidian style link highlighting
-              const linkOpacity = isAnyHovered ? (isHoveredNode ? 0.8 : 0.1) : baseOpacity;
-              const linkColor = isHoveredNode ? "#A5D6B7" : "#4a6b57";
-              const linkWidth = isHoveredNode ? 1.5 : 1;
+              const linkOpacity = activeNodeId ? (isActiveLink ? 0.82 : 0.08) : (normalizedSearchQuery ? (isSearchLink ? 0.6 : 0.07) : baseOpacity);
+              const linkColor = isActiveLink ? "#A5D6B7" : (isSearchLink ? "#81D4FA" : "#4a6b57");
+              const linkWidth = isActiveLink ? 1.75 : (isSearchLink ? 1.4 : 1);
 
               return (
                 <line
@@ -1002,25 +1255,24 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
             {nodes.map((node) => {
               const isHovered = hoveredNode === node.id && unfoldProgress >= 1;
               const isCenter = node.group === 'center';
-              
-              // Determine if this node is a neighbor of the hovered node
-              const isNeighbor = hoveredNode && links.some(l => {
-                const s = l.source as NodeData;
-                const t = l.target as NodeData;
-                return (s.id === hoveredNode && t.id === node.id) || (t.id === hoveredNode && s.id === node.id);
-              });
-
-              const isAnyHovered = hoveredNode !== null;
-              const isHighlighted = isHovered || isNeighbor;
+              const isFocused = focusedNodeId === node.id;
+              const isActive = activeNodeId === node.id;
+              const isNeighbor = connectedNodeIds.has(node.id) && !isActive;
+              const isSearchMatch = searchMatchIds.has(node.id);
+              const hasSearch = normalizedSearchQuery.length > 0;
+              const isHighlighted = isActive || isNeighbor || isSearchMatch;
               
               // Obsidian style node opacity
-              const nodeOpacity = isAnyHovered ? (isHighlighted ? 1 : 0.15) : 1;
+              const nodeOpacity = activeNodeId ? (isHighlighted ? 1 : 0.14) : (hasSearch ? (isSearchMatch ? 1 : 0.22) : 1);
               
               // Obsidian style node colors
               let nodeFill = "#8b949e"; // default gray
               if (isCenter) nodeFill = "#4ADE80"; // center is green
-              if (isHovered) nodeFill = "#B39DDB"; // hovered is purple
+              if (isFocused) nodeFill = "#F5DEB3"; // focused is warm
+              else if (isHovered) nodeFill = "#B39DDB"; // hovered is purple
               else if (isNeighbor) nodeFill = "#A5D6B7"; // neighbor is light green
+              else if (isSearchMatch) nodeFill = "#81D4FA"; // search result is blue
+              const showSubNodes = !isCenter && (isActive || (isHovered && !focusedNodeId));
 
               return (
                 <React.Fragment key={node.id}>
@@ -1049,13 +1301,10 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
                     onClick={(e) => {
                       if (unfoldProgress >= 1 && !isZoomMode && node.group !== 'center') {
                         e.stopPropagation();
-                        setIsZoomMode(true);
-                        const k = 2.5;
-                        setZoomTransform({
-                          x: (node.x || 0) * (1 - k),
-                          y: (node.y || 0) * (1 - k),
-                          k: k
-                        });
+                        focusGraphNode(node, true, true);
+                      } else if (node.group === 'center') {
+                        e.stopPropagation();
+                        clearGraphFocus();
                       }
                     }}
                   >
@@ -1064,7 +1313,7 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
                     
                     {/* Core Node - Solid Circle like Obsidian */}
                     <circle
-                      r={isHovered && !isCenter ? node.radius * 1.5 : node.radius}
+                      r={(isActive || isHovered || isSearchMatch) && !isCenter ? node.radius * 1.5 : node.radius}
                       fill={nodeFill}
                       className="transition-all duration-300"
                       style={{ opacity: isCenter || unfoldProgress > 0.05 ? 1 : 0 }}
@@ -1079,7 +1328,7 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
                       style={{ 
                         pointerEvents: 'none', 
                         userSelect: 'none',
-                        opacity: isCenter || unfoldProgress > 0.15 ? (isAnyHovered && !isHighlighted ? 0.3 : 1) : 0,
+                        opacity: isCenter || unfoldProgress > 0.15 ? ((activeNodeId || hasSearch) && !isHighlighted ? 0.3 : 1) : 0,
                         transform: isCenter ? 'scale(1)' : `scale(${Math.min(1, unfoldProgress * 5)})`
                       }}
                     >
@@ -1104,7 +1353,7 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
                   */}
 
                   {/* Sub-nodes that pop out on hover */}
-                  {isHovered && !isCenter && computedSubNodes[node.id]?.map((sub, idx, arr) => {
+                  {showSubNodes && computedSubNodes[node.id]?.map((sub, idx, arr) => {
                     const sx = sub.sx || 0;
                     const sy = sub.sy || 0;
                     return (
@@ -1159,6 +1408,58 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
             </div>
             <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 font-pixel text-[#EF4444] text-[10px] tracking-widest opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
               EXIT_ZOOM
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {focusedNode && unfoldProgress >= 1 && (
+          <motion.div
+            initial={prefersReducedMotion ? false : { opacity: 0, y: 10, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: 10, scale: 0.98 }}
+            transition={{ duration: prefersReducedMotion ? 0 : 0.16 }}
+            className="absolute bottom-4 left-4 right-4 z-40 border border-[#30363d] bg-[#07110c]/92 p-4 font-pixel text-[#c9d1d9] shadow-[0_0_24px_rgba(165,214,183,0.14)] backdrop-blur-sm md:left-auto md:right-6 md:bottom-6 md:w-[340px]"
+            onMouseDown={(e) => e.stopPropagation()}
+            onTouchStart={(e) => e.stopPropagation()}
+          >
+            <div className="mb-3 flex items-start justify-between gap-4 border-b border-[#30363d] pb-3">
+              <div className="min-w-0">
+                <div className="text-[10px] tracking-[0.28em] text-[#4a6b57]">{focusedNode.id}</div>
+                <h3 className="truncate text-base tracking-[0.16em] text-[#F5DEB3]">{focusedNode.label}</h3>
+              </div>
+              <div className="shrink-0 border border-[#1B3B2B] px-2 py-1 text-[10px] tracking-[0.18em] text-[#A5D6B7]">
+                {Math.max(0, connectedNodeIds.size - 1)} LINKS
+              </div>
+            </div>
+
+            <div className="grid max-h-48 grid-cols-1 gap-2 overflow-y-auto custom-scrollbar pr-1">
+              {(dynamicSubNodes[focusedNode.id] || []).length > 0 ? (
+                (dynamicSubNodes[focusedNode.id] || []).map(sub => (
+                  <button
+                    key={sub.id}
+                    type="button"
+                    disabled={!sub.link}
+                    className={`border border-[#1B3B2B] px-3 py-2 text-left transition-colors ${sub.link ? 'hover:border-[#58a6ff] hover:bg-[#0d2233]' : 'opacity-70'}`}
+                    onClick={() => {
+                      if (!sub.link) return;
+                      if (/^https?:\/\//.test(sub.link)) {
+                        window.open(sub.link, '_blank', 'noopener,noreferrer');
+                      } else {
+                        navigate(sub.link);
+                      }
+                    }}
+                  >
+                    <div className="truncate text-xs tracking-[0.14em] text-[#E8F5E9]">{sub.label}</div>
+                    {sub.desc && (
+                      <div className="mt-1 line-clamp-2 text-[10px] leading-relaxed tracking-[0.08em] text-[#8b949e]">{sub.desc}</div>
+                    )}
+                  </button>
+                ))
+              ) : (
+                <div className="border border-dashed border-[#1B3B2B] px-3 py-3 text-xs tracking-[0.16em] text-[#4a6b57]">NO_SUBNODES</div>
+              )}
             </div>
           </motion.div>
         )}
@@ -1892,7 +2193,7 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
       
       {/* Hover Tooltip - Obsidian Style (Pixel variation) */}
       <AnimatePresence>
-        {hoveredNode && hoveredNode !== 'ME' && unfoldProgress >= 1 && unfoldProgress <= 1.1 && (
+        {!focusedNodeId && hoveredNode && hoveredNode !== 'ME' && unfoldProgress >= 1 && unfoldProgress <= 1.1 && (
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 5 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
