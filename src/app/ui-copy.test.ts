@@ -114,6 +114,13 @@ test("pricing page keeps taobao purchase and adds mapay as a second channel", ()
   assert.match(pricing, /\/api\/payments\/mapay\/checkout\?plan=/);
 });
 
+test("pricing page pre-fills cdk returned from mapay", () => {
+  const pricing = read("src/components/PricingClient.tsx");
+
+  assert.match(pricing, /new URLSearchParams\(window\.location\.search\)\.get\("cdk"\)/);
+  assert.match(pricing, /if \(cdk\) setRedeemCode\(cdk\)/);
+});
+
 test("pricing redeem refreshes the displayed quota after successful cdk redemption", () => {
   const pricing = read("src/components/PricingClient.tsx");
 

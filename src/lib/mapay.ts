@@ -46,7 +46,7 @@ export function normalizeMapayPaymentType(value: string | null): MapayPaymentTyp
 }
 
 export function createMapayOrderId(now = Date.now(), suffix = randomUUID()): string {
-  return `IMG${now}${suffix.replace(/-/g, "").slice(0, 8).toUpperCase()}`;
+  return `IMG${now.toString(36).toUpperCase()}${suffix.replace(/-/g, "").slice(0, 6).toUpperCase()}`;
 }
 
 export function formatMapayMoney(value: number): string {
@@ -68,6 +68,15 @@ export function verifyMapaySignature(params: MapayFields, key: string): boolean 
   return !!sign && signMapayParams(params, key).toLowerCase() === sign.toLowerCase();
 }
 
+export function isMapayPaymentSuccessful(params: MapayFields): boolean {
+  const status = (params.trade_status ?? params.status ?? "").toUpperCase();
+  return status === "TRADE_SUCCESS" || status === "SUCCESS" || status === "1";
+}
+
+export function mapayMoneyMatches(actual: string | undefined, expected: number): boolean {
+  return Number(actual).toFixed(2) === formatMapayMoney(expected);
+}
+
 export function buildMapayCheckoutFields(input: {
   config: MapayConfig;
   orderId: string;
@@ -80,9 +89,10 @@ export function buildMapayCheckoutFields(input: {
     type: paymentType,
     out_trade_no: orderId,
     notify_url: `${config.siteUrl}/api/payments/mapay/notify`,
-    return_url: `${config.siteUrl}/pricing#redeem`,
+    return_url: `${config.siteUrl}/api/payments/mapay/return`,
     name: `image.tinchak0207.xyz ${plan.name} ${plan.coins}张`,
     money: formatMapayMoney(plan.price),
+    param: plan.id,
     sitename: "image.tinchak0207.xyz",
   };
 

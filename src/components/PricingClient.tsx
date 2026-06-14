@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, Check, Coins, Gift, Copy, Ticket, Sparkles, BookOpen, ShoppingBag, QrCode } from "lucide-react";
 import { PLANS, pricePerCoin } from "@/lib/plans";
@@ -18,6 +18,11 @@ export function PricingClient() {
   const [affLoading, setAffLoading] = useState(false);
   const [redeemCode, setRedeemCode] = useState("");
   const [redeemLoading, setRedeemLoading] = useState(false);
+
+  useEffect(() => {
+    const cdk = new URLSearchParams(window.location.search).get("cdk");
+    if (cdk) setRedeemCode(cdk);
+  }, []);
 
   const handleBuy = (purchaseUrl: string) => {
     window.open(purchaseUrl, "_blank");

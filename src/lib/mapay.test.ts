@@ -4,6 +4,7 @@ import { createHash } from "node:crypto";
 
 import {
   buildMapayCheckoutFields,
+  createMapayOrderId,
   getMapaySubmitUrl,
   signMapayParams,
   verifyMapaySignature,
@@ -46,9 +47,15 @@ test("buildMapayCheckoutFields creates signed checkout fields for a plan", () =>
   assert.equal(fields.type, "alipay");
   assert.equal(fields.money, "9.90");
   assert.equal(fields.notify_url, "https://image.tinchak0207.xyz/api/payments/mapay/notify");
-  assert.equal(fields.return_url, "https://image.tinchak0207.xyz/pricing#redeem");
+  assert.equal(fields.return_url, "https://image.tinchak0207.xyz/api/payments/mapay/return");
+  assert.equal(fields.param, "starter");
   assert.equal(fields.sign_type, "MD5");
   assert.equal(verifyMapaySignature(fields, "secret"), true);
+});
+
+test("createMapayOrderId stays short enough for new-api redemption lookup names", () => {
+  assert.match(createMapayOrderId(1_766_000_000_000, "abcdef123456"), /^IMG[A-Z0-9]+$/);
+  assert.ok(createMapayOrderId(1_766_000_000_000, "abcdef123456").length <= 20);
 });
 
 test("getMapaySubmitUrl accepts base or submit.php gateway urls", () => {

@@ -1,5 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getMapayConfig, verifyMapaySignature, type MapayFields } from "@/lib/mapay";
+import { PLANS } from "@/lib/plans";
+import {
+  getMapayConfig,
+  isMapayPaymentSuccessful,
+  mapayMoneyMatches,
+  verifyMapaySignature,
+  type MapayFields,
+} from "@/lib/mapay";
+import { fulfillMapayRedemption } from "@/lib/mapay-redemption";
 
 export const runtime = "nodejs";
 
@@ -30,12 +38,27 @@ async function handleNotify(req: NextRequest) {
       return response("fail", 400);
     }
 
+    if (!isMapayPaymentSuccessful(params)) {
+      return response("success");
+    }
+
+    const plan = PLANS.find((item) => item.id === params.param);
+    if (!plan || !mapayMoneyMatches(params.money, plan.price)) {
+      return response("fail", 400);
+    }
+
+    const redemption = await fulfillMapayRedemption({
+      orderId: params.out_trade_no,
+      plan,
+    });
+
     console.info("[mapay notify]", {
       out_trade_no: params.out_trade_no,
       trade_no: params.trade_no,
       trade_status: params.trade_status,
       money: params.money,
       type: params.type,
+      redemption_created: redemption.created,
     });
     return response("success");
   } catch (error) {
