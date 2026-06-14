@@ -4,12 +4,7 @@ import { Graph } from '../components/Graph';
 import { CRTFilter } from '../components/CRTFilter';
 
 export function Home() {
-  const [booting, setBooting] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return sessionStorage.getItem('booted') !== 'true';
-    }
-    return true;
-  });
+  const [booting, setBooting] = useState(false);
 
   const [graphReady, setGraphReady] = useState(false);
   const [fontsReady, setFontsReady] = useState(false);
