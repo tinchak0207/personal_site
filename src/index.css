@@ -28,13 +28,12 @@
       rgba(0, 0, 0, 0.2)
     );
     background-size: 100% 4px;
-    animation: scanlines 10s linear infinite;
     pointer-events: none;
     mix-blend-mode: overlay;
   }
 
   .flicker {
-    animation: flicker 0.15s infinite;
+    opacity: 0.96;
     pointer-events: none;
   }
 

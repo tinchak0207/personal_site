@@ -130,24 +130,22 @@ const Starfield = React.memo(({
     const w = typeof window !== 'undefined' ? window.innerWidth : 1920;
     const h = typeof window !== 'undefined' ? window.innerHeight : 1080;
     
-    const baseStars = Array.from({ length: 400 }).map((_, i) => {
+    const baseStars = Array.from({ length: 140 }).map((_, i) => {
       const x = ((Math.sin(i * 12.345) + 1) / 2) * (w + 800) - 400;
       const y = ((Math.cos(i * 54.321) + 1) / 2) * (h + 800) - 400;
       const size = ((Math.sin(i * 98.765) + 1) / 2) * 1 + 0.5;
       const fill = i % 3 === 0 ? "#8FBC8F" : "#A5D6B7";
-      const isPulse = i % 10 === 0;
       const opacityMult = (Math.sin(i) + 1) / 2 * 0.4 + 0.1;
       return (
         <rect 
           key={`base-${i}`} x={x} y={y} width={size} height={size} 
           fill={fill} 
           opacity={opacityMult}
-          className={isPulse && !reducedMotion ? "animate-pulse" : ""}
         />
       );
     });
 
-    const mwStars = Array.from({ length: 800 }).map((_, i) => {
+    const mwStars = Array.from({ length: 220 }).map((_, i) => {
       const t = ((Math.sin(i * 3.14159) + 1) / 2); 
       const baseX = t * (w + 800) - 400;
       const baseY = h - (t * (h + 800) - 400) + Math.sin(t * Math.PI * 3) * 150; 
@@ -158,29 +156,24 @@ const Starfield = React.memo(({
       const size = distFromCenter < 0.2 ? 0.8 : (distFromCenter < 0.6 ? 1.2 : 1.5);
       const baseOpacity = (1 - Math.pow(distFromCenter, 0.5)) * 0.7;
       const fill = distFromCenter < 0.15 ? "#E8F5E9" : (i % 4 === 0 ? "#7da38a" : "#366B4E");
-      const isPulse = i % 15 === 0;
       return (
         <rect 
           key={`mw-${i}`} x={x} y={y} width={size} height={size} 
           fill={fill} 
           opacity={baseOpacity}
-          className={isPulse && !reducedMotion ? "animate-pulse" : ""}
         />
       );
     });
 
-    const crossStars = Array.from({ length: 15 }).map((_, i) => {
+    const crossStars = Array.from({ length: 8 }).map((_, i) => {
       const x = ((Math.sin(i * 33.33) + 1) / 2) * w;
       const y = ((Math.cos(i * 44.44) + 1) / 2) * h;
       const isYellowish = i % 3 === 0;
       const fill = isYellowish ? "#F5DEB3" : "#E8F5E9";
-      const animDuration = `${2 + i % 3}s`;
       return (
         <g 
           key={`cross-${i}`} 
           transform={`translate(${x}, ${y})`} 
-          className={reducedMotion ? "" : "animate-pulse"}
-          style={{ animationDuration: animDuration }}
         >
           <rect x="-1" y="-4" width="2" height="8" fill={fill} />
           <rect x="-4" y="-1" width="8" height="2" fill={fill} />
@@ -497,7 +490,7 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
     setIsZoomMode(false);
     setZoomTransform({ x: 0, y: 0, k: 1 });
     if (simulationRef.current && interactionMode === 'explore' && !prefersReducedMotion) {
-      simulationRef.current.alphaTarget(0.02).restart();
+      simulationRef.current.alpha(0.12).alphaTarget(0).restart();
     }
   }, [interactionMode, prefersReducedMotion]);
 
@@ -517,7 +510,7 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
     isBootingRef.current = isBooting;
     if (!isBooting && simulationRef.current) {
       // Wake up the simulation when booting finishes
-      simulationRef.current.alpha(prefersReducedMotion ? 0.05 : 0.3).restart();
+      simulationRef.current.alpha(prefersReducedMotion ? 0.03 : 0.15).alphaTarget(0).restart();
     }
   }, [isBooting, prefersReducedMotion]);
 
@@ -585,7 +578,9 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
       .force('link', d3.forceLink<NodeData, LinkData>(simLinks).id(d => d.id))
       .force('charge', d3.forceManyBody())
       .force('center', d3.forceCenter(width / 2, height / 2).strength(1))
-      .force('collide', d3.forceCollide<NodeData>().radius(d => d.radius + 30));
+      .force('collide', d3.forceCollide<NodeData>().radius(d => d.radius + 30))
+      .alphaDecay(0.08)
+      .velocityDecay(0.48);
 
     simulation.on('tick', () => {
       // If we are booting, skip the expensive React re-renders to save CPU for the terminal typing animation.
@@ -645,7 +640,7 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
     // Update centering force
     (sim.force('center') as d3.ForceCenter<NodeData>).x(dimensions.width / 2).y(dimensions.height / 2);
     
-    sim.alpha(prefersReducedMotion || interactionMode === 'read' ? 0.05 : 0.3).restart();
+    sim.alpha(prefersReducedMotion || interactionMode === 'read' ? 0.03 : 0.18).alphaTarget(0).restart();
   }, [dimensions, interactionMode, prefersReducedMotion]);
 
   useEffect(() => {
@@ -699,9 +694,11 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
       }
     });
 
-    const shouldKeepMoving = interactionMode === 'explore' && !prefersReducedMotion;
-    sim.alphaTarget(shouldKeepMoving ? 0.02 : 0);
-    sim.alpha(shouldKeepMoving ? (easeProgress < 0.1 ? 1 : 0.6) : 0.05).restart();
+    const restartAlpha = interactionMode === 'explore' && !prefersReducedMotion
+      ? (easeProgress < 0.1 ? 0.8 : 0.28)
+      : 0.03;
+    sim.alphaTarget(0);
+    sim.alpha(restartAlpha).restart();
   }, [unfoldProgress, dimensions, interactionMode, prefersReducedMotion]);
 
   const isZoomModeRef = useRef(isZoomMode);
@@ -814,7 +811,7 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
       node.fx = mouse.clientX;
       node.fy = mouse.clientY;
     }
-    sim.alphaTarget(prefersReducedMotion ? 0.12 : 0.3).restart();
+    sim.alphaTarget(prefersReducedMotion ? 0.08 : 0.18).restart();
   };
 
   const handleDrag = (e: React.MouseEvent | React.TouchEvent, node: NodeData) => {
@@ -841,7 +838,7 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
     node.fy = null;
     
     // Restore the baseline alpha for the current mode
-    simulationRef.current.alphaTarget(interactionMode === 'explore' && !prefersReducedMotion ? 0.02 : 0);
+    simulationRef.current.alphaTarget(0);
   };
 
   // Calculate hint color interpolating from Green to Cyan to Purple over the full 0-2.8 progress
@@ -1119,7 +1116,7 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
           color: hintColor
         }}
       >
-        <div className={`flex flex-col items-center gap-1 ${prefersReducedMotion ? '' : 'animate-bounce'}`}>
+        <div className="flex flex-col items-center gap-1">
           {isMobile ? (
             <svg width="28" height="40" viewBox="0 0 28 40" fill="none" xmlns="http://www.w3.org/2000/svg" className="opacity-80">
               {/* Smartphone Body Outline */}
@@ -1147,7 +1144,7 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
               <path d="M10 0H14V2H10V0ZM6 2H10V4H6V2ZM14 2H18V4H14V2ZM4 4H6V6H4V4ZM18 4H20V6H18V4ZM2 6H4V20H2V6ZM20 6H22V20H20V6ZM4 20H6V24H4V20ZM18 20H20V24H18V20ZM6 24H8V28H6V24ZM16 24H18V28H16V24ZM8 28H16V30H8V28Z" fill="currentColor"/>
               
               {/* Pixel Scroll Wheel */}
-              <path d="M10 8H14V14H10V8Z" fill="currentColor" className={prefersReducedMotion ? '' : 'animate-pulse'}/>
+              <path d="M10 8H14V14H10V8Z" fill="currentColor"/>
               
               {/* Inner Details */}
               <path d="M11 20H13V22H11V20Z" fill="currentColor" fillOpacity="0.5"/>
@@ -1244,7 +1241,7 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
                   stroke={linkColor}
                   strokeOpacity={linkOpacity}
                   strokeWidth={linkWidth}
-                  className="transition-all duration-300"
+                  className="transition-colors duration-150"
                 />
               );
             })}
@@ -1315,7 +1312,7 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
                     <circle
                       r={(isActive || isHovered || isSearchMatch) && !isCenter ? node.radius * 1.5 : node.radius}
                       fill={nodeFill}
-                      className="transition-all duration-300"
+                      className="transition-colors duration-150"
                       style={{ opacity: isCenter || unfoldProgress > 0.05 ? 1 : 0 }}
                     />
                     
@@ -1359,7 +1356,7 @@ export const Graph: React.FC<GraphProps> = ({ onReady, isBooting = false }) => {
                     return (
                       <g 
                         key={`sub-${sub.id}`} 
-                        className={`transition-all duration-300 ${sub.link ? 'cursor-pointer hover:opacity-80' : ''}`} 
+                        className={`transition-opacity duration-150 ${sub.link ? 'cursor-pointer hover:opacity-80' : ''}`}
                         style={{ animation: 'zoomIn 0.2s cubic-bezier(0.16, 1, 0.3, 1)' }}
                         onClick={(e) => {
                           if (sub.link) {
