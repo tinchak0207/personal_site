@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import type { GenerateImageRequest } from "@/lib/api-types";
 import { MOCK_MODE, mockGenerateImage } from "@/lib/mock";
 import { buildGatewayEndpoints } from "@/lib/sub2api";
@@ -16,6 +16,7 @@ export const maxDuration = 120;
 export const preferredRegion = "hkg1";
 
 const DEFAULT_IMAGE_SIZE = "1024x1024";
+const SUPPORTED_IMAGE_SIZES = new Set(["1024x1024", "1536x1024", "1024x1536"]);
 const IMAGE_EDITS_PATH = "/images/edits";
 const IMAGE_GENERATIONS_PATH = "/images/generations";
 const PRIMARY_UPSTREAM_TIMEOUT_MS = 20_000;
@@ -47,6 +48,12 @@ async function readUpstreamPayload(response: Response): Promise<UpstreamSuccess 
 
 function upstreamTimeoutForEndpoint(label: string): number {
   return label === "fallback" ? FALLBACK_UPSTREAM_TIMEOUT_MS : PRIMARY_UPSTREAM_TIMEOUT_MS;
+}
+
+function resolveImageSize(workflow?: GenerationWorkflowMetadata): string {
+  return workflow?.imageSize && SUPPORTED_IMAGE_SIZES.has(workflow.imageSize)
+    ? workflow.imageSize
+    : DEFAULT_IMAGE_SIZE;
 }
 
 function readWorkflowMetadata(value: unknown): GenerationWorkflowMetadata | undefined {
@@ -91,12 +98,13 @@ function buildUpstreamImageRequestBody(
   prompt: string,
   modelId: string,
   referenceImages: File[],
+  imageSize: string,
 ): { path: string; body: BodyInit; headers: Record<string, string> } {
   if (referenceImages.length > 0) {
     const body = new FormData();
     body.append("model", modelId);
     body.append("prompt", prompt);
-    body.append("size", DEFAULT_IMAGE_SIZE);
+    body.append("size", imageSize);
     for (const image of referenceImages) {
       body.append("image", image, image.name || "reference-image.png");
     }
@@ -105,22 +113,24 @@ function buildUpstreamImageRequestBody(
 
   return {
     path: IMAGE_GENERATIONS_PATH,
-    body: JSON.stringify({ model: modelId, prompt, size: DEFAULT_IMAGE_SIZE }),
+    body: JSON.stringify({ model: modelId, prompt, size: imageSize }),
     headers: { "Content-Type": "application/json" },
   };
 }
 
 async function requestImageGeneration(
-  endpoint: { apiKey: string; baseURL: string; label: string },
+  endpoint: { apiKey: string; baseURL: string; label: string; modelId?: string },
   prompt: string,
   modelId: string,
   referenceImages: File[],
+  imageSize: string,
 ) {
   const startedAt = Date.now();
   const timeoutMs = upstreamTimeoutForEndpoint(endpoint.label);
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
-  const upstreamRequest = buildUpstreamImageRequestBody(prompt, modelId, referenceImages);
+  const upstreamModelId = endpoint.modelId ?? modelId;
+  const upstreamRequest = buildUpstreamImageRequestBody(prompt, upstreamModelId, referenceImages, imageSize);
 
   try {
     const response = await fetch(`${endpoint.baseURL}${upstreamRequest.path}`, {
@@ -164,6 +174,7 @@ export async function POST(req: NextRequest) {
   const requestId = Math.random().toString(36).slice(2);
   const { prompt, modelId, referenceImages, workflow } = await readGenerateImageRequest(req);
   const estimatedCredits = workflow?.estimatedCredits;
+  const imageSize = resolveImageSize(workflow);
   const finalPrompt = buildWorkflowPrompt(prompt, workflow);
 
   if (!prompt || !modelId) {
@@ -199,7 +210,7 @@ export async function POST(req: NextRequest) {
 
   if (!authResult.bypassBilling) {
     try {
-      await reserveImageQuota(authenticatedUser.id);
+      await reserveImageQuota(authenticatedUser.id, authenticatedUser.quota);
     } catch (error) {
       return NextResponse.json(
         { error: error instanceof Error ? error.message : "Failed to reserve image quota." },
@@ -208,32 +219,36 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  let firstError: unknown = null;
   let lastError: unknown = null;
 
   for (const endpoint of endpoints) {
     try {
-      const result = await requestImageGeneration(endpoint, finalPrompt, modelId, referenceImages);
+      const result = await requestImageGeneration(endpoint, finalPrompt, modelId, referenceImages, imageSize);
       if (authenticatedUser.id) {
-        saveGeneratedHistoryEntry({
-          id: `${authenticatedUser.id}-${Date.now()}`,
-          userId: authenticatedUser.id,
-          prompt: finalPrompt,
-          generatedAt: Date.now(),
-          workflow,
-          results: [
-            {
-              provider: "image_tinchak",
-              modelId,
-              image: result.image,
-              imageUrl: result.imageUrl,
-              endpointLabel: endpoint.label,
-            },
-          ],
-        }).catch((error) => {
-          console.error(`Failed to save history [requestId=${requestId}]`, error);
-        });
+        // after()：响应返回后再持久化历史，避免 serverless 函数实例提前冻结导致历史丢失。
+        after(() =>
+          saveGeneratedHistoryEntry({
+            id: `${authenticatedUser.id}-${Date.now()}`,
+            userId: authenticatedUser.id,
+            prompt: finalPrompt,
+            generatedAt: Date.now(),
+            workflow,
+            results: [
+              {
+                provider: "image_tinchak",
+                modelId,
+                image: result.image,
+                imageUrl: result.imageUrl,
+                endpointLabel: endpoint.label,
+              },
+            ],
+          }).catch((error) => {
+            console.error(`Failed to save history [requestId=${requestId}]`, error);
+          }),
+        );
       }
-      console.log(`Completed [requestId=${requestId}, model=${modelId}, endpoint=${endpoint.label}, estimatedCredits=${estimatedCredits ?? 1}, upstreamElapsedMs=${result.upstreamElapsedMs}]`);
+      console.log(`Completed [requestId=${requestId}, model=${modelId}, upstreamModel=${endpoint.modelId ?? modelId}, endpoint=${endpoint.label}, estimatedCredits=${estimatedCredits ?? 1}, upstreamElapsedMs=${result.upstreamElapsedMs}]`);
       return NextResponse.json({
         provider: "image_tinchak",
         image: result.image,
@@ -241,6 +256,7 @@ export async function POST(req: NextRequest) {
         endpointLabel: endpoint.label,
       });
     } catch (error) {
+      firstError ??= error;
       lastError = error;
       console.error(`Failed on ${endpoint.label} [requestId=${requestId}]`, error);
     }
@@ -259,7 +275,7 @@ export async function POST(req: NextRequest) {
   }
 
   return NextResponse.json(
-    { error: lastError instanceof Error ? lastError.message : "Failed to generate image." },
+    { error: firstError instanceof Error ? firstError.message : lastError instanceof Error ? lastError.message : "Failed to generate image." },
     { status: 500 },
   );
 }

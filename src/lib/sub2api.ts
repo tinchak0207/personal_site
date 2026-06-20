@@ -2,6 +2,7 @@ export interface GatewayEndpoint {
   apiKey: string;
   baseURL: string;
   label: string;
+  modelId?: string;
 }
 
 export type EnvLike = Record<string, string | undefined>;
@@ -18,6 +19,7 @@ export function buildGatewayEndpoints(env: EnvLike): GatewayEndpoint[] {
           baseURL: normalizeBaseURL(env.IMAGE_API_BASE_URL_FALLBACK ?? ""),
           apiKey: env.IMAGE_API_KEY_FALLBACK ?? "",
           label: "fallback",
+          ...(env.IMAGE_API_MODEL_FALLBACK ? { modelId: env.IMAGE_API_MODEL_FALLBACK } : {}),
         }]
       : [];
 
@@ -35,11 +37,13 @@ export function buildGatewayEndpoints(env: EnvLike): GatewayEndpoint[] {
       : fallbackEndpoint;
   }
 
+  const primaryModelId = env.IMAGE_API_MODEL ?? env.IMAGE_API_MODEL_PRIMARY;
   return [
     {
       baseURL: primaryBaseURL,
       apiKey: primaryApiKey,
       label: "primary",
+      ...(primaryModelId ? { modelId: primaryModelId } : {}),
     },
     ...fallbackEndpoint,
   ].filter((endpoint) => Boolean(endpoint.baseURL && endpoint.apiKey));

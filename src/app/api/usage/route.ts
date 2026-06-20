@@ -2,6 +2,8 @@
 import { NextRequest } from "next/server";
 import { makeProxy } from "@/lib/proxy";
 
+export const preferredRegion = "hkg1";
+
 const emptyCtx = { params: Promise.resolve({}) };
 
 export async function GET(req: NextRequest) {

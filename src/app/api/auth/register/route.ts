@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { MOCK_MODE, mockRegister } from "@/lib/mock";
 import { getGatewayBaseUrl, loginViaNewApi } from "@/lib/new-api-auth-server";
+
+export const preferredRegion = "hkg1";
+
 const TURNSTILE_SECRET = process.env.TURNSTILE_SECRET_KEY ?? "";
 
 async function verifyTurnstile(token: string, ip: string): Promise<boolean> {

@@ -14,12 +14,12 @@ test("showcase cases include prompt-driven examples across core styles", () => {
   assert.equal(SHOWCASE_CASES.every((item) => item.prompt.length > 20), true);
   assert.equal(SHOWCASE_CASES.every((item) => item.resultNote.length > 20), true);
   assert.deepEqual(SHOWCASE_CASES.map((item) => item.image), [
-    "/showcase/showcase1.png",
-    "/showcase/showcase2.png",
-    "/showcase/showcase3.png",
-    "/showcase/showcase4.png",
-    "/showcase/showcase5.png",
-    "/showcase/showcase6.png",
+    "/showcase/showcase1.webp",
+    "/showcase/showcase2.webp",
+    "/showcase/showcase3.webp",
+    "/showcase/showcase4.webp",
+    "/showcase/showcase5.webp",
+    "/showcase/showcase6.webp",
   ]);
   assert.equal(SHOWCASE_CASES.every((item) => !item.image?.includes("Downloads") && !item.image?.includes(":")), true);
 });

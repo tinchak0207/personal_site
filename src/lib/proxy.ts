@@ -5,6 +5,8 @@ interface ProxyOptions {
   upstreamPath?: string;
   public?: boolean;
   revalidate?: number;
+  /** 非 public 路由的 GET 成功响应加 `Cache-Control: private, max-age=<browserCache>`（秒）。 */
+  browserCache?: number;
 }
 
 type RouteContext = { params: Promise<Record<string, string>> };
@@ -51,7 +53,21 @@ export function makeProxy(opts: ProxyOptions = {}) {
     try {
       const upstream = await fetch(url, fetchOpts);
       const data = await upstream.json();
-      return NextResponse.json(data, { status: upstream.status });
+      const response = NextResponse.json(data, { status: upstream.status });
+
+      if (req.method === "GET" && upstream.ok) {
+        if (opts.public && opts.revalidate !== undefined && !auth) {
+          // 仅对不带 Authorization 的公开响应启用 CDN 共享缓存。
+          response.headers.set(
+            "Cache-Control",
+            "public, s-maxage=600, stale-while-revalidate=86400",
+          );
+        } else if (!opts.public && opts.browserCache !== undefined) {
+          response.headers.set("Cache-Control", `private, max-age=${opts.browserCache}`);
+        }
+      }
+
+      return response;
     } catch (err) {
       console.error(`[proxy ${upstreamPath}]`, err);
       return NextResponse.json({ success: false, message: "服务暂时不可用" }, { status: 503 });

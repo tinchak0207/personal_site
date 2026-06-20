@@ -24,7 +24,8 @@ test("recordGenerationResult keeps the latest generated images for the active ac
 
   assert.equal(next.current.userId, 7);
   assert.equal(next.current.prompt, "make a poster");
-  assert.equal(next.current.results[0]?.image, "b64-a");
+  // base64 不落 localStorage（避免生成结束时多 MB 同步 stringify 卡顿），回显走 imageUrl
+  assert.equal(next.current.results[0]?.image, null);
   assert.equal(next.historyByUser["7"]?.length, 1);
 });
 
@@ -91,7 +92,7 @@ test("recordGenerationResult keeps history isolated by account", () => {
   assert.equal(selectPersistedHistoryForUser(withBob, 8).length, 1);
 });
 
-test("mergePersistedHistory prefers cached image data when upstream history has no image", () => {
+test("mergePersistedHistory keeps local entries first and strips image payloads", () => {
   const cache = recordGenerationResult(createEmptyGenerationCache(), {
     userId: 7,
     username: "alice",
@@ -114,7 +115,7 @@ test("mergePersistedHistory prefers cached image data when upstream history has 
 
   assert.equal(merged.length, 2);
   assert.equal(merged[0]?.prompt, "cached prompt");
-  assert.equal(merged[0]?.results[0]?.image, "cached-b64");
+  assert.equal(merged[0]?.results[0]?.image, null);
   assert.equal(merged[1]?.source, "server");
 });
 

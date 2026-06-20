@@ -102,7 +102,9 @@ export function recordGenerationResult(
     id: `${input.userId}-${input.generatedAt}`,
     prompt: input.prompt,
     generatedAt: input.generatedAt,
-    results: input.results,
+    // base64 不落 localStorage：多 MB 的同步 JSON.stringify 会在生成结束瞬间阻塞主线程数百 ms，
+    // 且几乎必然触发 5MB 配额异常。召回只需要 prompt/workflow，刷新后回显走 imageUrl。
+    results: input.results.map((result) => ({ ...result, image: null })),
     source: "local",
     workflow: input.workflow,
   };

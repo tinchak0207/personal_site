@@ -17,10 +17,11 @@ interface NavbarProps {
 export function Navbar({ className }: NavbarProps) {
   const { user, isLoggedIn, logout } = useAuth();
   const [authOpen, setAuthOpen] = useState(false);
+  const [authMounted, setAuthMounted] = useState(false);
   const [authTab, setAuthTab] = useState<"login" | "register">("login");
 
-  const openLogin    = () => { setAuthTab("login");    setAuthOpen(true); };
-  const openRegister = () => { setAuthTab("register"); setAuthOpen(true); };
+  const openLogin    = () => { setAuthTab("login");    setAuthMounted(true); setAuthOpen(true); };
+  const openRegister = () => { setAuthTab("register"); setAuthMounted(true); setAuthOpen(true); };
 
   return (
     <>
@@ -127,11 +128,13 @@ export function Navbar({ className }: NavbarProps) {
         </nav>
       </header>
 
-      <AuthModal
-        open={authOpen}
-        onClose={() => setAuthOpen(false)}
-        defaultTab={authTab}
-      />
+      {authMounted && (
+        <AuthModal
+          open={authOpen}
+          onClose={() => setAuthOpen(false)}
+          defaultTab={authTab}
+        />
+      )}
     </>
   );
 }

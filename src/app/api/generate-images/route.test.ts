@@ -56,6 +56,32 @@ test("buildGatewayEndpoints falls back to image api endpoints", () => {
   ]);
 });
 
+test("buildGatewayEndpoints supports per-endpoint image model overrides", () => {
+  const endpoints = buildGatewayEndpoints({
+    IMAGE_API_BASE_URL: "https://primary.example/v1",
+    IMAGE_API_KEY: "primary-key",
+    IMAGE_API_MODEL: "codex-gpt-image-2",
+    IMAGE_API_BASE_URL_FALLBACK: "https://fallback.example/v1",
+    IMAGE_API_KEY_FALLBACK: "fallback-key",
+    IMAGE_API_MODEL_FALLBACK: "gpt-image-1",
+  });
+
+  assert.deepEqual(endpoints, [
+    {
+      apiKey: "primary-key",
+      baseURL: "https://primary.example/v1",
+      label: "primary",
+      modelId: "codex-gpt-image-2",
+    },
+    {
+      apiKey: "fallback-key",
+      baseURL: "https://fallback.example/v1",
+      label: "fallback",
+      modelId: "gpt-image-1",
+    },
+  ]);
+});
+
 test("buildGatewayEndpoints uses configured image api endpoint in production", () => {
   const endpoints = buildGatewayEndpoints({
     NODE_ENV: "production",
@@ -110,11 +136,15 @@ test("generate image route supports reference image edits without breaking text-
   assert.match(source, /buildWorkflowPrompt/);
   assert.match(source, /schemaVersion/);
   assert.match(source, /estimatedCredits/);
+  assert.match(source, /imageSize/);
+  assert.match(source, /resolveImageSize/);
   assert.match(source, /workflow,/);
   assert.match(source, /form\.get\("workflow"\)/);
   assert.match(source, /\/images\/edits/);
   assert.match(source, /\/images\/generations/);
   assert.match(source, /body\.append\("image"/);
+  assert.match(source, /body\.append\("size", imageSize\)/);
+  assert.match(source, /size: imageSize/);
   assert.match(source, /FormData/);
   assert.ok(source.indexOf("/images/edits") < source.indexOf("/images/generations"));
 });
@@ -143,4 +173,13 @@ test("image billing helper uses one image credit and admin quota adjustment", ()
   assert.match(source, /adjustImageQuota\(userId, "add"/);
   assert.match(source, /\/api\/user\/\$\{userId\}/);
   assert.match(source, /user\.quota < 0/);
+});
+
+test("generate image route reports the first upstream failure after fallback attempts", () => {
+  const source = read("src/app/api/generate-images/route.ts");
+
+  assert.match(source, /let firstError: unknown = null/);
+  assert.match(source, /firstError \?\?= error/);
+  assert.ok(source.indexOf("firstError ??= error") < source.lastIndexOf("NextResponse.json"));
+  assert.match(source, /firstError instanceof Error \? firstError\.message/);
 });

@@ -2,6 +2,8 @@
 import { NextRequest } from "next/server";
 import { makeProxy } from "@/lib/proxy";
 
+export const preferredRegion = "hkg1";
+
 export async function DELETE(
   req: NextRequest,
   context: { params: Promise<{ id: string }> },

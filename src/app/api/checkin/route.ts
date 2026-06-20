@@ -1,9 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getGatewayBaseUrl } from "@/lib/new-api-auth-server";
 
+export const preferredRegion = "hkg1";
+
 const CHECKIN_DISABLED_MESSAGE = "签到功能未启用";
 const CHECKIN_REWARD_MIN_QUOTA = 500_000;
 const CHECKIN_REWARD_MAX_QUOTA = 1_500_000;
+const ENABLE_CHECKIN_COOLDOWN_MS = 10 * 60 * 1000;
+
+// 自动开启签到失败后的冷却时间戳：10 分钟内不再重试，避免每次签到查询都对网关连发注定失败的请求。
+let enableCheckinLastFailedAt = 0;
 
 type JsonRecord = Record<string, unknown>;
 
@@ -127,8 +133,13 @@ async function handleCheckin(req: NextRequest, method: "GET" | "POST") {
   const firstData = (await first.clone().json()) as UpstreamCheckinResult;
   if (!isCheckinDisabled(firstData)) return first;
 
+  if (Date.now() - enableCheckinLastFailedAt < ENABLE_CHECKIN_COOLDOWN_MS) return first;
+
   const enabled = await enableCheckin(req);
-  if (!enabled) return first;
+  if (!enabled) {
+    enableCheckinLastFailedAt = Date.now();
+    return first;
+  }
 
   const retry = await callNativeCheckin(req, method, body);
   return retry;

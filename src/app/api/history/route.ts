@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getStoredUserFromHeaders } from "@/lib/server-user";
 import { listGeneratedHistoryEntries, saveGeneratedHistoryEntry } from "@/lib/server-history-store";
 
+export const preferredRegion = "hkg1";
+
 export async function GET(req: NextRequest) {
   const user = getStoredUserFromHeaders(req);
   if (!user) {

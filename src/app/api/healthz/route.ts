@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 
+export const preferredRegion = "hkg1";
+
 export async function GET() {
   return NextResponse.json({
     ok: true,

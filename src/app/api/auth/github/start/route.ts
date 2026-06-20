@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { buildGitHubAuthorizeUrl, createGitHubState } from "@/lib/github-auth";
 
+export const preferredRegion = "hkg1";
+
 function getBaseUrl(req: NextRequest) {
   return process.env.NEXT_PUBLIC_APP_URL
     ?? `${req.nextUrl.protocol}//${req.nextUrl.host}`;

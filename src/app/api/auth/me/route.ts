@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { MOCK_MODE, mockGetSelf } from "@/lib/mock";
 import { getGatewayBaseUrl } from "@/lib/new-api-auth-server";
 
+export const preferredRegion = "hkg1";
+
 export async function GET(req: NextRequest) {
   const authHeader = req.headers.get("authorization");
   const userIdHeader = req.headers.get("x-user-id");

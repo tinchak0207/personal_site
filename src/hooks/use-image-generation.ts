@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ImageError,
   ImageResult,
@@ -62,6 +62,13 @@ interface GenerationOptions {
   workflowPreset?: string;
   workflowPresetLabel?: string;
   promptHint?: string;
+  productionIntent?: string;
+  imageSize?: string;
+  imageSizes?: string[];
+  styleTemplate?: string;
+  qualityProfile?: string;
+  seedHint?: string;
+  regionalPrompts?: Array<{ text: string; weight?: number }>;
   estimatedCredits?: number;
   referenceImageRoles?: Record<string, ReferenceImageRole>;
 }
@@ -115,7 +122,13 @@ async function readGenerationResponse(response: Response): Promise<GenerationRes
   }
 }
 
-export function useImageGeneration(): UseImageGenerationReturn {
+interface UseImageGenerationOptions {
+  /** 是否拉取服务端历史（recentWorkflows 仅专业模式使用，可按需关闭以减少首页请求）。默认 true 保持兼容。 */
+  enableServerHistory?: boolean;
+}
+
+export function useImageGeneration(options?: UseImageGenerationOptions): UseImageGenerationReturn {
+  const enableServerHistory = options?.enableServerHistory ?? true;
   const [images, setImages] = useState<ImageResult[]>([]);
   const [errors, setErrors] = useState<ImageError[]>([]);
   const [timings, setTimings] = useState<Record<ProviderKey, ProviderTiming>>(
@@ -125,6 +138,7 @@ export function useImageGeneration(): UseImageGenerationReturn {
   const [isLoading, setIsLoading] = useState(false);
   const [activePrompt, setActivePrompt] = useState("");
   const [recentWorkflows, setRecentWorkflows] = useState<PersistedGenerationEntry[]>([]);
+  const serverHistorySyncedRef = useRef(false);
 
   useEffect(() => {
     const cache = readGenerationCache();
@@ -132,21 +146,8 @@ export function useImageGeneration(): UseImageGenerationReturn {
     setRecentWorkflows(selectRecentWorkflowEntries(selectLocalHistory(cache, user?.id)));
     if (!user) return;
 
-    const token = getStoredToken();
-    let cancelled = false;
-    if (token) {
-      fetchStoredHistory(token)
-        .then((storedHistory) => {
-          if (cancelled || !Array.isArray(storedHistory.data)) return;
-          setRecentWorkflows(selectRecentWorkflowEntries(
-            mergePersistedHistory(cache, user.id, storedHistory.data.map(mapStoredHistoryEntry)),
-          ));
-        })
-        .catch(() => {});
-    }
-
     const current = cache.current;
-    if (!current || current.userId !== user.id) return () => { cancelled = true; };
+    if (!current || current.userId !== user.id) return;
 
     setActivePrompt(current.prompt);
     setImages(
@@ -159,8 +160,27 @@ export function useImageGeneration(): UseImageGenerationReturn {
         workflow: current.workflow,
       })),
     );
-    return () => { cancelled = true; };
   }, []);
+
+  useEffect(() => {
+    if (!enableServerHistory || serverHistorySyncedRef.current) return;
+    const user = getGenerationCacheUser();
+    if (!user) return;
+    const token = getStoredToken();
+    if (!token) return;
+
+    let cancelled = false;
+    fetchStoredHistory(token)
+      .then((storedHistory) => {
+        if (cancelled || !Array.isArray(storedHistory.data)) return;
+        serverHistorySyncedRef.current = true;
+        setRecentWorkflows(selectRecentWorkflowEntries(
+          mergePersistedHistory(readGenerationCache(), user.id, storedHistory.data.map(mapStoredHistoryEntry)),
+        ));
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [enableServerHistory]);
 
   const resetState = () => {
     setImages([]);
@@ -187,6 +207,12 @@ export function useImageGeneration(): UseImageGenerationReturn {
       concurrency,
     }, referenceImages);
     const workflowPrompt = buildWorkflowPrompt(prompt, workflow);
+    // 多尺寸投放：按槽位轮替分配尺寸，每个槽位携带自己的 workflow（含 imageSize）
+    const sizeVariants = (options.imageSizes ?? []).filter((size, index, list) => list.indexOf(size) === index);
+    const workflowForSlot = (copyIndex: number) =>
+      workflow && sizeVariants.length > 0
+        ? { ...workflow, imageSize: sizeVariants[copyIndex % sizeVariants.length] }
+        : workflow;
     setActivePrompt(workflowPrompt);
     try {
       setIsLoading(true);
@@ -199,14 +225,14 @@ export function useImageGeneration(): UseImageGenerationReturn {
       );
       // Initialize images array with null values
       setImages(
-        slots.map(({ provider, slotId }) => ({
+        slots.map(({ provider, slotId, copyIndex }) => ({
           provider,
           slotId,
           image: null,
           imageUrl: null,
           modelId: providerToModel[provider],
           referenceImageNames: referenceImages.map((image) => image.name),
-          workflow,
+          workflow: workflowForSlot(copyIndex),
         })),
       );
 
@@ -223,7 +249,12 @@ export function useImageGeneration(): UseImageGenerationReturn {
       );
 
       // Helper to fetch a single provider
-      const generateImage = async (provider: ProviderKey, modelId: string, slotId: string) => {
+      const generateImage = async (
+        provider: ProviderKey,
+        modelId: string,
+        slotId: string,
+        slotWorkflow = workflow,
+      ) => {
         const startTime = now;
         console.log(
           `Generate image request [provider=${provider}, modelId=${modelId}]`,
@@ -233,7 +264,7 @@ export function useImageGeneration(): UseImageGenerationReturn {
             prompt,
             provider,
             modelId,
-            workflow,
+            workflow: slotWorkflow,
           };
           const token = getStoredToken();
           const user = getStoredUser();
@@ -249,8 +280,8 @@ export function useImageGeneration(): UseImageGenerationReturn {
             body.append("prompt", prompt);
             body.append("provider", provider);
             body.append("modelId", modelId);
-            if (workflow) {
-              body.append("workflow", JSON.stringify(workflow));
+            if (slotWorkflow) {
+              body.append("workflow", JSON.stringify(slotWorkflow));
             }
             for (const image of referenceImages) {
               body.append("referenceImages", image.file, image.name);
@@ -301,7 +332,7 @@ export function useImageGeneration(): UseImageGenerationReturn {
             modelId,
             endpointLabel: data.endpointLabel,
             referenceImageNames: referenceImages.map((image) => image.name),
-            workflow,
+            workflow: slotWorkflow,
           };
           setImages((prevImages) =>
             prevImages.map((item) =>
@@ -333,7 +364,7 @@ export function useImageGeneration(): UseImageGenerationReturn {
             imageUrl: null,
             modelId,
             referenceImageNames: referenceImages.map((image) => image.name),
-            workflow,
+            workflow: slotWorkflow,
           };
           setImages((prevImages) =>
             prevImages.map((item) =>
@@ -344,8 +375,8 @@ export function useImageGeneration(): UseImageGenerationReturn {
         }
       };
 
-      const tasks = slots.map(({ provider, slotId }) => () =>
-        generateImage(provider, providerToModel[provider], slotId),
+      const tasks = slots.map(({ provider, slotId, copyIndex }) => () =>
+        generateImage(provider, providerToModel[provider], slotId, workflowForSlot(copyIndex)),
       );
       const completedResults: ImageResult[] = [];
       for (let index = 0; index < tasks.length; index += concurrency) {

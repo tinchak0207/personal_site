@@ -23,6 +23,12 @@ export type ImageAuthResult =
   | { ok: true; user: ImageBillingUser; bypassBilling: boolean }
   | { ok: false; status: number; message: string };
 
+// token → 认证结果的模块级微缓存：30 秒 TTL、上限 500 条，命中则免去对网关的 GET /api/user/self。
+// 只缓存成功结果；存取均做浅拷贝，避免调用方修改 quota 污染缓存。
+const AUTH_CACHE_TTL_MS = 30_000;
+const AUTH_CACHE_MAX_ENTRIES = 500;
+const authMicroCache = new Map<string, { expiresAt: number; user: ImageBillingUser }>();
+
 async function readGatewayResult<T>(response: Response): Promise<GatewayResult<T>> {
   const text = await response.text();
   if (!text) return { success: false, message: `Gateway returned ${response.status}` };
@@ -74,6 +80,15 @@ export async function authenticateImageUser(
     return { ok: false, status: 401, message: "请先登录再生成图片。" };
   }
 
+  const cacheKey = `${auth}|${userId}`;
+  const cached = authMicroCache.get(cacheKey);
+  if (cached) {
+    if (cached.expiresAt > Date.now() && cached.user.quota >= IMAGE_GENERATION_QUOTA) {
+      return { ok: true, user: { ...cached.user }, bypassBilling: false };
+    }
+    authMicroCache.delete(cacheKey);
+  }
+
   const response = await fetcher(`${getGatewayBaseUrl()}/api/user/self`, {
     headers: {
       Authorization: auth,
@@ -90,6 +105,15 @@ export async function authenticateImageUser(
   if (result.data.quota < IMAGE_GENERATION_QUOTA) {
     return { ok: false, status: 402, message: "余额不足，请先充值。" };
   }
+
+  if (authMicroCache.size >= AUTH_CACHE_MAX_ENTRIES) {
+    const oldestKey = authMicroCache.keys().next().value;
+    if (oldestKey !== undefined) authMicroCache.delete(oldestKey);
+  }
+  authMicroCache.set(cacheKey, {
+    expiresAt: Date.now() + AUTH_CACHE_TTL_MS,
+    user: { ...result.data },
+  });
 
   return { ok: true, user: result.data, bypassBilling: false };
 }
@@ -145,8 +169,18 @@ async function fetchManagedImageUser(
   return result.data;
 }
 
-export async function reserveImageQuota(userId: number, env?: EnvLike, fetcher?: FetchLike) {
+export async function reserveImageQuota(
+  userId: number,
+  knownQuota?: number,
+  env?: EnvLike,
+  fetcher?: FetchLike,
+) {
   await adjustImageQuota(userId, "subtract", env, fetcher);
+
+  // 已知余额充足（≥ 2 次生成额度）时跳过复核，省一次网关请求；低余额才复核，防止扣穿。
+  if (knownQuota !== undefined && knownQuota >= 2 * IMAGE_GENERATION_QUOTA) {
+    return;
+  }
 
   try {
     const user = await fetchManagedImageUser(userId, env, fetcher);

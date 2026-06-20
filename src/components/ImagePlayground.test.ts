@@ -19,3 +19,16 @@ test("image playground controls normal, fallback, and failed progress timing", (
   assert.match(source, /revealGeneratedResult = !showProgress/);
   assert.doesNotMatch(source, /<GenerationProgressBar|QuietRevealTheater|theaterStartedAt|finalImageSrc/);
 });
+
+test("professional mode renders as a standalone app without the normal showcase shell", () => {
+  const source = read("src/components/ImagePlayground.tsx");
+  const proBranch = source.indexOf("if (showProfessionalMode)");
+  const normalShell = source.indexOf("min-h-screen bg-transparent");
+  const showcase = source.indexOf("<CaseShowcase");
+
+  assert.notEqual(proBranch, -1);
+  assert.match(source, /pro-app-shell/);
+  assert.match(source, /onExitProfessionalMode/);
+  assert.ok(proBranch < normalShell);
+  assert.ok(proBranch < showcase);
+});

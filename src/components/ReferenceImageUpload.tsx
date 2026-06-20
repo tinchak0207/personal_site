@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ImagePlus, Loader2, X } from "lucide-react";
 import { useDropzone } from "react-dropzone";
-import imageCompression from "browser-image-compression";
 import type { ReferenceImage } from "@/lib/image-types";
 import { cn } from "@/lib/utils";
 
@@ -31,6 +30,7 @@ export function ReferenceImageUpload({ value, onChange, compact }: ReferenceImag
     if (!files.length) return;
     setIsProcessing(true);
     try {
+      const { default: imageCompression } = await import("browser-image-compression");
       const remainingSlots = Math.max(0, MAX_REFERENCE_IMAGES - valueRef.current.length);
       const selectedFiles = files.slice(0, remainingSlots);
       const processed = await Promise.all(
@@ -89,10 +89,10 @@ export function ReferenceImageUpload({ value, onChange, compact }: ReferenceImag
         </div>
         <div className="min-w-0 flex-1">
           <p className="truncate text-ios-footnote font-semibold text-[rgba(0,0,0,0.72)]">
-            {value.length ? `参考图 ${value.length}/${MAX_REFERENCE_IMAGES}` : "上传参考图"}
+            {value.length ? `参考图 ${value.length}/${MAX_REFERENCE_IMAGES}` : "添加参考图"}
           </p>
           <p className="truncate text-ios-caption1 text-[rgba(0,0,0,0.38)]">
-            支持多张图片，会先在浏览器压缩再生成
+            支持多张图片，生成前会自动压缩。
           </p>
         </div>
       </div>

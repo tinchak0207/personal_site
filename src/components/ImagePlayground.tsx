@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import dynamic from "next/dynamic";
 import { ModelSelect } from "@/components/ModelSelect";
 import { PromptInput } from "@/components/PromptInput";
@@ -38,20 +38,28 @@ const ReferenceImageUpload = dynamic(() => import("@/components/ReferenceImageUp
 });
 
 export function ImagePlayground({ suggestions }: { suggestions: Suggestion[] }) {
-  const { images, timings, failedProviders, isLoading, recentWorkflows, startGeneration } = useImageGeneration();
+  const [showProfessionalMode, setShowProfessionalMode] = useState(false);
+  const { images, timings, failedProviders, isLoading, recentWorkflows, startGeneration } = useImageGeneration({ enableServerHistory: showProfessionalMode });
   const { user, isLoggedIn, refresh } = useAuth();
   const { toast } = useToast();
-  const initialSuggestions = getInitialSuggestions(suggestions);
+  const initialSuggestions = useMemo(() => getInitialSuggestions(suggestions), [suggestions]);
   const [mode, setMode] = useState<ModelMode>("fast");
   const [selectedModels, setSelectedModels] = useState(MODEL_CONFIGS.fast);
   const [stylePreset, setStylePreset] = useState<StylePreset>("none");
   const [casePrompt, setCasePrompt] = useState("");
   const [authOpen, setAuthOpen] = useState(false);
-  const [showProfessionalMode, setShowProfessionalMode] = useState(false);
+  const [authMounted, setAuthMounted] = useState(false);
   const [referenceImages, setReferenceImages] = useState<ReferenceImage[]>([]);
   const [progressStartedAt, setProgressStartedAt] = useState<number>();
   const [progressDurationMs, setProgressDurationMs] = useState(NORMAL_PROGRESS_DURATION_MS);
   const [showProgress, setShowProgress] = useState(false);
+
+  const openAuthModal = useCallback(() => {
+    setAuthMounted(true);
+    setAuthOpen(true);
+  }, []);
+
+  const handleExitProfessionalMode = useCallback(() => setShowProfessionalMode(false), []);
 
   const handleModeChange = (newMode: ModelMode) => {
     setMode(newMode);
@@ -66,7 +74,7 @@ export function ImagePlayground({ suggestions }: { suggestions: Suggestion[] }) 
 
   const handlePromptSubmit = useCallback(async (rawPrompt: string) => {
     if (!LOCAL_TEST_MODE && (!isLoggedIn || !user)) {
-      setAuthOpen(true);
+      openAuthModal();
       return;
     }
     if (!LOCAL_TEST_MODE && user && !hasEnoughQuota(user)) {
@@ -81,11 +89,11 @@ export function ImagePlayground({ suggestions }: { suggestions: Suggestion[] }) 
     if (!LOCAL_TEST_MODE) {
       refresh().catch(() => {});
     }
-  }, [isLoggedIn, user, stylePreset, selectedModels, startGeneration, toast, refresh, referenceImages]);
+  }, [isLoggedIn, user, stylePreset, selectedModels, startGeneration, toast, refresh, referenceImages, openAuthModal]);
 
   const handleProfessionalRun = useCallback(async (config: ProfessionalRunConfig) => {
     if (!LOCAL_TEST_MODE && (!isLoggedIn || !user)) {
-      setAuthOpen(true);
+      openAuthModal();
       return;
     }
     if (!LOCAL_TEST_MODE && user && !hasEnoughQuota(user)) {
@@ -104,6 +112,13 @@ export function ImagePlayground({ suggestions }: { suggestions: Suggestion[] }) 
       workflowPreset: config.workflowPreset,
       workflowPresetLabel: config.workflowPresetLabel,
       promptHint: config.promptHint,
+      productionIntent: config.productionIntent,
+      imageSize: config.imageSize,
+      imageSizes: config.imageSizes,
+      styleTemplate: config.styleTemplate,
+      qualityProfile: config.qualityProfile,
+      seedHint: config.seedHint,
+      regionalPrompts: config.regionalPrompts,
       estimatedCredits: config.estimatedCredits,
       referenceImageRoles: config.referenceImageRoles,
       copies: config.copies,
@@ -112,7 +127,7 @@ export function ImagePlayground({ suggestions }: { suggestions: Suggestion[] }) 
     if (!LOCAL_TEST_MODE) {
       refresh().catch(() => {});
     }
-  }, [isLoggedIn, user, stylePreset, selectedModels, startGeneration, toast, refresh, referenceImages]);
+  }, [isLoggedIn, user, stylePreset, selectedModels, startGeneration, toast, refresh, referenceImages, openAuthModal]);
 
   const usedFallback = images.some((image) =>
     image.endpointLabel === "fallback" && (image.image || image.imageUrl),
@@ -135,7 +150,7 @@ export function ImagePlayground({ suggestions }: { suggestions: Suggestion[] }) 
   }, [failedProviders.length, isLoading, progressDurationMs, progressStartedAt, showProgress]);
 
   const revealGeneratedResult = !showProgress;
-  const models = (Object.keys(PROVIDERS) as ProviderKey[]).map((key) => {
+  const models = useMemo(() => (Object.keys(PROVIDERS) as ProviderKey[]).map((key) => {
     const provider = PROVIDERS[key];
     const imageItem = images.find((img) => img.provider === key);
     return {
@@ -155,7 +170,7 @@ export function ImagePlayground({ suggestions }: { suggestions: Suggestion[] }) 
         : timings[key],
       failed: revealGeneratedResult && failedProviders.includes(key),
     };
-  });
+  }), [images, selectedModels, revealGeneratedResult, showProgress, progressStartedAt, progressDurationMs, timings, failedProviders]);
 
   const renderState = isLoading
     ? "处理中"
@@ -164,6 +179,41 @@ export function ImagePlayground({ suggestions }: { suggestions: Suggestion[] }) 
       : images.some((i) => i.image || i.imageUrl)
         ? "已完成"
         : "当前可用";
+
+  if (showProfessionalMode) {
+    return (
+      <>
+        <div className="pro-app-shell">
+          <InvokeInspiredWorkstation
+            suggestions={initialSuggestions}
+            referenceImages={referenceImages}
+            onReferenceImagesChange={setReferenceImages}
+            images={images}
+            isLoading={isLoading}
+            recentWorkflows={recentWorkflows}
+            onRun={handleProfessionalRun}
+            onExitProfessionalMode={handleExitProfessionalMode}
+          />
+        </div>
+
+        {(!showProgress && (isLoading || failedProviders.length > 0)) && (
+          <div className="pointer-events-none fixed inset-x-0 bottom-4 z-30 flex justify-center px-4 sm:bottom-6">
+            <div className="pointer-events-auto lg-bar flex items-center gap-3 rounded-ios-4xl px-5 py-2.5">
+              <span
+                className={cn(
+                  "h-1.5 w-1.5 rounded-full",
+                  isLoading ? "bg-[#34C759] animate-pulse" : "bg-[#FF3B30]",
+                )}
+              />
+              <span className="text-ios-footnote text-[rgba(0,0,0,0.44)]">{renderState}</span>
+            </div>
+          </div>
+        )}
+
+        {authMounted && <AuthModal open={authOpen} onClose={() => setAuthOpen(false)} defaultTab="login" />}
+      </>
+    );
+  }
 
   return (
     <>
@@ -175,21 +225,10 @@ export function ImagePlayground({ suggestions }: { suggestions: Suggestion[] }) 
               onClick={() => setShowProfessionalMode((current) => !current)}
               className="hidden md:inline-flex items-center gap-2 rounded-full bg-white/56 px-4 py-2 text-ios-footnote font-semibold text-[rgba(0,0,0,0.62)] shadow-[0_10px_30px_rgba(45,49,66,0.06)] backdrop-blur-[28px] transition-all hover:bg-white/72"
             >
-              {showProfessionalMode ? "普通模式" : "专业模式"}
+              专业模式
             </button>
           </div>
 
-          {showProfessionalMode ? (
-            <InvokeInspiredWorkstation
-              suggestions={initialSuggestions}
-              referenceImages={referenceImages}
-              onReferenceImagesChange={setReferenceImages}
-              images={images}
-              isLoading={isLoading}
-              recentWorkflows={recentWorkflows}
-              onRun={handleProfessionalRun}
-            />
-          ) : (
           <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(380px,460px)]">
             <div className="space-y-3">
               <PromptInput
@@ -214,7 +253,6 @@ export function ImagePlayground({ suggestions }: { suggestions: Suggestion[] }) 
               ))}
             </div>
           </div>
-          )}
         </div>
       </div>
 
@@ -234,7 +272,7 @@ export function ImagePlayground({ suggestions }: { suggestions: Suggestion[] }) 
         </div>
       )}
 
-      <AuthModal open={authOpen} onClose={() => setAuthOpen(false)} defaultTab="login" />
+      {authMounted && <AuthModal open={authOpen} onClose={() => setAuthOpen(false)} defaultTab="login" />}
     </>
   );
 }

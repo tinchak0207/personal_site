@@ -11,8 +11,44 @@ interface CheckinCalendarProps {
   className?: string;
 }
 
+interface CheckinStatusCacheEntry {
+  canCheckin: boolean;
+  rewardCount: number | null;
+}
+
+function getCheckinCacheKey(userId: number) {
+  const now = new Date();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `checkin_status_${userId}_${now.getFullYear()}-${month}-${day}`;
+}
+
+function readCheckinStatusCache(userId: number): CheckinStatusCacheEntry | null {
+  try {
+    const raw = window.localStorage.getItem(getCheckinCacheKey(userId));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<CheckinStatusCacheEntry>;
+    if (typeof parsed.canCheckin !== "boolean") return null;
+    return {
+      canCheckin: parsed.canCheckin,
+      rewardCount: typeof parsed.rewardCount === "number" ? parsed.rewardCount : null,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function writeCheckinStatusCache(userId: number, entry: CheckinStatusCacheEntry) {
+  try {
+    window.localStorage.setItem(getCheckinCacheKey(userId), JSON.stringify(entry));
+  } catch {
+    /* ignore quota / privacy-mode errors */
+  }
+}
+
 export function CheckinCalendar({ className }: CheckinCalendarProps) {
-  const { token, refresh } = useAuth();
+  const { token, user, refresh } = useAuth();
+  const userId = user?.id;
   const [open, setOpen] = useState(false);
   const [canCheckin, setCanCheckin] = useState(false);
   const [loadingStatus, setLoadingStatus] = useState(false);
@@ -44,8 +80,13 @@ export function CheckinCalendar({ className }: CheckinCalendarProps) {
     try {
       const res = await fetchCheckinStatus(token);
       if (res.success && res.data) {
-        setCanCheckin(res.data.can_checkin);
-        if (res.data.quota) setRewardCount(quotaToRewardCount(res.data.quota));
+        const nextCanCheckin = res.data.can_checkin;
+        const nextRewardCount = res.data.quota ? quotaToRewardCount(res.data.quota) : null;
+        setCanCheckin(nextCanCheckin);
+        if (nextRewardCount !== null) setRewardCount(nextRewardCount);
+        if (userId !== undefined) {
+          writeCheckinStatusCache(userId, { canCheckin: nextCanCheckin, rewardCount: nextRewardCount });
+        }
       } else {
         setError(res.message ?? "签到状态获取失败");
       }
@@ -54,11 +95,20 @@ export function CheckinCalendar({ className }: CheckinCalendarProps) {
     } finally {
       setLoadingStatus(false);
     }
-  }, [token]);
+  }, [token, userId]);
 
   useEffect(() => {
+    if (!token) return;
+    if (userId !== undefined) {
+      const cached = readCheckinStatusCache(userId);
+      if (cached) {
+        setCanCheckin(cached.canCheckin);
+        if (cached.rewardCount !== null) setRewardCount(cached.rewardCount);
+        return;
+      }
+    }
     void loadStatus();
-  }, [loadStatus]);
+  }, [token, userId, loadStatus]);
 
   const handleOpen = () => {
     setOpen(true);
@@ -75,6 +125,9 @@ export function CheckinCalendar({ className }: CheckinCalendarProps) {
         const count = quotaToRewardCount(res.data?.quota ?? 500_000);
         setRewardCount(count);
         setCanCheckin(false);
+        if (userId !== undefined) {
+          writeCheckinStatusCache(userId, { canCheckin: false, rewardCount: count });
+        }
         await refresh();
       } else {
         setError(res.message ?? "签到失败，请稍后再试");

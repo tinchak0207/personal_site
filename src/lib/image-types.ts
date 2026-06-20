@@ -7,6 +7,7 @@ export interface ReferenceImage {
   previewUrl: string;
   size: number;
   role?: ReferenceImageRole;
+  strength?: number;
 }
 
 export type ReferenceImageRole =
@@ -21,6 +22,12 @@ export interface ReferenceImageMetadata {
   name: string;
   role: ReferenceImageRole;
   size?: number;
+  strength?: number;
+}
+
+export interface RegionalPromptMetadata {
+  text: string;
+  weight?: number;
 }
 
 export interface GenerationWorkflowMetadata {
@@ -31,6 +38,13 @@ export interface GenerationWorkflowMetadata {
   workflowPreset?: string;
   workflowPresetLabel?: string;
   promptHint?: string;
+  productionIntent?: string;
+  imageSize?: string;
+  imageSizes?: string[];
+  styleTemplate?: string;
+  qualityProfile?: string;
+  seedHint?: string;
+  regionalPrompts?: RegionalPromptMetadata[];
   referenceImages?: ReferenceImageMetadata[];
   estimatedCredits?: number;
   copies?: number;

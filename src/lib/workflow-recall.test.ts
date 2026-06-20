@@ -9,6 +9,10 @@ test("parseWorkflowRecallConfig restores copied workstation config safely", () =
     contextPrompt: "brand system",
     negativePrompt: "bad text",
     workflowPreset: "poster-variants",
+    imageSize: "1536x1024",
+    qualityProfile: "print",
+    productionIntent: "campaign",
+    seedHint: "launch-keyvisual",
     copies: 99,
     concurrency: 0,
     referenceImages: [
@@ -23,6 +27,10 @@ test("parseWorkflowRecallConfig restores copied workstation config safely", () =
   assert.equal(result.config.contextPrompt, "brand system");
   assert.equal(result.config.negativePrompt, "bad text");
   assert.equal(result.config.workflowPreset, "poster-variants");
+  assert.equal(result.config.imageSize, "1536x1024");
+  assert.equal(result.config.qualityProfile, "print");
+  assert.equal(result.config.productionIntent, "campaign");
+  assert.equal(result.config.seedHint, "launch-keyvisual");
   assert.equal(result.config.copies, 8);
   assert.equal(result.config.concurrency, 1);
   assert.deepEqual(result.config.referenceImageRolesByName, { "hero.png": "composition" });
